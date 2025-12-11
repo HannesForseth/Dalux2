@@ -4,6 +4,13 @@ export type ProjectStatus = 'active' | 'completed' | 'archived'
 export type MemberStatus = 'pending' | 'active' | 'removed'
 export type RoleName = 'owner' | 'admin' | 'member' | 'viewer'
 
+// Module status types
+export type IssueStatus = 'open' | 'in_progress' | 'resolved' | 'closed'
+export type IssuePriority = 'low' | 'medium' | 'high' | 'critical'
+export type ChecklistStatus = 'draft' | 'in_progress' | 'completed' | 'approved'
+export type RfiStatus = 'open' | 'pending' | 'answered' | 'closed'
+export type RfiPriority = 'low' | 'medium' | 'high' | 'urgent'
+
 export interface Profile {
   id: string
   full_name: string | null
@@ -42,6 +49,7 @@ export interface Project {
   status: ProjectStatus
   start_date: string | null
   end_date: string | null
+  image_url: string | null
   created_by: string | null
   created_at: string
   updated_at: string
@@ -235,4 +243,304 @@ export interface CreateProjectWithPlanData {
   plan_id: string
   extra_users?: number
   storage_addon_ids?: string[]
+}
+
+// ===============================
+// Document Module Types
+// ===============================
+
+export interface Document {
+  id: string
+  project_id: string
+  name: string
+  description: string | null
+  file_path: string
+  file_size: number
+  file_type: string
+  folder_path: string
+  version: number
+  uploaded_by: string
+  created_at: string
+  updated_at: string
+}
+
+export interface DocumentWithUploader extends Document {
+  uploader: Profile
+}
+
+export interface CreateDocumentData {
+  name: string
+  description?: string
+  folder_path?: string
+}
+
+export interface UpdateDocumentData {
+  name?: string
+  description?: string
+  folder_path?: string
+}
+
+// ===============================
+// Issue (Avvikelse) Module Types
+// ===============================
+
+export interface Issue {
+  id: string
+  project_id: string
+  title: string
+  description: string | null
+  status: IssueStatus
+  priority: IssuePriority
+  location: string | null
+  reported_by: string
+  assigned_to: string | null
+  due_date: string | null
+  resolved_at: string | null
+  created_at: string
+  updated_at: string
+}
+
+export interface IssueAttachment {
+  id: string
+  issue_id: string
+  file_path: string
+  file_name: string
+  file_size: number
+  file_type: string
+  uploaded_by: string
+  created_at: string
+}
+
+export interface IssueComment {
+  id: string
+  issue_id: string
+  content: string
+  author_id: string
+  created_at: string
+  updated_at: string
+}
+
+export interface IssueCommentWithAuthor extends IssueComment {
+  author: Profile
+}
+
+export interface IssueWithDetails extends Issue {
+  reporter: Profile
+  assignee: Profile | null
+  attachments?: IssueAttachment[]
+  comments?: IssueCommentWithAuthor[]
+}
+
+export interface CreateIssueData {
+  title: string
+  description?: string
+  status?: IssueStatus
+  priority?: IssuePriority
+  location?: string
+  assigned_to?: string
+  due_date?: string
+}
+
+export interface UpdateIssueData {
+  title?: string
+  description?: string
+  status?: IssueStatus
+  priority?: IssuePriority
+  location?: string
+  assigned_to?: string | null
+  due_date?: string | null
+}
+
+// ===============================
+// Drawing (Ritning) Module Types
+// ===============================
+
+export interface Drawing {
+  id: string
+  project_id: string
+  name: string
+  description: string | null
+  drawing_number: string | null
+  revision: string
+  file_path: string
+  file_size: number
+  file_type: string
+  category: string | null
+  is_current: boolean
+  uploaded_by: string
+  created_at: string
+  updated_at: string
+}
+
+export interface DrawingWithUploader extends Drawing {
+  uploader: Profile
+}
+
+export interface CreateDrawingData {
+  name: string
+  description?: string
+  drawing_number?: string
+  revision?: string
+  category?: string
+}
+
+export interface UpdateDrawingData {
+  name?: string
+  description?: string
+  drawing_number?: string
+  revision?: string
+  category?: string
+  is_current?: boolean
+}
+
+// ===============================
+// Checklist Module Types
+// ===============================
+
+export interface Checklist {
+  id: string
+  project_id: string
+  name: string
+  description: string | null
+  template_id: string | null
+  status: ChecklistStatus
+  location: string | null
+  due_date: string | null
+  created_by: string
+  completed_by: string | null
+  completed_at: string | null
+  created_at: string
+  updated_at: string
+}
+
+export interface ChecklistItem {
+  id: string
+  checklist_id: string
+  title: string
+  description: string | null
+  is_required: boolean
+  is_checked: boolean
+  checked_by: string | null
+  checked_at: string | null
+  sort_order: number
+  created_at: string
+}
+
+export interface ChecklistItemWithChecker extends ChecklistItem {
+  checker: Profile | null
+}
+
+export interface ChecklistWithDetails extends Checklist {
+  creator: Profile
+  completer: Profile | null
+  items: ChecklistItemWithChecker[]
+  progress: {
+    total: number
+    checked: number
+    percentage: number
+  }
+}
+
+export interface CreateChecklistData {
+  name: string
+  description?: string
+  status?: ChecklistStatus
+  location?: string
+  due_date?: string
+  items?: CreateChecklistItemData[]
+}
+
+export interface CreateChecklistItemData {
+  title: string
+  description?: string
+  is_required?: boolean
+  sort_order?: number
+}
+
+export interface UpdateChecklistData {
+  name?: string
+  description?: string
+  status?: ChecklistStatus
+  location?: string
+  due_date?: string | null
+}
+
+export interface UpdateChecklistItemData {
+  title?: string
+  description?: string
+  is_required?: boolean
+  is_checked?: boolean
+  sort_order?: number
+}
+
+// ===============================
+// RFI (Frågor & Svar) Module Types
+// ===============================
+
+export interface Rfi {
+  id: string
+  project_id: string
+  rfi_number: number
+  subject: string
+  question: string
+  answer: string | null
+  status: RfiStatus
+  priority: RfiPriority
+  category: string | null
+  requested_by: string
+  assigned_to: string | null
+  answered_by: string | null
+  due_date: string | null
+  answered_at: string | null
+  closed_at: string | null
+  related_drawing_id: string | null
+  related_document_id: string | null
+  created_at: string
+  updated_at: string
+}
+
+export interface RfiAttachment {
+  id: string
+  rfi_id: string
+  file_path: string
+  file_name: string
+  file_size: number
+  file_type: string
+  uploaded_by: string
+  created_at: string
+}
+
+export interface RfiWithDetails extends Rfi {
+  requester: Profile
+  assignee: Profile | null
+  answerer: Profile | null
+  attachments?: RfiAttachment[]
+  related_drawing?: Drawing | null
+  related_document?: Document | null
+}
+
+export interface CreateRfiData {
+  subject: string
+  question: string
+  status?: RfiStatus
+  priority?: RfiPriority
+  category?: string
+  assigned_to?: string
+  due_date?: string
+  related_drawing_id?: string
+  related_document_id?: string
+}
+
+export interface UpdateRfiData {
+  subject?: string
+  question?: string
+  status?: RfiStatus
+  priority?: RfiPriority
+  category?: string
+  assigned_to?: string | null
+  due_date?: string | null
+}
+
+export interface AnswerRfiData {
+  answer: string
 }

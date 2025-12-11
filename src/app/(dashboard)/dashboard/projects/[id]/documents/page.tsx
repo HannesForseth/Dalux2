@@ -1,40 +1,297 @@
 'use client'
 
 import { useParams } from 'next/navigation'
+import { useState, useEffect, useCallback } from 'react'
 import Link from 'next/link'
+import FileUploader from '@/components/FileUploader'
+import { getProjectDocuments, uploadDocument, deleteDocument, getDocumentDownloadUrl } from '@/app/actions/documents'
+import type { DocumentWithUploader } from '@/types/database'
+
+function formatBytes(bytes: number): string {
+  if (bytes === 0) return '0 B'
+  const k = 1024
+  const sizes = ['B', 'KB', 'MB', 'GB']
+  const i = Math.floor(Math.log(bytes) / Math.log(k))
+  return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + ' ' + sizes[i]
+}
+
+function formatDate(dateString: string): string {
+  const date = new Date(dateString)
+  return date.toLocaleDateString('sv-SE', {
+    year: 'numeric',
+    month: 'short',
+    day: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit'
+  })
+}
+
+function getFileIcon(fileType: string): string {
+  if (fileType.startsWith('image/')) return 'image'
+  if (fileType === 'application/pdf') return 'pdf'
+  if (fileType.includes('word') || fileType.includes('document')) return 'doc'
+  if (fileType.includes('sheet') || fileType.includes('excel')) return 'xls'
+  if (fileType.includes('presentation') || fileType.includes('powerpoint')) return 'ppt'
+  if (fileType.startsWith('text/')) return 'txt'
+  if (fileType.includes('zip') || fileType.includes('rar') || fileType.includes('tar')) return 'zip'
+  return 'file'
+}
+
+function FileIcon({ type, className }: { type: string; className?: string }) {
+  const iconType = getFileIcon(type)
+
+  const colors: Record<string, string> = {
+    pdf: 'text-red-400',
+    doc: 'text-blue-400',
+    xls: 'text-green-400',
+    ppt: 'text-orange-400',
+    image: 'text-purple-400',
+    txt: 'text-slate-400',
+    zip: 'text-yellow-400',
+    file: 'text-slate-400'
+  }
+
+  return (
+    <div className={`${className} ${colors[iconType]} bg-slate-800 rounded-lg flex items-center justify-center`}>
+      <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+        <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 0 0-3.375-3.375h-1.5A1.125 1.125 0 0 1 13.5 7.125v-1.5a3.375 3.375 0 0 0-3.375-3.375H8.25m2.25 0H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 0 0-9-9Z" />
+      </svg>
+    </div>
+  )
+}
 
 export default function ProjectDocumentsPage() {
   const params = useParams()
   const projectId = params.id as string
 
+  const [documents, setDocuments] = useState<DocumentWithUploader[]>([])
+  const [isLoading, setIsLoading] = useState(true)
+  const [showUploader, setShowUploader] = useState(false)
+  const [downloadingId, setDownloadingId] = useState<string | null>(null)
+  const [deletingId, setDeletingId] = useState<string | null>(null)
+
+  const loadDocuments = useCallback(async () => {
+    try {
+      const docs = await getProjectDocuments(projectId)
+      setDocuments(docs)
+    } catch (error) {
+      console.error('Failed to load documents:', error)
+    } finally {
+      setIsLoading(false)
+    }
+  }, [projectId])
+
+  useEffect(() => {
+    loadDocuments()
+  }, [loadDocuments])
+
+  const handleUpload = async (file: File) => {
+    await uploadDocument(projectId, file, {
+      name: file.name,
+      folder_path: '/'
+    })
+    await loadDocuments()
+    setShowUploader(false)
+  }
+
+  const handleDownload = async (documentId: string) => {
+    setDownloadingId(documentId)
+    try {
+      const url = await getDocumentDownloadUrl(documentId)
+      window.open(url, '_blank')
+    } catch (error) {
+      console.error('Failed to download document:', error)
+    } finally {
+      setDownloadingId(null)
+    }
+  }
+
+  const handleDelete = async (documentId: string) => {
+    if (!confirm('Är du säker på att du vill ta bort detta dokument?')) return
+
+    setDeletingId(documentId)
+    try {
+      await deleteDocument(documentId)
+      await loadDocuments()
+    } catch (error) {
+      console.error('Failed to delete document:', error)
+    } finally {
+      setDeletingId(null)
+    }
+  }
+
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <div className="animate-spin h-8 w-8 border-2 border-blue-500 border-t-transparent rounded-full" />
+      </div>
+    )
+  }
+
   return (
     <div>
-      <div className="flex items-center gap-3 mb-6">
-        <Link
-          href={`/dashboard/projects/${projectId}`}
-          className="text-slate-400 hover:text-white transition-colors"
+      <div className="flex items-center justify-between mb-6">
+        <div className="flex items-center gap-3">
+          <Link
+            href={`/dashboard/projects/${projectId}`}
+            className="text-slate-400 hover:text-white transition-colors"
+          >
+            <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" d="M10.5 19.5 3 12m0 0 7.5-7.5M3 12h18" />
+            </svg>
+          </Link>
+          <h1 className="text-2xl font-bold text-white">Dokument</h1>
+          <span className="text-slate-500">({documents.length})</span>
+        </div>
+        <button
+          onClick={() => setShowUploader(!showUploader)}
+          className="px-4 py-2 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-500 transition-colors flex items-center gap-2"
         >
           <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
-            <path strokeLinecap="round" strokeLinejoin="round" d="M10.5 19.5 3 12m0 0 7.5-7.5M3 12h18" />
+            <path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
           </svg>
-        </Link>
-        <h1 className="text-2xl font-bold text-white">Dokument</h1>
-      </div>
-
-      <div className="bg-slate-900 border border-slate-800 rounded-xl p-12 text-center">
-        <div className="w-16 h-16 bg-slate-800 rounded-full flex items-center justify-center mx-auto mb-4">
-          <svg className="h-8 w-8 text-slate-500" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
-            <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 0 0-3.375-3.375h-1.5A1.125 1.125 0 0 1 13.5 7.125v-1.5a3.375 3.375 0 0 0-3.375-3.375H8.25m0 12.75h7.5m-7.5 3H12M10.5 2.25H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 0 0-9-9Z" />
-          </svg>
-        </div>
-        <h2 className="text-lg font-semibold text-white mb-2">Inga dokument än</h2>
-        <p className="text-slate-400 mb-6 max-w-md mx-auto">
-          Ladda upp och organisera projektdokument som ritningar, specifikationer och rapporter.
-        </p>
-        <button className="px-4 py-2 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-500 transition-colors">
-          Ladda upp dokument
+          Ladda upp
         </button>
       </div>
+
+      {showUploader && (
+        <div className="mb-6">
+          <FileUploader
+            onUpload={handleUpload}
+            accept={{
+              'application/pdf': ['.pdf'],
+              'application/msword': ['.doc'],
+              'application/vnd.openxmlformats-officedocument.wordprocessingml.document': ['.docx'],
+              'application/vnd.ms-excel': ['.xls'],
+              'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet': ['.xlsx'],
+              'image/*': ['.png', '.jpg', '.jpeg', '.gif', '.webp'],
+              'text/plain': ['.txt'],
+              'application/zip': ['.zip'],
+            }}
+          />
+          <button
+            onClick={() => setShowUploader(false)}
+            className="mt-2 text-sm text-slate-400 hover:text-white transition-colors"
+          >
+            Avbryt
+          </button>
+        </div>
+      )}
+
+      {documents.length === 0 ? (
+        <div className="bg-slate-900 border border-slate-800 rounded-xl p-12 text-center">
+          <div className="w-16 h-16 bg-slate-800 rounded-full flex items-center justify-center mx-auto mb-4">
+            <svg className="h-8 w-8 text-slate-500" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 0 0-3.375-3.375h-1.5A1.125 1.125 0 0 1 13.5 7.125v-1.5a3.375 3.375 0 0 0-3.375-3.375H8.25m0 12.75h7.5m-7.5 3H12M10.5 2.25H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 0 0-9-9Z" />
+            </svg>
+          </div>
+          <h2 className="text-lg font-semibold text-white mb-2">Inga dokument än</h2>
+          <p className="text-slate-400 mb-6 max-w-md mx-auto">
+            Ladda upp och organisera projektdokument som ritningar, specifikationer och rapporter.
+          </p>
+          <button
+            onClick={() => setShowUploader(true)}
+            className="px-4 py-2 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-500 transition-colors"
+          >
+            Ladda upp dokument
+          </button>
+        </div>
+      ) : (
+        <div className="bg-slate-900 border border-slate-800 rounded-xl overflow-hidden">
+          <table className="w-full">
+            <thead className="bg-slate-800/50">
+              <tr>
+                <th className="px-6 py-3 text-left text-xs font-medium text-slate-400 uppercase tracking-wider">
+                  Namn
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-slate-400 uppercase tracking-wider">
+                  Storlek
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-slate-400 uppercase tracking-wider">
+                  Uppladdad av
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-slate-400 uppercase tracking-wider">
+                  Datum
+                </th>
+                <th className="px-6 py-3 text-right text-xs font-medium text-slate-400 uppercase tracking-wider">
+                  Åtgärder
+                </th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-slate-800">
+              {documents.map((doc) => (
+                <tr key={doc.id} className="hover:bg-slate-800/50 transition-colors">
+                  <td className="px-6 py-4">
+                    <div className="flex items-center gap-3">
+                      <FileIcon type={doc.file_type} className="w-10 h-10" />
+                      <div>
+                        <p className="text-white font-medium">{doc.name}</p>
+                        {doc.description && (
+                          <p className="text-slate-500 text-sm">{doc.description}</p>
+                        )}
+                      </div>
+                    </div>
+                  </td>
+                  <td className="px-6 py-4 text-slate-400">
+                    {formatBytes(doc.file_size)}
+                  </td>
+                  <td className="px-6 py-4">
+                    <div className="flex items-center gap-2">
+                      <div className="w-6 h-6 rounded-full bg-blue-600 flex items-center justify-center text-xs font-medium text-white">
+                        {doc.uploader?.full_name?.charAt(0) || '?'}
+                      </div>
+                      <span className="text-slate-400 text-sm">
+                        {doc.uploader?.full_name || 'Okänd'}
+                      </span>
+                    </div>
+                  </td>
+                  <td className="px-6 py-4 text-slate-400 text-sm">
+                    {formatDate(doc.created_at)}
+                  </td>
+                  <td className="px-6 py-4">
+                    <div className="flex items-center justify-end gap-2">
+                      <button
+                        onClick={() => handleDownload(doc.id)}
+                        disabled={downloadingId === doc.id}
+                        className="p-2 text-slate-400 hover:text-white hover:bg-slate-700 rounded-lg transition-colors disabled:opacity-50"
+                        title="Ladda ner"
+                      >
+                        {downloadingId === doc.id ? (
+                          <svg className="animate-spin h-5 w-5" fill="none" viewBox="0 0 24 24">
+                            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+                          </svg>
+                        ) : (
+                          <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5v2.25A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75V16.5M16.5 12 12 16.5m0 0L7.5 12m4.5 4.5V3" />
+                          </svg>
+                        )}
+                      </button>
+                      <button
+                        onClick={() => handleDelete(doc.id)}
+                        disabled={deletingId === doc.id}
+                        className="p-2 text-slate-400 hover:text-red-400 hover:bg-slate-700 rounded-lg transition-colors disabled:opacity-50"
+                        title="Ta bort"
+                      >
+                        {deletingId === doc.id ? (
+                          <svg className="animate-spin h-5 w-5" fill="none" viewBox="0 0 24 24">
+                            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+                          </svg>
+                        ) : (
+                          <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" d="m14.74 9-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 0 1-2.244 2.077H8.084a2.25 2.25 0 0 1-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 0 0-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 0 1 3.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 0 0-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 0 0-7.5 0" />
+                          </svg>
+                        )}
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
     </div>
   )
 }
