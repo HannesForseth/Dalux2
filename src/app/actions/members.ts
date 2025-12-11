@@ -218,12 +218,12 @@ export async function removeMember(projectId: string, userId: string): Promise<v
     throw new Error('Du kan inte ta bort dig själv från projektet')
   }
 
-  // Check if trying to remove the owner
+  // Check if trying to remove the owner (use explicit FK name)
   const { data: targetMember } = await supabase
     .from('project_members')
     .select(`
       role_id,
-      project_roles!inner(name)
+      project_roles!project_members_role_id_fkey(name)
     `)
     .eq('project_id', projectId)
     .eq('user_id', userId)
@@ -266,12 +266,12 @@ export async function updateMemberRole(
     throw new Error('Du kan inte ändra din egen roll')
   }
 
-  // Check if trying to change owner's role
+  // Check if trying to change owner's role (use explicit FK name)
   const { data: targetMember } = await supabase
     .from('project_members')
     .select(`
       role_id,
-      project_roles!inner(name)
+      project_roles!project_members_role_id_fkey(name)
     `)
     .eq('project_id', projectId)
     .eq('user_id', userId)

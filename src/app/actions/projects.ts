@@ -223,11 +223,12 @@ export async function getUserRoleInProject(projectId: string): Promise<string | 
     return null
   }
 
+  // Use explicit FK name to avoid ambiguity
   const { data, error } = await supabase
     .from('project_members')
     .select(`
       role_id,
-      project_roles!inner(name)
+      project_roles!project_members_role_id_fkey(name)
     `)
     .eq('project_id', projectId)
     .eq('user_id', user.id)
