@@ -79,11 +79,13 @@ export async function getProjectWithMembers(projectId: string): Promise<ProjectW
   }
 
   // Get members with their profiles and roles
+  // Use !inner join hint with foreign key name to disambiguate
+  // (project_members has two FKs to profiles: user_id and invited_by)
   const { data: members, error: membersError } = await supabase
     .from('project_members')
     .select(`
       *,
-      profile:profiles(*),
+      profile:profiles!project_members_user_id_fkey(*),
       role:project_roles(*)
     `)
     .eq('project_id', projectId)
