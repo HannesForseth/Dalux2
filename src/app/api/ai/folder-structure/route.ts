@@ -38,16 +38,8 @@ ${customRequirements ? `Särskilda krav: ${customRequirements}` : ''}
 
 Skapa en logisk mappstruktur som följer svenska byggbranschens standarder och best practices.
 
-Returnera svaret som ett JSON-objekt med följande format:
-{
-  "folders": [
-    { "path": "/Ritningar", "description": "Alla ritningar för projektet" },
-    { "path": "/Ritningar/Arkitekt", "description": "Arkitektritningar" },
-    { "path": "/Ritningar/Konstruktion", "description": "Konstruktionsritningar" },
-    ...
-  ],
-  "explanation": "Kort förklaring av strukturen"
-}
+Svara ENDAST med ett giltigt JSON-objekt i detta exakta format (utan markdown, utan kommentarer):
+{"folders":[{"path":"/Mapp1","description":"Beskrivning"},{"path":"/Mapp2","description":"Beskrivning"}],"explanation":"Förklaring"}
 
 Mapparna ska vara:
 - Relevanta för projekttypen
@@ -55,8 +47,9 @@ Mapparna ska vara:
 - Namngivna på svenska
 - Följa AMA-systemet och svenska branschstandarder där tillämpligt
 - Inkludera administrativa mappar, tekniska dokumentmappar, och kvalitetsdokumentation
+- Minst 15-25 mappar för ett komplett projekt
 
-Ge ENDAST JSON-objektet som svar, utan markdown-formatering eller extra text.`
+VIKTIGT: Returnera ENDAST giltig JSON, ingen annan text.`
 
     const message = await anthropic.messages.create({
       model: 'claude-sonnet-4-5-20250929',
@@ -77,16 +70,37 @@ Ge ENDAST JSON-objektet som svar, utan markdown-formatering eller extra text.`
 
     // Parse the JSON response
     let folderStructure
+    let jsonText = textContent.text.trim()
+
+    // Remove markdown code blocks if present
+    if (jsonText.startsWith('```')) {
+      jsonText = jsonText.replace(/^```(?:json)?\n?/, '').replace(/\n?```$/, '')
+    }
+
+    // Try to extract JSON object from the response
+    const jsonMatch = jsonText.match(/\{[\s\S]*\}/)
+    if (jsonMatch) {
+      jsonText = jsonMatch[0]
+    }
+
+    // Clean up common JSON issues
+    // Remove trailing commas before ] or }
+    jsonText = jsonText.replace(/,(\s*[}\]])/g, '$1')
+
     try {
-      folderStructure = JSON.parse(textContent.text)
-    } catch {
-      // Try to extract JSON from the response
-      const jsonMatch = textContent.text.match(/\{[\s\S]*\}/)
-      if (jsonMatch) {
-        folderStructure = JSON.parse(jsonMatch[0])
-      } else {
-        return NextResponse.json({ error: 'Invalid AI response format' }, { status: 500 })
-      }
+      folderStructure = JSON.parse(jsonText)
+    } catch (parseError) {
+      console.error('JSON parse error:', parseError)
+      console.error('Raw response:', textContent.text.substring(0, 500))
+      return NextResponse.json({
+        error: 'AI returned invalid JSON format',
+        details: parseError instanceof Error ? parseError.message : 'Unknown parse error'
+      }, { status: 500 })
+    }
+
+    // Validate structure
+    if (!folderStructure.folders || !Array.isArray(folderStructure.folders)) {
+      return NextResponse.json({ error: 'Invalid folder structure format' }, { status: 500 })
     }
 
     return NextResponse.json(folderStructure)
