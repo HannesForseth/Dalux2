@@ -216,7 +216,23 @@ export default function AIFolderWizard({
             <div className="space-y-6">
               {explanation && (
                 <div className="p-4 bg-blue-500/10 border border-blue-500/30 rounded-xl">
-                  <p className="text-sm text-blue-300">{explanation}</p>
+                  <div className="flex items-start gap-3">
+                    <div className="flex-shrink-0 w-8 h-8 rounded-lg bg-blue-500/20 flex items-center justify-center">
+                      <svg className="h-4 w-4 text-blue-400" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" d="m11.25 11.25.041-.02a.75.75 0 0 1 1.063.852l-.708 2.836a.75.75 0 0 0 1.063.853l.041-.021M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Zm-9-3.75h.008v.008H12V8.25Z" />
+                      </svg>
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <h4 className="text-sm font-medium text-blue-300 mb-2">Om denna mappstruktur</h4>
+                      <div className="text-sm text-blue-300/80 space-y-2">
+                        {explanation.split('. ').filter(s => s.trim()).map((sentence, index, arr) => (
+                          <p key={index} className="leading-relaxed">
+                            {sentence.trim()}{index < arr.length - 1 && !sentence.endsWith('.') ? '.' : ''}
+                          </p>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
                 </div>
               )}
 
