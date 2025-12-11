@@ -384,30 +384,35 @@ export async function cancelInvitation(invitationId: string): Promise<void> {
 }
 
 export async function getInvitationByToken(token: string): Promise<InvitationWithDetails | null> {
-  const supabase = await createClient()
+  try {
+    const supabase = await createClient()
 
-  const { data, error } = await supabase
-    .from('invitations')
-    .select(`
-      *,
-      project:projects(*),
-      role:project_roles(*),
-      inviter:profiles(*)
-    `)
-    .eq('token', token)
-    .is('accepted_at', null)
-    .gt('expires_at', new Date().toISOString())
-    .single()
+    const { data, error } = await supabase
+      .from('invitations')
+      .select(`
+        *,
+        project:projects(*),
+        role:project_roles(*),
+        inviter:profiles!invitations_invited_by_fkey(*)
+      `)
+      .eq('token', token)
+      .is('accepted_at', null)
+      .gt('expires_at', new Date().toISOString())
+      .single()
 
-  if (error) {
-    if (error.code === 'PGRST116') {
+    if (error) {
+      if (error.code === 'PGRST116') {
+        return null
+      }
+      console.error('Error fetching invitation:', error)
       return null
     }
-    console.error('Error fetching invitation:', error)
+
+    return data as InvitationWithDetails
+  } catch (err) {
+    console.error('getInvitationByToken unexpected error:', err)
     return null
   }
-
-  return data as InvitationWithDetails
 }
 
 export async function acceptInvitation(token: string): Promise<{ projectId: string }> {
