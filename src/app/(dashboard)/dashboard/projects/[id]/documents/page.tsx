@@ -7,7 +7,8 @@ import FileUploader from '@/components/FileUploader'
 import AIFolderWizard from '@/components/AIFolderWizard'
 import FolderTree from '@/components/documents/FolderTree'
 import DocumentTable from '@/components/documents/DocumentTable'
-import { getProjectDocuments, uploadDocument, deleteDocument, getDocumentDownloadUrl, getDocumentFolders } from '@/app/actions/documents'
+import { getProjectDocuments, uploadDocument, deleteDocument, getDocumentDownloadUrl } from '@/app/actions/documents'
+import { getAllFolderPaths, createFolder, createMultipleFolders } from '@/app/actions/folders'
 import type { DocumentWithUploader } from '@/types/database'
 
 // Dynamically import DocumentViewer to avoid SSR issues with react-pdf
@@ -38,7 +39,7 @@ export default function ProjectDocumentsPage() {
     try {
       const [docs, allFolders] = await Promise.all([
         getProjectDocuments(projectId),
-        getDocumentFolders(projectId)
+        getAllFolderPaths(projectId)
       ])
       setAllDocuments(docs)
       setFolders(allFolders)
@@ -171,36 +172,59 @@ export default function ProjectDocumentsPage() {
     }
   }
 
-  const createFolder = async () => {
+  const handleCreateFolder = async () => {
     if (!newFolderName.trim()) return
 
+    const folderName = newFolderName.trim()
     const newFolderPath = currentPath === '/'
-      ? `/${newFolderName.trim()}/`
-      : `${currentPath}${newFolderName.trim()}/`
+      ? `/${folderName}/`
+      : `${currentPath}${folderName}/`
 
-    setFolders(prev => [...prev, newFolderPath])
-    setNewFolderName('')
-    setShowNewFolderModal(false)
+    try {
+      await createFolder(projectId, {
+        name: folderName,
+        path: newFolderPath,
+        parent_path: currentPath,
+      })
+      // Reload to get updated folder list
+      await loadDocuments()
+    } catch (error) {
+      console.error('Failed to create folder:', error)
+      alert(error instanceof Error ? error.message : 'Kunde inte skapa mappen')
+    } finally {
+      setNewFolderName('')
+      setShowNewFolderModal(false)
+    }
   }
 
   const handleCreateAIFolders = async (folderPaths: string[]) => {
-    const newFolderPaths = folderPaths.map(path => {
+    // Convert AI paths to folder data
+    const foldersToCreate = folderPaths.map(path => {
       let normalizedPath = path.startsWith('/') ? path : `/${path}`
       normalizedPath = normalizedPath.endsWith('/') ? normalizedPath : `${normalizedPath}/`
-      return normalizedPath
+
+      // Extract name and parent path
+      const parts = normalizedPath.split('/').filter(Boolean)
+      const name = parts[parts.length - 1]
+      const parentPath = parts.length > 1
+        ? '/' + parts.slice(0, -1).join('/') + '/'
+        : '/'
+
+      return {
+        name,
+        path: normalizedPath,
+        parent_path: parentPath,
+      }
     })
 
-    setFolders(prev => {
-      const existingSet = new Set(prev)
-      const combined = [...prev]
-      newFolderPaths.forEach(path => {
-        if (!existingSet.has(path)) {
-          combined.push(path)
-          existingSet.add(path)
-        }
-      })
-      return combined
-    })
+    try {
+      await createMultipleFolders(projectId, foldersToCreate)
+      // Reload to get updated folder list
+      await loadDocuments()
+    } catch (error) {
+      console.error('Failed to create AI folders:', error)
+      alert(error instanceof Error ? error.message : 'Kunde inte skapa mapparna')
+    }
   }
 
   // Build breadcrumb
@@ -434,7 +458,7 @@ export default function ProjectDocumentsPage() {
                 className="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
                 autoFocus
                 onKeyDown={(e) => {
-                  if (e.key === 'Enter') createFolder()
+                  if (e.key === 'Enter') handleCreateFolder()
                 }}
               />
               <p className="mt-2 text-xs text-slate-500">
@@ -452,7 +476,7 @@ export default function ProjectDocumentsPage() {
                 Avbryt
               </button>
               <button
-                onClick={createFolder}
+                onClick={handleCreateFolder}
                 disabled={!newFolderName.trim()}
                 className="px-4 py-2 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-500 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
               >
