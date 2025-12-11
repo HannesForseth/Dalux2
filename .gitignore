@@ -13,6 +13,13 @@ dist/
 
 # MCP configuration (contains sensitive tokens)
 mcp.json
+.mcp.json
+
+# Claude instructions (may contain sensitive data)
+CLAUDE.md
+
+# Backend (separate repo)
+backend/
 
 # Environment variables
 .env
