@@ -2,10 +2,6 @@ import { NextRequest, NextResponse } from 'next/server'
 import Anthropic from '@anthropic-ai/sdk'
 import { createClient } from '@/lib/supabase/server'
 
-const anthropic = new Anthropic({
-  apiKey: process.env.ANTHROPIC_API_KEY,
-})
-
 export async function POST(request: NextRequest) {
   try {
     // Verify user is authenticated
@@ -21,6 +17,15 @@ export async function POST(request: NextRequest) {
     if (!projectType) {
       return NextResponse.json({ error: 'Project type is required' }, { status: 400 })
     }
+
+    // Initialize Anthropic client inside handler to ensure env var is available
+    const apiKey = process.env.ANTHROPIC_API_KEY
+    if (!apiKey) {
+      console.error('ANTHROPIC_API_KEY is not configured')
+      return NextResponse.json({ error: 'AI service not configured' }, { status: 500 })
+    }
+
+    const anthropic = new Anthropic({ apiKey })
 
     const prompt = `Du är en expert på att organisera byggprojektdokument i Sverige. Skapa en mappstruktur för följande projekt:
 
