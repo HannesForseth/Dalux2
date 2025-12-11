@@ -13,47 +13,58 @@ import type {
 } from '@/types/database'
 
 export async function getProjectMembers(projectId: string): Promise<ProjectMemberWithDetails[]> {
-  const supabase = await createClient()
+  try {
+    const supabase = await createClient()
 
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) {
-    throw new Error('Inte inloggad')
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) {
+      console.error('getProjectMembers: User not authenticated')
+      return []
+    }
+
+    // Use explicit FK name to disambiguate (project_members has two FKs to profiles: user_id and invited_by)
+    const { data, error } = await supabase
+      .from('project_members')
+      .select(`
+        *,
+        profile:profiles!project_members_user_id_fkey(*),
+        role:project_roles(*)
+      `)
+      .eq('project_id', projectId)
+      .eq('status', 'active')
+      .order('joined_at', { ascending: true })
+
+    if (error) {
+      console.error('Error fetching members:', error)
+      return []
+    }
+
+    return data as ProjectMemberWithDetails[]
+  } catch (err) {
+    console.error('getProjectMembers unexpected error:', err)
+    return []
   }
-
-  // Use explicit FK name to disambiguate (project_members has two FKs to profiles: user_id and invited_by)
-  const { data, error } = await supabase
-    .from('project_members')
-    .select(`
-      *,
-      profile:profiles!project_members_user_id_fkey(*),
-      role:project_roles(*)
-    `)
-    .eq('project_id', projectId)
-    .eq('status', 'active')
-    .order('joined_at', { ascending: true })
-
-  if (error) {
-    console.error('Error fetching members:', error)
-    throw new Error('Kunde inte hämta medlemmar')
-  }
-
-  return data as ProjectMemberWithDetails[]
 }
 
 export async function getProjectRoles(): Promise<ProjectRole[]> {
-  const supabase = await createClient()
+  try {
+    const supabase = await createClient()
 
-  const { data, error } = await supabase
-    .from('project_roles')
-    .select('*')
-    .order('created_at', { ascending: true })
+    const { data, error } = await supabase
+      .from('project_roles')
+      .select('*')
+      .order('created_at', { ascending: true })
 
-  if (error) {
-    console.error('Error fetching roles:', error)
-    throw new Error('Kunde inte hämta roller')
+    if (error) {
+      console.error('Error fetching roles:', error)
+      return []
+    }
+
+    return data
+  } catch (err) {
+    console.error('getProjectRoles unexpected error:', err)
+    return []
   }
-
-  return data
 }
 
 export async function inviteMember(
@@ -309,32 +320,38 @@ export async function updateMemberRole(
 }
 
 export async function getProjectInvitations(projectId: string): Promise<InvitationWithDetails[]> {
-  const supabase = await createClient()
+  try {
+    const supabase = await createClient()
 
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) {
-    throw new Error('Inte inloggad')
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) {
+      console.error('getProjectInvitations: User not authenticated')
+      return []
+    }
+
+    const { data, error } = await supabase
+      .from('invitations')
+      .select(`
+        *,
+        project:projects(*),
+        role:project_roles(*),
+        inviter:profiles!invitations_invited_by_fkey(*)
+      `)
+      .eq('project_id', projectId)
+      .is('accepted_at', null)
+      .gt('expires_at', new Date().toISOString())
+      .order('created_at', { ascending: false })
+
+    if (error) {
+      console.error('Error fetching invitations:', error)
+      return []
+    }
+
+    return data as InvitationWithDetails[]
+  } catch (err) {
+    console.error('getProjectInvitations unexpected error:', err)
+    return []
   }
-
-  const { data, error } = await supabase
-    .from('invitations')
-    .select(`
-      *,
-      project:projects(*),
-      role:project_roles(*),
-      inviter:profiles(*)
-    `)
-    .eq('project_id', projectId)
-    .is('accepted_at', null)
-    .gt('expires_at', new Date().toISOString())
-    .order('created_at', { ascending: false })
-
-  if (error) {
-    console.error('Error fetching invitations:', error)
-    throw new Error('Kunde inte hämta inbjudningar')
-  }
-
-  return data as InvitationWithDetails[]
 }
 
 export async function cancelInvitation(invitationId: string): Promise<void> {

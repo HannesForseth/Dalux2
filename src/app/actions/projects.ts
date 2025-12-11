@@ -32,28 +32,34 @@ export async function getMyProjects(): Promise<Project[]> {
 }
 
 export async function getProject(projectId: string): Promise<Project | null> {
-  const supabase = await createClient()
+  try {
+    const supabase = await createClient()
 
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) {
-    throw new Error('Inte inloggad')
-  }
-
-  const { data, error } = await supabase
-    .from('projects')
-    .select('*')
-    .eq('id', projectId)
-    .single()
-
-  if (error) {
-    if (error.code === 'PGRST116') {
-      return null // Not found
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) {
+      console.error('getProject: User not authenticated')
+      return null
     }
-    console.error('Error fetching project:', error)
-    throw new Error('Kunde inte hämta projekt')
-  }
 
-  return data
+    const { data, error } = await supabase
+      .from('projects')
+      .select('*')
+      .eq('id', projectId)
+      .single()
+
+    if (error) {
+      if (error.code === 'PGRST116') {
+        return null // Not found
+      }
+      console.error('Error fetching project:', error)
+      return null
+    }
+
+    return data
+  } catch (err) {
+    console.error('getProject unexpected error:', err)
+    return null
+  }
 }
 
 export async function getProjectWithMembers(projectId: string): Promise<ProjectWithMembers | null> {
@@ -216,29 +222,42 @@ export async function deleteProject(projectId: string): Promise<void> {
 }
 
 export async function getUserRoleInProject(projectId: string): Promise<string | null> {
-  const supabase = await createClient()
+  try {
+    const supabase = await createClient()
 
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) {
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) {
+      console.error('getUserRoleInProject: User not authenticated')
+      return null
+    }
+
+    // Use explicit FK name to avoid ambiguity
+    const { data, error } = await supabase
+      .from('project_members')
+      .select(`
+        role_id,
+        project_roles!project_members_role_id_fkey(name)
+      `)
+      .eq('project_id', projectId)
+      .eq('user_id', user.id)
+      .eq('status', 'active')
+      .single()
+
+    if (error) {
+      if (error.code !== 'PGRST116') {
+        console.error('getUserRoleInProject error:', error)
+      }
+      return null
+    }
+
+    if (!data) {
+      return null
+    }
+
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    return (data as any)?.project_roles?.name || null
+  } catch (err) {
+    console.error('getUserRoleInProject unexpected error:', err)
     return null
   }
-
-  // Use explicit FK name to avoid ambiguity
-  const { data, error } = await supabase
-    .from('project_members')
-    .select(`
-      role_id,
-      project_roles!project_members_role_id_fkey(name)
-    `)
-    .eq('project_id', projectId)
-    .eq('user_id', user.id)
-    .eq('status', 'active')
-    .single()
-
-  if (error || !data) {
-    return null
-  }
-
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  return (data as any)?.project_roles?.name || null
 }
