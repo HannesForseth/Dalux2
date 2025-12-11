@@ -47,6 +47,7 @@ export async function updateSession(request: NextRequest) {
     !request.nextUrl.pathname.startsWith('/login') &&
     !request.nextUrl.pathname.startsWith('/register') &&
     !request.nextUrl.pathname.startsWith('/auth') &&
+    !request.nextUrl.pathname.startsWith('/api') &&
     request.nextUrl.pathname !== '/'
   ) {
     const url = request.nextUrl.clone()
@@ -54,15 +55,23 @@ export async function updateSession(request: NextRequest) {
     return NextResponse.redirect(url)
   }
 
-  // Redirect to dashboard if authenticated and trying to access auth pages
-  if (
-    user &&
-    (request.nextUrl.pathname.startsWith('/login') ||
-      request.nextUrl.pathname.startsWith('/register'))
-  ) {
-    const url = request.nextUrl.clone()
-    url.pathname = '/dashboard'
-    return NextResponse.redirect(url)
+  // Redirect to project selector if authenticated and trying to access auth pages or /dashboard directly
+  if (user) {
+    if (
+      request.nextUrl.pathname.startsWith('/login') ||
+      request.nextUrl.pathname.startsWith('/register')
+    ) {
+      const url = request.nextUrl.clone()
+      url.pathname = '/projects'
+      return NextResponse.redirect(url)
+    }
+
+    // Redirect /dashboard to /projects (project selector is the new home)
+    if (request.nextUrl.pathname === '/dashboard') {
+      const url = request.nextUrl.clone()
+      url.pathname = '/projects'
+      return NextResponse.redirect(url)
+    }
   }
 
   return supabaseResponse
