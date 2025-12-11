@@ -1,7 +1,7 @@
 'use client'
 
-import { useParams, useSearchParams } from 'next/navigation'
-import { useState, useEffect, useCallback, useMemo } from 'react'
+import { useParams, useSearchParams, useRouter } from 'next/navigation'
+import { useState, useEffect, useCallback, useMemo, useRef } from 'react'
 import dynamic from 'next/dynamic'
 import FileUploader from '@/components/FileUploader'
 import AIFolderWizard from '@/components/AIFolderWizard'
@@ -20,7 +20,11 @@ const DocumentViewer = dynamic(() => import('@/components/DocumentViewer'), {
 export default function ProjectDocumentsPage() {
   const params = useParams()
   const searchParams = useSearchParams()
+  const router = useRouter()
   const projectId = params.id as string
+
+  // Track if we've already handled the deep link to prevent re-opening
+  const deepLinkHandled = useRef(false)
 
   const [allDocuments, setAllDocuments] = useState<DocumentWithUploader[]>([])
   const [folders, setFolders] = useState<string[]>(['/'])
@@ -66,13 +70,18 @@ export default function ProjectDocumentsPage() {
     const page = searchParams.get('page')
     const folder = searchParams.get('folder')
 
-    if (docId && allDocuments.length > 0 && !viewerDoc) {
+    // Only handle deep link once, and only if we have documents loaded
+    if (docId && allDocuments.length > 0 && !deepLinkHandled.current) {
       const doc = allDocuments.find(d => d.id === docId)
       if (doc) {
+        // Mark as handled so we don't re-open when viewer is closed
+        deepLinkHandled.current = true
+
         // Navigate to the folder first
         if (folder) {
           setCurrentPath(folder)
         }
+
         // Open the document viewer
         const openDocument = async () => {
           const url = await getDocumentDownloadUrl(doc.id)
@@ -85,11 +94,14 @@ export default function ProjectDocumentsPage() {
               initialPage: page ? parseInt(page, 10) : undefined
             })
           }
+
+          // Clear URL params to keep URL clean
+          router.replace(`/dashboard/projects/${projectId}/documents`, { scroll: false })
         }
         openDocument()
       }
     }
-  }, [searchParams, allDocuments, viewerDoc])
+  }, [searchParams, allDocuments, router, projectId])
 
   // Calculate document counts per folder
   const documentCounts = useMemo(() => {
