@@ -5,17 +5,21 @@ import { useDropzone } from 'react-dropzone'
 
 interface FileUploaderProps {
   onUpload: (file: File) => Promise<void>
+  onMultipleUpload?: (files: File[]) => Promise<void>
   accept?: Record<string, string[]>
   maxSize?: number
   disabled?: boolean
+  multiple?: boolean
   className?: string
 }
 
 export default function FileUploader({
   onUpload,
+  onMultipleUpload,
   accept,
   maxSize = 50 * 1024 * 1024, // 50MB default
   disabled = false,
+  multiple = false,
   className = '',
 }: FileUploaderProps) {
   const [isUploading, setIsUploading] = useState(false)
@@ -29,8 +33,12 @@ export default function FileUploader({
       setIsUploading(true)
 
       try {
-        for (const file of acceptedFiles) {
-          await onUpload(file)
+        if (onMultipleUpload && acceptedFiles.length > 1) {
+          await onMultipleUpload(acceptedFiles)
+        } else {
+          for (const file of acceptedFiles) {
+            await onUpload(file)
+          }
         }
       } catch (err) {
         setError(err instanceof Error ? err.message : 'Uppladdning misslyckades')
@@ -38,13 +46,14 @@ export default function FileUploader({
         setIsUploading(false)
       }
     },
-    [onUpload]
+    [onUpload, onMultipleUpload]
   )
 
   const { getRootProps, getInputProps, isDragActive } = useDropzone({
     onDrop,
     accept,
     maxSize,
+    multiple,
     disabled: disabled || isUploading,
     onDropRejected: (rejections) => {
       const rejection = rejections[0]

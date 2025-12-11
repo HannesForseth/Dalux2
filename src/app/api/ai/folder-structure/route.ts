@@ -1,0 +1,92 @@
+import { NextRequest, NextResponse } from 'next/server'
+import Anthropic from '@anthropic-ai/sdk'
+import { createClient } from '@/lib/supabase/server'
+
+const anthropic = new Anthropic({
+  apiKey: process.env.ANTHROPIC_API_KEY,
+})
+
+export async function POST(request: NextRequest) {
+  try {
+    // Verify user is authenticated
+    const supabase = await createClient()
+    const { data: { user } } = await supabase.auth.getUser()
+
+    if (!user) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
+
+    const { projectType, projectDescription, customRequirements } = await request.json()
+
+    if (!projectType) {
+      return NextResponse.json({ error: 'Project type is required' }, { status: 400 })
+    }
+
+    const prompt = `Du är en expert på att organisera byggprojektdokument i Sverige. Skapa en mappstruktur för följande projekt:
+
+Projekttyp: ${projectType}
+${projectDescription ? `Beskrivning: ${projectDescription}` : ''}
+${customRequirements ? `Särskilda krav: ${customRequirements}` : ''}
+
+Skapa en logisk mappstruktur som följer svenska byggbranschens standarder och best practices.
+
+Returnera svaret som ett JSON-objekt med följande format:
+{
+  "folders": [
+    { "path": "/Ritningar", "description": "Alla ritningar för projektet" },
+    { "path": "/Ritningar/Arkitekt", "description": "Arkitektritningar" },
+    { "path": "/Ritningar/Konstruktion", "description": "Konstruktionsritningar" },
+    ...
+  ],
+  "explanation": "Kort förklaring av strukturen"
+}
+
+Mapparna ska vara:
+- Relevanta för projekttypen
+- Organiserade hierarkiskt
+- Namngivna på svenska
+- Följa AMA-systemet och svenska branschstandarder där tillämpligt
+- Inkludera administrativa mappar, tekniska dokumentmappar, och kvalitetsdokumentation
+
+Ge ENDAST JSON-objektet som svar, utan markdown-formatering eller extra text.`
+
+    const message = await anthropic.messages.create({
+      model: 'claude-sonnet-4-20250514',
+      max_tokens: 2048,
+      messages: [
+        {
+          role: 'user',
+          content: prompt
+        }
+      ]
+    })
+
+    // Extract the text content
+    const textContent = message.content.find(c => c.type === 'text')
+    if (!textContent || textContent.type !== 'text') {
+      return NextResponse.json({ error: 'No response from AI' }, { status: 500 })
+    }
+
+    // Parse the JSON response
+    let folderStructure
+    try {
+      folderStructure = JSON.parse(textContent.text)
+    } catch {
+      // Try to extract JSON from the response
+      const jsonMatch = textContent.text.match(/\{[\s\S]*\}/)
+      if (jsonMatch) {
+        folderStructure = JSON.parse(jsonMatch[0])
+      } else {
+        return NextResponse.json({ error: 'Invalid AI response format' }, { status: 500 })
+      }
+    }
+
+    return NextResponse.json(folderStructure)
+  } catch (error) {
+    console.error('AI folder structure error:', error)
+    return NextResponse.json(
+      { error: 'Failed to generate folder structure' },
+      { status: 500 }
+    )
+  }
+}

@@ -4,6 +4,8 @@ import { useParams } from 'next/navigation'
 import { useState, useEffect, useCallback } from 'react'
 import Link from 'next/link'
 import FileUploader from '@/components/FileUploader'
+import DocumentViewer from '@/components/DocumentViewer'
+import AIFolderWizard from '@/components/AIFolderWizard'
 import { getProjectDocuments, uploadDocument, deleteDocument, getDocumentDownloadUrl, getDocumentFolders } from '@/app/actions/documents'
 import type { DocumentWithUploader } from '@/types/database'
 
@@ -83,6 +85,8 @@ export default function ProjectDocumentsPage() {
   const [newFolderName, setNewFolderName] = useState('')
   const [downloadingId, setDownloadingId] = useState<string | null>(null)
   const [deletingId, setDeletingId] = useState<string | null>(null)
+  const [viewerDoc, setViewerDoc] = useState<{ url: string; name: string; type: string } | null>(null)
+  const [showAIWizard, setShowAIWizard] = useState(false)
 
   const loadDocuments = useCallback(async () => {
     try {
@@ -166,6 +170,15 @@ export default function ProjectDocumentsPage() {
     }
   }
 
+  const handleView = async (doc: DocumentWithUploader) => {
+    try {
+      const url = await getDocumentDownloadUrl(doc.id)
+      setViewerDoc({ url, name: doc.name, type: doc.file_type })
+    } catch (error) {
+      console.error('Failed to get document URL:', error)
+    }
+  }
+
   const handleDelete = async (documentId: string) => {
     if (!confirm('Är du säker på att du vill ta bort detta dokument?')) return
 
@@ -211,6 +224,30 @@ export default function ProjectDocumentsPage() {
     setShowNewFolderModal(false)
   }
 
+  const handleCreateAIFolders = async (folderPaths: string[]) => {
+    // AI wizard returns paths like "/Ritningar", "/Ritningar/Arkitekt", etc.
+    // Convert them to proper folder paths
+    const newFolderPaths = folderPaths.map(path => {
+      // Ensure path starts with / and ends with /
+      let normalizedPath = path.startsWith('/') ? path : `/${path}`
+      normalizedPath = normalizedPath.endsWith('/') ? normalizedPath : `${normalizedPath}/`
+      return normalizedPath
+    })
+
+    // Add all new folders to the state
+    setFolders(prev => {
+      const existingSet = new Set(prev)
+      const combined = [...prev]
+      newFolderPaths.forEach(path => {
+        if (!existingSet.has(path)) {
+          combined.push(path)
+          existingSet.add(path)
+        }
+      })
+      return combined
+    })
+  }
+
   // Get breadcrumb parts
   const getBreadcrumbs = () => {
     const parts = currentPath.split('/').filter(Boolean)
@@ -252,6 +289,15 @@ export default function ProjectDocumentsPage() {
           <span className="text-slate-500">({documents.length} totalt)</span>
         </div>
         <div className="flex items-center gap-2">
+          <button
+            onClick={() => setShowAIWizard(true)}
+            className="px-4 py-2 bg-gradient-to-r from-purple-600 to-blue-600 text-white rounded-lg font-medium hover:from-purple-500 hover:to-blue-500 transition-colors flex items-center gap-2"
+          >
+            <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" d="M9.813 15.904 9 18.75l-.813-2.846a4.5 4.5 0 0 0-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 0 0 3.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 0 0 3.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 0 0-3.09 3.09ZM18.259 8.715 18 9.75l-.259-1.035a3.375 3.375 0 0 0-2.455-2.456L14.25 6l1.036-.259a3.375 3.375 0 0 0 2.455-2.456L18 2.25l.259 1.035a3.375 3.375 0 0 0 2.456 2.456L21.75 6l-1.035.259a3.375 3.375 0 0 0-2.456 2.456Z" />
+            </svg>
+            AI Mappstruktur
+          </button>
           <button
             onClick={() => setShowNewFolderModal(true)}
             className="px-4 py-2 bg-slate-700 text-white rounded-lg font-medium hover:bg-slate-600 transition-colors flex items-center gap-2"
@@ -426,7 +472,12 @@ export default function ProjectDocumentsPage() {
                     <div className="flex items-center gap-3">
                       <FileIcon type={doc.file_type} className="w-10 h-10" />
                       <div>
-                        <p className="text-white font-medium">{doc.name}</p>
+                        <button
+                          onClick={() => handleView(doc)}
+                          className="text-white font-medium hover:text-blue-400 transition-colors text-left"
+                        >
+                          {doc.name}
+                        </button>
                         {doc.description && (
                           <p className="text-slate-500 text-sm">{doc.description}</p>
                         )}
@@ -451,6 +502,16 @@ export default function ProjectDocumentsPage() {
                   </td>
                   <td className="px-6 py-4">
                     <div className="flex items-center justify-end gap-2">
+                      <button
+                        onClick={() => handleView(doc)}
+                        className="p-2 text-slate-400 hover:text-blue-400 hover:bg-slate-700 rounded-lg transition-colors"
+                        title="Visa"
+                      >
+                        <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" d="M2.036 12.322a1.012 1.012 0 0 1 0-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.007 9.963 7.178.07.207.07.431 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.007-9.963-7.178Z" />
+                          <path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z" />
+                        </svg>
+                      </button>
                       <button
                         onClick={() => handleDownload(doc.id)}
                         disabled={downloadingId === doc.id}
@@ -493,6 +554,15 @@ export default function ProjectDocumentsPage() {
           </table>
         </div>
       )}
+
+      {/* Document Viewer Modal */}
+      <DocumentViewer
+        isOpen={!!viewerDoc}
+        onClose={() => setViewerDoc(null)}
+        fileUrl={viewerDoc?.url || ''}
+        fileName={viewerDoc?.name || ''}
+        fileType={viewerDoc?.type || ''}
+      />
 
       {/* New Folder Modal */}
       {showNewFolderModal && (
@@ -552,6 +622,13 @@ export default function ProjectDocumentsPage() {
           </div>
         </div>
       )}
+
+      {/* AI Folder Wizard */}
+      <AIFolderWizard
+        isOpen={showAIWizard}
+        onClose={() => setShowAIWizard(false)}
+        onCreateFolders={handleCreateAIFolders}
+      />
     </div>
   )
 }
