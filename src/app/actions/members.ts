@@ -19,11 +19,12 @@ export async function getProjectMembers(projectId: string): Promise<ProjectMembe
     throw new Error('Inte inloggad')
   }
 
+  // Use explicit FK name to disambiguate (project_members has two FKs to profiles: user_id and invited_by)
   const { data, error } = await supabase
     .from('project_members')
     .select(`
       *,
-      profile:profiles(*),
+      profile:profiles!project_members_user_id_fkey(*),
       role:project_roles(*)
     `)
     .eq('project_id', projectId)
