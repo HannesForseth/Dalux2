@@ -19,11 +19,14 @@ export async function POST(request: NextRequest) {
     }
 
     // Initialize Anthropic client inside handler to ensure env var is available
-    const apiKey = process.env.ANTHROPIC_API_KEY
+    const apiKey = process.env.ANTHROPIC_API_KEY?.trim()
     if (!apiKey) {
       console.error('ANTHROPIC_API_KEY is not configured')
       return NextResponse.json({ error: 'AI service not configured' }, { status: 500 })
     }
+
+    // Log key prefix for debugging (safe - only shows first few chars)
+    console.log('API key prefix:', apiKey.substring(0, 12) + '...')
 
     const anthropic = new Anthropic({ apiKey })
 
@@ -56,7 +59,7 @@ Mapparna ska vara:
 Ge ENDAST JSON-objektet som svar, utan markdown-formatering eller extra text.`
 
     const message = await anthropic.messages.create({
-      model: 'claude-sonnet-4-20250514',
+      model: 'claude-3-5-sonnet-20241022',
       max_tokens: 2048,
       messages: [
         {
