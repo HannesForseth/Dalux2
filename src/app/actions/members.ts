@@ -2,6 +2,7 @@
 
 import { createClient } from '@/lib/supabase/server'
 import { revalidatePath } from 'next/cache'
+import { sendInvitationEmail } from '@/lib/email'
 import type {
   ProjectMember,
   ProjectMemberWithDetails,
@@ -148,6 +149,26 @@ export async function inviteMember(
     throw new Error('Det finns redan en väntande inbjudan för denna e-postadress')
   }
 
+  // Get project name and role name for the email
+  const { data: project } = await supabase
+    .from('projects')
+    .select('name')
+    .eq('id', projectId)
+    .single()
+
+  const { data: role } = await supabase
+    .from('project_roles')
+    .select('display_name')
+    .eq('id', data.role_id)
+    .single()
+
+  // Get inviter's profile name
+  const { data: inviterProfile } = await supabase
+    .from('profiles')
+    .select('full_name')
+    .eq('id', user.id)
+    .single()
+
   const { data: invitation, error } = await supabase
     .from('invitations')
     .insert({
@@ -163,6 +184,21 @@ export async function inviteMember(
   if (error) {
     console.error('Error creating invitation:', error)
     throw new Error('Kunde inte skapa inbjudan')
+  }
+
+  // Send invitation email
+  try {
+    await sendInvitationEmail({
+      to: data.email,
+      token: invitation.token,
+      projectName: project?.name || 'Projekt',
+      inviterName: inviterProfile?.full_name || user.email || 'En kollega',
+      roleName: role?.display_name || 'Medlem',
+    })
+  } catch (emailError) {
+    console.error('Failed to send invitation email:', emailError)
+    // Don't fail the invitation if email fails - it's still valid
+    // The user can copy the invite link manually
   }
 
   revalidatePath(`/dashboard/projects/${projectId}`)
