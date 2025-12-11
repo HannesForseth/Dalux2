@@ -2,7 +2,6 @@
 
 import Link from 'next/link'
 import { usePathname, useParams } from 'next/navigation'
-import NotificationBell from './NotificationBell'
 
 // Default navigation (when not in project context)
 const defaultNavigation = [
@@ -175,12 +174,8 @@ export default function Sidebar() {
         {/* Spacer */}
         <div className="flex-1" />
 
-        {/* Bottom section - Notifications & Settings */}
+        {/* Bottom section - Settings */}
         <div className="pb-4 border-t border-slate-800 pt-4 space-y-1">
-          <div className="flex items-center gap-3 px-3 py-2">
-            <NotificationBell />
-            <span className="text-sm font-medium text-slate-400">Notifikationer</span>
-          </div>
           <Link
             href="/dashboard/settings"
             className="flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium text-slate-400 hover:bg-slate-800 hover:text-white transition-colors"
