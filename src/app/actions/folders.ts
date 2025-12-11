@@ -217,7 +217,7 @@ export async function updateFolder(
   return folder
 }
 
-export async function deleteFolder(folderId: string): Promise<void> {
+export async function deleteFolderById(folderId: string): Promise<void> {
   const supabase = await createClient()
 
   const { data: { user } } = await supabase.auth.getUser()
@@ -272,6 +272,175 @@ export async function deleteFolder(folderId: string): Promise<void> {
   }
 
   revalidatePath(`/dashboard/projects/${folder.project_id}/documents`)
+}
+
+// Delete folder by project ID and path (used by UI which passes path)
+export async function deleteFolder(projectId: string, path: string): Promise<void> {
+  const supabase = await createClient()
+
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) {
+    throw new Error('Inte inloggad')
+  }
+
+  // Normalize path
+  let normalizedPath = path
+  if (!normalizedPath.startsWith('/')) normalizedPath = '/' + normalizedPath
+  if (!normalizedPath.endsWith('/')) normalizedPath = normalizedPath + '/'
+
+  // Get folder info
+  const { data: folder } = await supabase
+    .from('folders')
+    .select('id')
+    .eq('project_id', projectId)
+    .eq('path', normalizedPath)
+    .single()
+
+  if (!folder) {
+    throw new Error('Mappen hittades inte')
+  }
+
+  // Check if there are documents in this folder
+  const { data: docs } = await supabase
+    .from('documents')
+    .select('id')
+    .eq('project_id', projectId)
+    .eq('folder_path', normalizedPath)
+    .limit(1)
+
+  if (docs && docs.length > 0) {
+    throw new Error('Mappen innehåller dokument och kan inte raderas')
+  }
+
+  // Check if there are subfolders
+  const { data: subfolders } = await supabase
+    .from('folders')
+    .select('id')
+    .eq('project_id', projectId)
+    .eq('parent_path', normalizedPath)
+    .limit(1)
+
+  if (subfolders && subfolders.length > 0) {
+    throw new Error('Mappen innehåller undermappar och kan inte raderas')
+  }
+
+  // Delete folder
+  const { error } = await supabase
+    .from('folders')
+    .delete()
+    .eq('id', folder.id)
+
+  if (error) {
+    console.error('Error deleting folder:', error)
+    throw new Error('Kunde inte radera mappen')
+  }
+
+  revalidatePath(`/dashboard/projects/${projectId}/documents`)
+}
+
+// Rename folder by project ID and path
+export async function renameFolder(projectId: string, path: string, newName: string): Promise<Folder> {
+  const supabase = await createClient()
+
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) {
+    throw new Error('Inte inloggad')
+  }
+
+  // Normalize path
+  let normalizedPath = path
+  if (!normalizedPath.startsWith('/')) normalizedPath = '/' + normalizedPath
+  if (!normalizedPath.endsWith('/')) normalizedPath = normalizedPath + '/'
+
+  // Get existing folder
+  const { data: existing } = await supabase
+    .from('folders')
+    .select('*')
+    .eq('project_id', projectId)
+    .eq('path', normalizedPath)
+    .single()
+
+  if (!existing) {
+    throw new Error('Mappen hittades inte')
+  }
+
+  // Calculate new path
+  const newPath = existing.parent_path + newName + '/'
+
+  // Check if new path already exists
+  const { data: existingWithNewPath } = await supabase
+    .from('folders')
+    .select('id')
+    .eq('project_id', projectId)
+    .eq('path', newPath)
+    .single()
+
+  if (existingWithNewPath) {
+    throw new Error('En mapp med detta namn finns redan')
+  }
+
+  // Update folder
+  const { data: folder, error } = await supabase
+    .from('folders')
+    .update({
+      name: newName,
+      path: newPath,
+      updated_at: new Date().toISOString(),
+    })
+    .eq('id', existing.id)
+    .select()
+    .single()
+
+  if (error) {
+    console.error('Error renaming folder:', error)
+    throw new Error('Kunde inte byta namn på mappen')
+  }
+
+  // Also update any documents that are in this folder
+  const { error: docsError } = await supabase
+    .from('documents')
+    .update({ folder_path: newPath })
+    .eq('project_id', projectId)
+    .eq('folder_path', normalizedPath)
+
+  if (docsError) {
+    console.error('Error updating documents folder_path:', docsError)
+    // Don't throw - the folder was renamed, just documents might need manual fix
+  }
+
+  // Also update subfolders' parent_path and their paths
+  const { data: subfolders } = await supabase
+    .from('folders')
+    .select('*')
+    .eq('project_id', projectId)
+    .like('path', `${normalizedPath}%`)
+
+  if (subfolders && subfolders.length > 0) {
+    for (const subfolder of subfolders) {
+      const newSubfolderPath = subfolder.path.replace(normalizedPath, newPath)
+      const newSubfolderParentPath = subfolder.parent_path === normalizedPath
+        ? newPath
+        : subfolder.parent_path.replace(normalizedPath, newPath)
+
+      await supabase
+        .from('folders')
+        .update({
+          path: newSubfolderPath,
+          parent_path: newSubfolderParentPath,
+        })
+        .eq('id', subfolder.id)
+
+      // Update documents in subfolder
+      await supabase
+        .from('documents')
+        .update({ folder_path: newSubfolderPath })
+        .eq('project_id', projectId)
+        .eq('folder_path', subfolder.path)
+    }
+  }
+
+  revalidatePath(`/dashboard/projects/${projectId}/documents`)
+  return folder
 }
 
 export async function getAllFolderPaths(projectId: string): Promise<string[]> {

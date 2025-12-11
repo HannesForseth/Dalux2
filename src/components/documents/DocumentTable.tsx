@@ -11,6 +11,8 @@ interface DocumentTableProps {
   sortField: string
   sortDirection: 'asc' | 'desc'
   onSort: (field: string) => void
+  selectedIds?: Set<string>
+  onSelectionChange?: (ids: Set<string>) => void
 }
 
 function formatBytes(bytes: number): string {
@@ -80,11 +82,66 @@ export default function DocumentTable({
   onDelete,
   sortField,
   sortDirection,
-  onSort
+  onSort,
+  selectedIds = new Set(),
+  onSelectionChange
 }: DocumentTableProps) {
   const [downloadingId, setDownloadingId] = useState<string | null>(null)
   const [deletingId, setDeletingId] = useState<string | null>(null)
   const [contextMenu, setContextMenu] = useState<{ x: number; y: number; doc: DocumentWithUploader } | null>(null)
+  const [draggingIds, setDraggingIds] = useState<string[]>([])
+
+  const handleDragStart = (e: React.DragEvent, doc: DocumentWithUploader) => {
+    // If the document is selected, drag all selected documents
+    // If not, drag just this document
+    const idsToMove = selectedIds.has(doc.id) && selectedIds.size > 0
+      ? Array.from(selectedIds)
+      : [doc.id]
+
+    setDraggingIds(idsToMove)
+
+    e.dataTransfer.effectAllowed = 'move'
+    e.dataTransfer.setData('application/json', JSON.stringify({ documentIds: idsToMove }))
+
+    // Create drag image
+    const dragImage = document.createElement('div')
+    dragImage.className = 'bg-slate-800 border border-blue-500 rounded-lg px-3 py-2 text-white text-sm shadow-lg'
+    dragImage.textContent = idsToMove.length > 1
+      ? `${idsToMove.length} filer`
+      : doc.name
+    dragImage.style.position = 'absolute'
+    dragImage.style.top = '-1000px'
+    document.body.appendChild(dragImage)
+    e.dataTransfer.setDragImage(dragImage, 0, 0)
+    setTimeout(() => document.body.removeChild(dragImage), 0)
+  }
+
+  const handleDragEnd = () => {
+    setDraggingIds([])
+  }
+
+  const toggleSelection = (docId: string, shiftKey: boolean) => {
+    if (!onSelectionChange) return
+
+    const newSelection = new Set(selectedIds)
+    if (shiftKey && selectedIds.size > 0) {
+      // Range selection
+      const docIndex = documents.findIndex(d => d.id === docId)
+      const lastSelectedIndex = documents.findIndex(d => selectedIds.has(d.id))
+      const start = Math.min(docIndex, lastSelectedIndex)
+      const end = Math.max(docIndex, lastSelectedIndex)
+      for (let i = start; i <= end; i++) {
+        newSelection.add(documents[i].id)
+      }
+    } else {
+      if (newSelection.has(docId)) {
+        newSelection.delete(docId)
+      } else {
+        newSelection.add(docId)
+      }
+    }
+    onSelectionChange(newSelection)
+  }
 
   const handleDownload = async (docId: string) => {
     setDownloadingId(docId)
@@ -122,6 +179,15 @@ export default function DocumentTable({
     { key: 'version', label: 'Version', sortable: true },
   ]
 
+  const handleSelectAll = () => {
+    if (!onSelectionChange) return
+    if (selectedIds.size === documents.length) {
+      onSelectionChange(new Set())
+    } else {
+      onSelectionChange(new Set(documents.map(d => d.id)))
+    }
+  }
+
   if (documents.length === 0) {
     return (
       <div className="flex flex-col items-center justify-center py-16 text-center">
@@ -141,6 +207,16 @@ export default function DocumentTable({
       <table className="w-full">
         <thead className="bg-slate-800/50 border-b border-slate-700">
           <tr>
+            {onSelectionChange && (
+              <th className="px-3 py-3 w-10">
+                <input
+                  type="checkbox"
+                  checked={documents.length > 0 && selectedIds.size === documents.length}
+                  onChange={handleSelectAll}
+                  className="rounded border-slate-600 bg-slate-700 text-blue-500 focus:ring-blue-500 focus:ring-offset-0"
+                />
+              </th>
+            )}
             {columns.map(col => (
               <th
                 key={col.key}
@@ -163,12 +239,39 @@ export default function DocumentTable({
           </tr>
         </thead>
         <tbody className="divide-y divide-slate-800">
-          {documents.map(doc => (
+          {documents.map(doc => {
+            const isSelected = selectedIds.has(doc.id)
+            const isDragging = draggingIds.includes(doc.id)
+
+            return (
             <tr
               key={doc.id}
-              className="hover:bg-slate-800/50 transition-colors"
+              draggable
+              onDragStart={(e) => handleDragStart(e, doc)}
+              onDragEnd={handleDragEnd}
+              className={`transition-colors cursor-grab active:cursor-grabbing ${
+                isDragging
+                  ? 'opacity-50 bg-blue-900/20'
+                  : isSelected
+                  ? 'bg-blue-900/30 hover:bg-blue-900/40'
+                  : 'hover:bg-slate-800/50'
+              }`}
               onContextMenu={(e) => handleContextMenu(e, doc)}
             >
+              {onSelectionChange && (
+                <td className="px-3 py-3 w-10">
+                  <input
+                    type="checkbox"
+                    checked={isSelected}
+                    onClick={(e) => {
+                      e.stopPropagation()
+                      toggleSelection(doc.id, e.shiftKey)
+                    }}
+                    onChange={() => {}}
+                    className="rounded border-slate-600 bg-slate-700 text-blue-500 focus:ring-blue-500 focus:ring-offset-0"
+                  />
+                </td>
+              )}
               <td className="px-4 py-3">
                 <button
                   onClick={() => onView(doc)}
@@ -251,7 +354,7 @@ export default function DocumentTable({
                 </div>
               </td>
             </tr>
-          ))}
+          )})}
         </tbody>
       </table>
 

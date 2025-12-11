@@ -7,8 +7,8 @@ import FileUploader from '@/components/FileUploader'
 import AIFolderWizard from '@/components/AIFolderWizard'
 import FolderTree from '@/components/documents/FolderTree'
 import DocumentTable from '@/components/documents/DocumentTable'
-import { getProjectDocuments, uploadDocument, deleteDocument, getDocumentDownloadUrl } from '@/app/actions/documents'
-import { getAllFolderPaths, createFolder, createMultipleFolders } from '@/app/actions/folders'
+import { getProjectDocuments, uploadDocument, deleteDocument, getDocumentDownloadUrl, moveMultipleDocuments } from '@/app/actions/documents'
+import { getAllFolderPaths, createFolder, createMultipleFolders, renameFolder, deleteFolder } from '@/app/actions/folders'
 import type { DocumentWithUploader } from '@/types/database'
 
 // Dynamically import DocumentViewer to avoid SSR issues with react-pdf
@@ -34,6 +34,11 @@ export default function ProjectDocumentsPage() {
   const [sortField, setSortField] = useState('name')
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('asc')
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false)
+  const [selectedDocIds, setSelectedDocIds] = useState<Set<string>>(new Set())
+  const [isMoving, setIsMoving] = useState(false)
+  const [subfolderParent, setSubfolderParent] = useState<string | null>(null)
+  const [renameFolderPath, setRenameFolderPath] = useState<string | null>(null)
+  const [renameFolderValue, setRenameFolderValue] = useState('')
 
   const loadDocuments = useCallback(async () => {
     try {
@@ -176,15 +181,17 @@ export default function ProjectDocumentsPage() {
     if (!newFolderName.trim()) return
 
     const folderName = newFolderName.trim()
-    const newFolderPath = currentPath === '/'
+    // Use subfolderParent if set (from context menu), otherwise use currentPath
+    const parentPath = subfolderParent ?? currentPath
+    const newFolderPath = parentPath === '/'
       ? `/${folderName}/`
-      : `${currentPath}${folderName}/`
+      : `${parentPath}${folderName}/`
 
     try {
       await createFolder(projectId, {
         name: folderName,
         path: newFolderPath,
-        parent_path: currentPath,
+        parent_path: parentPath,
       })
       // Reload to get updated folder list
       await loadDocuments()
@@ -194,6 +201,92 @@ export default function ProjectDocumentsPage() {
     } finally {
       setNewFolderName('')
       setShowNewFolderModal(false)
+      setSubfolderParent(null)
+    }
+  }
+
+  // Handle dropping files onto a folder
+  const handleDropFiles = async (folderPath: string, documentIds: string[]) => {
+    if (documentIds.length === 0) return
+
+    setIsMoving(true)
+    try {
+      await moveMultipleDocuments(documentIds, folderPath)
+      setSelectedDocIds(new Set())
+      await loadDocuments()
+    } catch (error) {
+      console.error('Failed to move documents:', error)
+      alert(error instanceof Error ? error.message : 'Kunde inte flytta dokumenten')
+    } finally {
+      setIsMoving(false)
+    }
+  }
+
+  // Handle creating a subfolder from context menu
+  const handleCreateSubfolder = (parentPath: string) => {
+    setSubfolderParent(parentPath)
+    setNewFolderName('')
+    setShowNewFolderModal(true)
+  }
+
+  // Handle renaming folder from context menu
+  const handleRenameFolder = (path: string) => {
+    // Extract folder name from path
+    const parts = path.split('/').filter(Boolean)
+    const name = parts[parts.length - 1] || ''
+    setRenameFolderPath(path)
+    setRenameFolderValue(name)
+  }
+
+  // Handle deleting folder from context menu
+  const handleDeleteFolder = async (path: string) => {
+    // Check if folder has documents
+    const docsInFolder = allDocuments.filter(doc => doc.folder_path === path)
+    if (docsInFolder.length > 0) {
+      alert(`Mappen innehåller ${docsInFolder.length} fil(er). Flytta eller ta bort filerna först.`)
+      return
+    }
+
+    // Check if folder has subfolders
+    const hasSubfolders = folders.some(f => f !== path && f.startsWith(path))
+    if (hasSubfolders) {
+      alert('Mappen innehåller undermappar. Ta bort undermapparna först.')
+      return
+    }
+
+    if (!confirm(`Är du säker på att du vill ta bort mappen "${path}"?`)) return
+
+    try {
+      await deleteFolder(projectId, path)
+      if (currentPath === path) {
+        setCurrentPath('/')
+      }
+      await loadDocuments()
+    } catch (error) {
+      console.error('Failed to delete folder:', error)
+      alert(error instanceof Error ? error.message : 'Kunde inte ta bort mappen')
+    }
+  }
+
+  // Handle rename submit
+  const handleRenameSubmit = async () => {
+    if (!renameFolderPath || !renameFolderValue.trim()) return
+
+    try {
+      await renameFolder(projectId, renameFolderPath, renameFolderValue.trim())
+      // If we were in the renamed folder, update currentPath
+      if (currentPath === renameFolderPath) {
+        const parts = renameFolderPath.split('/').filter(Boolean)
+        parts[parts.length - 1] = renameFolderValue.trim()
+        setCurrentPath('/' + parts.join('/') + '/')
+      }
+      await loadDocuments()
+    } catch (error) {
+      console.error('Failed to rename folder:', error)
+      alert(error instanceof Error ? error.message : 'Kunde inte byta namn på mappen')
+    } finally {
+      setRenameFolderPath(null)
+      setRenameFolderValue('')
     }
   }
 
@@ -358,6 +451,10 @@ export default function ProjectDocumentsPage() {
               documentCounts={documentCounts}
               currentPath={currentPath}
               onSelectFolder={setCurrentPath}
+              onDropFiles={handleDropFiles}
+              onCreateSubfolder={handleCreateSubfolder}
+              onRenameFolder={handleRenameFolder}
+              onDeleteFolder={handleDeleteFolder}
             />
           )}
         </div>
@@ -414,6 +511,8 @@ export default function ProjectDocumentsPage() {
               sortField={sortField}
               sortDirection={sortDirection}
               onSort={handleSort}
+              selectedIds={selectedDocIds}
+              onSelectionChange={setSelectedDocIds}
             />
           </div>
         </div>
@@ -438,6 +537,7 @@ export default function ProjectDocumentsPage() {
                 onClick={() => {
                   setShowNewFolderModal(false)
                   setNewFolderName('')
+                  setSubfolderParent(null)
                 }}
                 className="p-1 text-slate-400 hover:text-white transition-colors"
               >
@@ -462,7 +562,7 @@ export default function ProjectDocumentsPage() {
                 }}
               />
               <p className="mt-2 text-xs text-slate-500">
-                Mappen skapas i: {currentPath === '/' ? 'Rot' : currentPath}
+                Mappen skapas i: {(subfolderParent ?? currentPath) === '/' ? 'Rot' : (subfolderParent ?? currentPath)}
               </p>
             </div>
             <div className="p-4 border-t border-slate-800 flex justify-end gap-3">
@@ -470,6 +570,7 @@ export default function ProjectDocumentsPage() {
                 onClick={() => {
                   setShowNewFolderModal(false)
                   setNewFolderName('')
+                  setSubfolderParent(null)
                 }}
                 className="px-4 py-2 text-slate-400 hover:text-white transition-colors"
               >
@@ -483,6 +584,72 @@ export default function ProjectDocumentsPage() {
                 Skapa mapp
               </button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* Rename Folder Modal */}
+      {renameFolderPath && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-slate-900 border border-slate-800 rounded-xl w-full max-w-md">
+            <div className="p-4 border-b border-slate-800 flex items-center justify-between">
+              <h2 className="text-lg font-semibold text-white">Byt namn på mapp</h2>
+              <button
+                onClick={() => {
+                  setRenameFolderPath(null)
+                  setRenameFolderValue('')
+                }}
+                className="p-1 text-slate-400 hover:text-white transition-colors"
+              >
+                <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M6 18 18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+            <div className="p-4">
+              <label className="block text-sm font-medium text-slate-400 mb-2">
+                Nytt namn
+              </label>
+              <input
+                type="text"
+                value={renameFolderValue}
+                onChange={(e) => setRenameFolderValue(e.target.value)}
+                placeholder="Nytt mappnamn..."
+                className="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                autoFocus
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') handleRenameSubmit()
+                }}
+              />
+            </div>
+            <div className="p-4 border-t border-slate-800 flex justify-end gap-3">
+              <button
+                onClick={() => {
+                  setRenameFolderPath(null)
+                  setRenameFolderValue('')
+                }}
+                className="px-4 py-2 text-slate-400 hover:text-white transition-colors"
+              >
+                Avbryt
+              </button>
+              <button
+                onClick={handleRenameSubmit}
+                disabled={!renameFolderValue.trim()}
+                className="px-4 py-2 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-500 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+              >
+                Byt namn
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Moving indicator */}
+      {isMoving && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+          <div className="bg-slate-900 border border-slate-800 rounded-xl p-6 flex items-center gap-3">
+            <div className="animate-spin h-5 w-5 border-2 border-blue-500 border-t-transparent rounded-full" />
+            <span className="text-white">Flyttar filer...</span>
           </div>
         </div>
       )}

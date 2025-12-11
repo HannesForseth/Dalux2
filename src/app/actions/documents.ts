@@ -259,6 +259,101 @@ export async function getDocumentFolders(projectId: string): Promise<string[]> {
   }
 }
 
+export async function moveDocument(
+  documentId: string,
+  newFolderPath: string
+): Promise<Document> {
+  const supabase = await createClient()
+
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) {
+    throw new Error('Inte inloggad')
+  }
+
+  // Get existing document
+  const { data: existing } = await supabase
+    .from('documents')
+    .select('project_id, folder_path')
+    .eq('id', documentId)
+    .single()
+
+  if (!existing) {
+    throw new Error('Dokumentet hittades inte')
+  }
+
+  // Normalize path
+  let normalizedPath = newFolderPath
+  if (!normalizedPath.startsWith('/')) {
+    normalizedPath = '/' + normalizedPath
+  }
+  if (!normalizedPath.endsWith('/')) {
+    normalizedPath = normalizedPath + '/'
+  }
+
+  const { data: document, error } = await supabase
+    .from('documents')
+    .update({
+      folder_path: normalizedPath,
+      updated_at: new Date().toISOString(),
+    })
+    .eq('id', documentId)
+    .select()
+    .single()
+
+  if (error) {
+    console.error('Error moving document:', error)
+    throw new Error('Kunde inte flytta dokumentet')
+  }
+
+  revalidatePath(`/dashboard/projects/${existing.project_id}/documents`)
+  return document
+}
+
+export async function moveMultipleDocuments(
+  documentIds: string[],
+  newFolderPath: string
+): Promise<void> {
+  const supabase = await createClient()
+
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) {
+    throw new Error('Inte inloggad')
+  }
+
+  // Normalize path
+  let normalizedPath = newFolderPath
+  if (!normalizedPath.startsWith('/')) {
+    normalizedPath = '/' + normalizedPath
+  }
+  if (!normalizedPath.endsWith('/')) {
+    normalizedPath = normalizedPath + '/'
+  }
+
+  // Get project ID from first document for revalidation
+  const { data: firstDoc } = await supabase
+    .from('documents')
+    .select('project_id')
+    .eq('id', documentIds[0])
+    .single()
+
+  const { error } = await supabase
+    .from('documents')
+    .update({
+      folder_path: normalizedPath,
+      updated_at: new Date().toISOString(),
+    })
+    .in('id', documentIds)
+
+  if (error) {
+    console.error('Error moving documents:', error)
+    throw new Error('Kunde inte flytta dokumenten')
+  }
+
+  if (firstDoc) {
+    revalidatePath(`/dashboard/projects/${firstDoc.project_id}/documents`)
+  }
+}
+
 export async function getDocumentStats(projectId: string): Promise<{ count: number; totalSize: number }> {
   try {
     const supabase = await createClient()
