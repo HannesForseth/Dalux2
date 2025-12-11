@@ -2,6 +2,7 @@
 
 import { createClient } from '@/lib/supabase/server'
 import { revalidatePath } from 'next/cache'
+import { createMentionNotification } from './notifications'
 
 export interface DocumentComment {
   id: string
@@ -183,7 +184,7 @@ export async function createDocumentComment(
     throw new Error('Kunde inte skapa kommentaren')
   }
 
-  // Create mentions if provided
+  // Create mentions and send notifications if provided
   if (data.mentioned_user_ids && data.mentioned_user_ids.length > 0) {
     const mentions = data.mentioned_user_ids.map(userId => ({
       comment_id: comment.id,
@@ -197,6 +198,47 @@ export async function createDocumentComment(
     if (mentionError) {
       console.error('Error creating mentions:', mentionError)
       // Don't throw - comment was created successfully
+    }
+
+    // Get info needed for notifications
+    const { data: authorProfile } = await supabase
+      .from('profiles')
+      .select('full_name, email')
+      .eq('id', user.id)
+      .single()
+
+    const { data: project } = await supabase
+      .from('projects')
+      .select('name')
+      .eq('id', projectId)
+      .single()
+
+    const { data: document } = await supabase
+      .from('documents')
+      .select('name, folder_path')
+      .eq('id', documentId)
+      .single()
+
+    const authorName = authorProfile?.full_name || authorProfile?.email || 'Någon'
+    const projectName = project?.name || 'Projekt'
+    const documentName = document?.name || 'Dokument'
+    const folderPath = document?.folder_path || '/'
+
+    // Send notification to each mentioned user (except self)
+    for (const mentionedUserId of data.mentioned_user_ids) {
+      if (mentionedUserId !== user.id) {
+        await createMentionNotification(
+          mentionedUserId,
+          authorName,
+          projectId,
+          projectName,
+          documentId,
+          documentName,
+          data.page_number || null,
+          data.content,
+          folderPath
+        )
+      }
     }
   }
 

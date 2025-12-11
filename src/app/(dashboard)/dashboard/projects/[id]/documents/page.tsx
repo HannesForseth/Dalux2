@@ -1,6 +1,6 @@
 'use client'
 
-import { useParams } from 'next/navigation'
+import { useParams, useSearchParams } from 'next/navigation'
 import { useState, useEffect, useCallback, useMemo } from 'react'
 import dynamic from 'next/dynamic'
 import FileUploader from '@/components/FileUploader'
@@ -19,6 +19,7 @@ const DocumentViewer = dynamic(() => import('@/components/DocumentViewer'), {
 
 export default function ProjectDocumentsPage() {
   const params = useParams()
+  const searchParams = useSearchParams()
   const projectId = params.id as string
 
   const [allDocuments, setAllDocuments] = useState<DocumentWithUploader[]>([])
@@ -28,7 +29,7 @@ export default function ProjectDocumentsPage() {
   const [showUploader, setShowUploader] = useState(false)
   const [showNewFolderModal, setShowNewFolderModal] = useState(false)
   const [newFolderName, setNewFolderName] = useState('')
-  const [viewerDoc, setViewerDoc] = useState<{ url: string; name: string; type: string; id: string } | null>(null)
+  const [viewerDoc, setViewerDoc] = useState<{ url: string; name: string; type: string; id: string; initialPage?: number } | null>(null)
   const [showAIWizard, setShowAIWizard] = useState(false)
   const [searchQuery, setSearchQuery] = useState('')
   const [sortField, setSortField] = useState('name')
@@ -58,6 +59,37 @@ export default function ProjectDocumentsPage() {
   useEffect(() => {
     loadDocuments()
   }, [loadDocuments])
+
+  // Handle notification deep links - open document from URL params
+  useEffect(() => {
+    const docId = searchParams.get('doc')
+    const page = searchParams.get('page')
+    const folder = searchParams.get('folder')
+
+    if (docId && allDocuments.length > 0 && !viewerDoc) {
+      const doc = allDocuments.find(d => d.id === docId)
+      if (doc) {
+        // Navigate to the folder first
+        if (folder) {
+          setCurrentPath(folder)
+        }
+        // Open the document viewer
+        const openDocument = async () => {
+          const url = await getDocumentDownloadUrl(doc.id)
+          if (url) {
+            setViewerDoc({
+              url,
+              name: doc.name,
+              type: doc.file_type,
+              id: doc.id,
+              initialPage: page ? parseInt(page, 10) : undefined
+            })
+          }
+        }
+        openDocument()
+      }
+    }
+  }, [searchParams, allDocuments, viewerDoc])
 
   // Calculate document counts per folder
   const documentCounts = useMemo(() => {
@@ -527,6 +559,7 @@ export default function ProjectDocumentsPage() {
         fileType={viewerDoc?.type || ''}
         projectId={projectId}
         documentId={viewerDoc?.id}
+        initialPage={viewerDoc?.initialPage}
       />
 
       {/* New Folder Modal */}

@@ -19,6 +19,7 @@ interface DocumentViewerProps {
   fileType: string
   projectId?: string
   documentId?: string
+  initialPage?: number
 }
 
 type ViewerContent =
@@ -38,7 +39,8 @@ export default function DocumentViewer({
   fileName,
   fileType,
   projectId,
-  documentId
+  documentId,
+  initialPage
 }: DocumentViewerProps) {
   const [content, setContent] = useState<ViewerContent>({ type: 'loading' })
   const [numPages, setNumPages] = useState<number>(0)
@@ -56,7 +58,7 @@ export default function DocumentViewer({
 
   const loadContent = useCallback(async () => {
     setContent({ type: 'loading' })
-    setCurrentPage(1)
+    setCurrentPage(initialPage || 1)
 
     const extension = fileName.split('.').pop()?.toLowerCase() || ''
     const mimeType = fileType.toLowerCase()
