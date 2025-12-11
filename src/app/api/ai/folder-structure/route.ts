@@ -53,7 +53,7 @@ VIKTIGT: Returnera ENDAST giltig JSON, ingen annan text.`
 
     const message = await anthropic.messages.create({
       model: 'claude-sonnet-4-5-20250929',
-      max_tokens: 2048,
+      max_tokens: 4096,
       messages: [
         {
           role: 'user',
@@ -61,6 +61,17 @@ VIKTIGT: Returnera ENDAST giltig JSON, ingen annan text.`
         }
       ]
     })
+
+    // Log stop reason for debugging
+    console.log('AI response stop_reason:', message.stop_reason, 'usage:', message.usage)
+
+    // Check if response was truncated
+    if (message.stop_reason === 'max_tokens') {
+      console.error('AI response was truncated due to max_tokens limit')
+      return NextResponse.json({
+        error: 'AI response was truncated. Try with a simpler project type.',
+      }, { status: 500 })
+    }
 
     // Extract the text content
     const textContent = message.content.find(c => c.type === 'text')
