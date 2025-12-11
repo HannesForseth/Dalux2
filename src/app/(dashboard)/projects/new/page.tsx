@@ -107,12 +107,18 @@ export default function NewProjectPage() {
           }),
         })
 
+        const data = await response.json()
+
         if (!response.ok) {
-          throw new Error('Kunde inte starta betalning')
+          throw new Error(data.error || 'Kunde inte starta betalning')
         }
 
-        const { url } = await response.json()
-        window.location.href = url
+        if (data.checkout_url) {
+          window.location.href = data.checkout_url
+        } else if (data.redirect_url) {
+          // Free plan created via API
+          router.push(data.redirect_url)
+        }
         return
       }
 
