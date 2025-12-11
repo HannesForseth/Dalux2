@@ -360,30 +360,39 @@ export async function getProjectMembersForMentions(
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) return []
 
-    const { data, error } = await supabase
+    // First get project member user IDs
+    const { data: members, error: membersError } = await supabase
       .from('project_members')
-      .select(`
-        user_id,
-        profile:profiles!project_members_user_id_fkey(id, full_name, email)
-      `)
+      .select('user_id')
       .eq('project_id', projectId)
+      .eq('status', 'active')
 
-    if (error) {
-      console.error('Error fetching project members:', error)
+    if (membersError) {
+      console.error('Error fetching project members:', membersError)
       return []
     }
 
-    type ProfileType = { id: string; full_name: string | null; email: string }
-    return (data || [])
-      .map(m => {
-        // Profile can be an array or object depending on the join
-        const profile = m.profile
-        if (Array.isArray(profile)) {
-          return profile[0] as ProfileType | undefined
-        }
-        return profile as ProfileType | null
-      })
-      .filter((p): p is ProfileType => p !== null && p !== undefined)
+    if (!members || members.length === 0) {
+      return []
+    }
+
+    // Then get profiles for those users
+    const userIds = members.map(m => m.user_id)
+    const { data: profiles, error: profilesError } = await supabase
+      .from('profiles')
+      .select('id, full_name, email')
+      .in('id', userIds)
+
+    if (profilesError) {
+      console.error('Error fetching profiles:', profilesError)
+      return []
+    }
+
+    return (profiles || []).map(p => ({
+      id: p.id,
+      full_name: p.full_name,
+      email: p.email || ''
+    }))
   } catch (err) {
     console.error('getProjectMembersForMentions unexpected error:', err)
     return []
