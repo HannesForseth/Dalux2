@@ -28,7 +28,7 @@ export default function ProjectDocumentsPage() {
   const [showUploader, setShowUploader] = useState(false)
   const [showNewFolderModal, setShowNewFolderModal] = useState(false)
   const [newFolderName, setNewFolderName] = useState('')
-  const [viewerDoc, setViewerDoc] = useState<{ url: string; name: string; type: string } | null>(null)
+  const [viewerDoc, setViewerDoc] = useState<{ url: string; name: string; type: string; id: string } | null>(null)
   const [showAIWizard, setShowAIWizard] = useState(false)
   const [searchQuery, setSearchQuery] = useState('')
   const [sortField, setSortField] = useState('name')
@@ -162,7 +162,7 @@ export default function ProjectDocumentsPage() {
   const handleView = async (doc: DocumentWithUploader) => {
     try {
       const url = await getDocumentDownloadUrl(doc.id)
-      setViewerDoc({ url, name: doc.name, type: doc.file_type })
+      setViewerDoc({ url, name: doc.name, type: doc.file_type, id: doc.id })
     } catch (error) {
       console.error('Failed to get document URL:', error)
     }
@@ -525,6 +525,8 @@ export default function ProjectDocumentsPage() {
         fileUrl={viewerDoc?.url || ''}
         fileName={viewerDoc?.name || ''}
         fileType={viewerDoc?.type || ''}
+        projectId={projectId}
+        documentId={viewerDoc?.id}
       />
 
       {/* New Folder Modal */}

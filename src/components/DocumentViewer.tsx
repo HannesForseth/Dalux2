@@ -1,10 +1,12 @@
 'use client'
 
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import { Document, Page, pdfjs } from 'react-pdf'
+import 'react-pdf/dist/Page/TextLayer.css'
 import * as XLSX from 'xlsx'
 import Papa from 'papaparse'
 import mammoth from 'mammoth'
+import CommentPanel from './documents/CommentPanel'
 
 // Set up PDF.js worker
 pdfjs.GlobalWorkerOptions.workerSrc = `//unpkg.com/pdfjs-dist@${pdfjs.version}/build/pdf.worker.min.mjs`
@@ -15,6 +17,8 @@ interface DocumentViewerProps {
   fileUrl: string
   fileName: string
   fileType: string
+  projectId?: string
+  documentId?: string
 }
 
 type ViewerContent =
@@ -32,12 +36,23 @@ export default function DocumentViewer({
   onClose,
   fileUrl,
   fileName,
-  fileType
+  fileType,
+  projectId,
+  documentId
 }: DocumentViewerProps) {
   const [content, setContent] = useState<ViewerContent>({ type: 'loading' })
   const [numPages, setNumPages] = useState<number>(0)
   const [currentPage, setCurrentPage] = useState<number>(1)
   const [scale, setScale] = useState<number>(1.0)
+  const [searchText, setSearchText] = useState<string>('')
+  const [searchOpen, setSearchOpen] = useState<boolean>(false)
+  const [textContent, setTextContent] = useState<string[]>([])
+  const [searchResults, setSearchResults] = useState<{ page: number; count: number }[]>([])
+  const [currentSearchIndex, setCurrentSearchIndex] = useState<number>(0)
+  const [commentsOpen, setCommentsOpen] = useState<boolean>(false)
+
+  const pdfContainerRef = useRef<HTMLDivElement>(null)
+  const searchInputRef = useRef<HTMLInputElement>(null)
 
   const loadContent = useCallback(async () => {
     setContent({ type: 'loading' })
@@ -169,6 +184,156 @@ export default function DocumentViewer({
     window.open(fileUrl, '_blank')
   }
 
+  // Handle mouse wheel events for zoom and page navigation
+  const handleWheel = useCallback((e: WheelEvent) => {
+    if (content.type !== 'pdf') return
+
+    // Ctrl + wheel = page navigation
+    if (e.ctrlKey) {
+      e.preventDefault()
+      if (e.deltaY > 0) {
+        // Scroll down = next page
+        setCurrentPage(prev => Math.min(numPages, prev + 1))
+      } else {
+        // Scroll up = previous page
+        setCurrentPage(prev => Math.max(1, prev - 1))
+      }
+    } else {
+      // Regular wheel = zoom (only when hovering over the PDF)
+      const target = e.target as HTMLElement
+      const pdfContainer = pdfContainerRef.current
+      if (pdfContainer && pdfContainer.contains(target)) {
+        e.preventDefault()
+        const zoomStep = 0.1
+        if (e.deltaY < 0) {
+          // Scroll up = zoom in
+          setScale(prev => Math.min(3.0, prev + zoomStep))
+        } else {
+          // Scroll down = zoom out
+          setScale(prev => Math.max(0.25, prev - zoomStep))
+        }
+      }
+    }
+  }, [content.type, numPages])
+
+  // Add wheel event listener
+  useEffect(() => {
+    const container = pdfContainerRef.current
+    if (container && content.type === 'pdf') {
+      container.addEventListener('wheel', handleWheel, { passive: false })
+      return () => container.removeEventListener('wheel', handleWheel)
+    }
+  }, [handleWheel, content.type])
+
+  // Keyboard shortcuts
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (!isOpen) return
+
+      // Ctrl+F to open search
+      if (e.ctrlKey && e.key === 'f' && content.type === 'pdf') {
+        e.preventDefault()
+        setSearchOpen(true)
+        setTimeout(() => searchInputRef.current?.focus(), 100)
+      }
+
+      // Escape to close search or modal
+      if (e.key === 'Escape') {
+        if (searchOpen) {
+          setSearchOpen(false)
+          setSearchText('')
+        } else {
+          onClose()
+        }
+      }
+
+      // Arrow keys for page navigation in PDF
+      if (content.type === 'pdf' && !searchOpen) {
+        if (e.key === 'ArrowRight' || e.key === 'ArrowDown') {
+          setCurrentPage(prev => Math.min(numPages, prev + 1))
+        } else if (e.key === 'ArrowLeft' || e.key === 'ArrowUp') {
+          setCurrentPage(prev => Math.max(1, prev - 1))
+        }
+      }
+
+      // Enter in search to go to next result
+      if (searchOpen && e.key === 'Enter') {
+        if (e.shiftKey) {
+          goToPrevSearchResult()
+        } else {
+          goToNextSearchResult()
+        }
+      }
+    }
+
+    window.addEventListener('keydown', handleKeyDown)
+    return () => window.removeEventListener('keydown', handleKeyDown)
+  }, [isOpen, content.type, numPages, searchOpen, onClose])
+
+  // Search functionality
+  const performSearch = useCallback((text: string) => {
+    if (!text.trim() || textContent.length === 0) {
+      setSearchResults([])
+      return
+    }
+
+    const searchLower = text.toLowerCase()
+    const results: { page: number; count: number }[] = []
+
+    textContent.forEach((pageText, index) => {
+      const matches = (pageText.toLowerCase().match(new RegExp(searchLower, 'g')) || []).length
+      if (matches > 0) {
+        results.push({ page: index + 1, count: matches })
+      }
+    })
+
+    setSearchResults(results)
+    setCurrentSearchIndex(0)
+
+    // Jump to first result
+    if (results.length > 0) {
+      setCurrentPage(results[0].page)
+    }
+  }, [textContent])
+
+  const goToNextSearchResult = () => {
+    if (searchResults.length === 0) return
+    const nextIndex = (currentSearchIndex + 1) % searchResults.length
+    setCurrentSearchIndex(nextIndex)
+    setCurrentPage(searchResults[nextIndex].page)
+  }
+
+  const goToPrevSearchResult = () => {
+    if (searchResults.length === 0) return
+    const prevIndex = currentSearchIndex === 0 ? searchResults.length - 1 : currentSearchIndex - 1
+    setCurrentSearchIndex(prevIndex)
+    setCurrentPage(searchResults[prevIndex].page)
+  }
+
+  // Extract text content from PDF for search
+  const onDocumentLoadSuccessWithText = async ({ numPages: pages }: { numPages: number }) => {
+    setNumPages(pages)
+
+    // Load text content for all pages for search
+    try {
+      const pdf = await pdfjs.getDocument(fileUrl).promise
+      const texts: string[] = []
+
+      for (let i = 1; i <= pages; i++) {
+        const page = await pdf.getPage(i)
+        const textContentData = await page.getTextContent()
+        const pageText = textContentData.items
+          .map((item) => ('str' in item ? item.str : ''))
+          .join(' ')
+        texts.push(pageText)
+      }
+
+      setTextContent(texts)
+    } catch (error) {
+      console.error('Error extracting PDF text:', error)
+    }
+  }
+
   if (!isOpen) return null
 
   return (
@@ -192,13 +357,87 @@ export default function DocumentViewer({
           </div>
 
           <div className="flex items-center gap-2">
+            {/* Search bar for PDF */}
+            {content.type === 'pdf' && searchOpen && (
+              <div className="flex items-center gap-2 bg-slate-800 rounded-lg px-3 py-1.5 mr-2">
+                <SearchIcon className="h-4 w-4 text-slate-400" />
+                <input
+                  ref={searchInputRef}
+                  type="text"
+                  value={searchText}
+                  onChange={(e) => {
+                    setSearchText(e.target.value)
+                    performSearch(e.target.value)
+                  }}
+                  placeholder="Sök i PDF..."
+                  className="bg-transparent text-white text-sm w-40 outline-none placeholder-slate-500"
+                />
+                {searchResults.length > 0 && (
+                  <span className="text-xs text-slate-400">
+                    {currentSearchIndex + 1}/{searchResults.length}
+                  </span>
+                )}
+                <button
+                  onClick={goToPrevSearchResult}
+                  disabled={searchResults.length === 0}
+                  className="p-1 text-slate-400 hover:text-white disabled:opacity-50"
+                  title="Föregående (Shift+Enter)"
+                >
+                  <ChevronUpIcon />
+                </button>
+                <button
+                  onClick={goToNextSearchResult}
+                  disabled={searchResults.length === 0}
+                  className="p-1 text-slate-400 hover:text-white disabled:opacity-50"
+                  title="Nästa (Enter)"
+                >
+                  <ChevronDownIcon />
+                </button>
+                <button
+                  onClick={() => {
+                    setSearchOpen(false)
+                    setSearchText('')
+                    setSearchResults([])
+                  }}
+                  className="p-1 text-slate-400 hover:text-white"
+                >
+                  <CloseIcon />
+                </button>
+              </div>
+            )}
+
+            {/* Search button for PDF */}
+            {content.type === 'pdf' && !searchOpen && (
+              <button
+                onClick={() => {
+                  setSearchOpen(true)
+                  setTimeout(() => searchInputRef.current?.focus(), 100)
+                }}
+                className="p-2 text-slate-400 hover:text-white hover:bg-slate-700 rounded-lg transition-colors"
+                title="Sök (Ctrl+F)"
+              >
+                <SearchIcon />
+              </button>
+            )}
+
+            {/* Comments button for PDF */}
+            {content.type === 'pdf' && projectId && documentId && (
+              <button
+                onClick={() => setCommentsOpen(!commentsOpen)}
+                className={`p-2 rounded-lg transition-colors ${commentsOpen ? 'text-blue-400 bg-slate-700' : 'text-slate-400 hover:text-white hover:bg-slate-700'}`}
+                title="Kommentarer"
+              >
+                <CommentIcon />
+              </button>
+            )}
+
             {/* Zoom controls for PDF */}
             {content.type === 'pdf' && (
               <>
                 <button
                   onClick={handleZoomOut}
                   className="p-2 text-slate-400 hover:text-white hover:bg-slate-700 rounded-lg transition-colors"
-                  title="Zooma ut"
+                  title="Zooma ut (scroll ner)"
                 >
                   <ZoomOutIcon />
                 </button>
@@ -208,7 +447,7 @@ export default function DocumentViewer({
                 <button
                   onClick={handleZoomIn}
                   className="p-2 text-slate-400 hover:text-white hover:bg-slate-700 rounded-lg transition-colors"
-                  title="Zooma in"
+                  title="Zooma in (scroll upp)"
                 >
                   <ZoomInIcon />
                 </button>
@@ -233,9 +472,11 @@ export default function DocumentViewer({
           </div>
         </div>
 
-        {/* Content */}
-        <div className="flex-1 overflow-auto bg-slate-800 p-4">
-          {content.type === 'loading' && (
+        {/* Content area with optional comments panel */}
+        <div className="flex-1 flex overflow-hidden">
+          {/* Main content */}
+          <div className="flex-1 overflow-auto bg-slate-800 p-4">
+            {content.type === 'loading' && (
             <div className="flex items-center justify-center h-full">
               <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500"></div>
             </div>
@@ -268,10 +509,10 @@ export default function DocumentViewer({
           )}
 
           {content.type === 'pdf' && (
-            <div className="flex flex-col items-center">
+            <div ref={pdfContainerRef} className="flex flex-col items-center min-h-full">
               <Document
                 file={fileUrl}
-                onLoadSuccess={onDocumentLoadSuccess}
+                onLoadSuccess={onDocumentLoadSuccessWithText}
                 loading={
                   <div className="flex items-center justify-center h-64">
                     <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500"></div>
@@ -286,11 +527,16 @@ export default function DocumentViewer({
                 <Page
                   pageNumber={currentPage}
                   scale={scale}
-                  renderTextLayer={false}
+                  renderTextLayer={true}
                   renderAnnotationLayer={false}
                   className="shadow-lg"
                 />
               </Document>
+
+              {/* Zoom hint tooltip */}
+              <div className="mt-4 text-xs text-slate-500 text-center">
+                Scroll för att zooma • Ctrl+Scroll för att byta sida • Ctrl+F för att söka
+              </div>
             </div>
           )}
 
@@ -343,6 +589,17 @@ export default function DocumentViewer({
             <pre className="p-4 bg-slate-900 rounded-lg text-slate-300 text-sm overflow-auto whitespace-pre-wrap font-mono">
               {content.content}
             </pre>
+          )}
+          </div>
+
+          {/* Comments Panel */}
+          {commentsOpen && projectId && documentId && (
+            <CommentPanel
+              documentId={documentId}
+              projectId={projectId}
+              currentPage={currentPage}
+              onClose={() => setCommentsOpen(false)}
+            />
           )}
         </div>
 
@@ -464,6 +721,38 @@ function ChevronRightIcon() {
   return (
     <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
       <path strokeLinecap="round" strokeLinejoin="round" d="m8.25 4.5 7.5 7.5-7.5 7.5" />
+    </svg>
+  )
+}
+
+function ChevronUpIcon() {
+  return (
+    <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+      <path strokeLinecap="round" strokeLinejoin="round" d="m4.5 15.75 7.5-7.5 7.5 7.5" />
+    </svg>
+  )
+}
+
+function ChevronDownIcon() {
+  return (
+    <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+      <path strokeLinecap="round" strokeLinejoin="round" d="m19.5 8.25-7.5 7.5-7.5-7.5" />
+    </svg>
+  )
+}
+
+function SearchIcon({ className = 'h-5 w-5' }: { className?: string }) {
+  return (
+    <svg className={className} fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+      <path strokeLinecap="round" strokeLinejoin="round" d="m21 21-5.197-5.197m0 0A7.5 7.5 0 1 0 5.196 5.196a7.5 7.5 0 0 0 10.607 10.607Z" />
+    </svg>
+  )
+}
+
+function CommentIcon() {
+  return (
+    <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+      <path strokeLinecap="round" strokeLinejoin="round" d="M7.5 8.25h9m-9 3H12m-9.75 1.51c0 1.6 1.123 2.994 2.707 3.227 1.129.166 2.27.293 3.423.379.35.026.67.21.865.501L12 21l2.755-4.133a1.14 1.14 0 0 1 .865-.501 48.172 48.172 0 0 0 3.423-.379c1.584-.233 2.707-1.626 2.707-3.228V6.741c0-1.602-1.123-2.995-2.707-3.228A48.394 48.394 0 0 0 12 3c-2.392 0-4.744.175-7.043.513C3.373 3.746 2.25 5.14 2.25 6.741v6.018Z" />
     </svg>
   )
 }
