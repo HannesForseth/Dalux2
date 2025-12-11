@@ -3,11 +3,17 @@
 import { useParams } from 'next/navigation'
 import { useState, useEffect, useCallback } from 'react'
 import Link from 'next/link'
+import dynamic from 'next/dynamic'
 import FileUploader from '@/components/FileUploader'
-import DocumentViewer from '@/components/DocumentViewer'
 import AIFolderWizard from '@/components/AIFolderWizard'
 import { getProjectDocuments, uploadDocument, deleteDocument, getDocumentDownloadUrl, getDocumentFolders } from '@/app/actions/documents'
 import type { DocumentWithUploader } from '@/types/database'
+
+// Dynamically import DocumentViewer to avoid SSR issues with react-pdf
+const DocumentViewer = dynamic(() => import('@/components/DocumentViewer'), {
+  ssr: false,
+  loading: () => <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60"><div className="animate-spin h-8 w-8 border-2 border-blue-500 border-t-transparent rounded-full" /></div>
+})
 
 function formatBytes(bytes: number): string {
   if (bytes === 0) return '0 B'

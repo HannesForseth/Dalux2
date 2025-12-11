@@ -89,8 +89,9 @@ Ge ENDAST JSON-objektet som svar, utan markdown-formatering eller extra text.`
     return NextResponse.json(folderStructure)
   } catch (error) {
     console.error('AI folder structure error:', error)
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error'
     return NextResponse.json(
-      { error: 'Failed to generate folder structure' },
+      { error: `Failed to generate folder structure: ${errorMessage}` },
       { status: 500 }
     )
   }
