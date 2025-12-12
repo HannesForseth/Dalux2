@@ -544,3 +544,26 @@ export interface UpdateRfiData {
 export interface AnswerRfiData {
   answer: string
 }
+
+// ===============================
+// Document Version Types
+// ===============================
+
+export interface DocumentVersion {
+  id: string
+  document_id: string
+  version: number
+  file_path: string
+  file_size: number
+  change_note: string | null
+  uploaded_by: string
+  created_at: string
+}
+
+export interface DocumentVersionWithUploader extends DocumentVersion {
+  uploader: Profile
+}
+
+export interface DocumentWithVersions extends Document {
+  versions?: DocumentVersionWithUploader[]
+}

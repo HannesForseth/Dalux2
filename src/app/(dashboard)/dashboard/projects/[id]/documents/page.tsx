@@ -7,9 +7,10 @@ import FileUploader from '@/components/FileUploader'
 import AIFolderWizard from '@/components/AIFolderWizard'
 import FolderTree from '@/components/documents/FolderTree'
 import DocumentTable from '@/components/documents/DocumentTable'
-import { getProjectDocuments, uploadDocument, deleteDocument, getDocumentDownloadUrl, moveMultipleDocuments } from '@/app/actions/documents'
+import ReplaceVersionModal from '@/components/documents/ReplaceVersionModal'
+import { getProjectDocuments, uploadDocument, deleteDocument, getDocumentDownloadUrl, moveMultipleDocuments, checkDuplicateDocument } from '@/app/actions/documents'
 import { getAllFolderPaths, createFolder, createMultipleFolders, renameFolder, deleteFolder } from '@/app/actions/folders'
-import type { DocumentWithUploader } from '@/types/database'
+import type { Document, DocumentWithUploader } from '@/types/database'
 
 // Dynamically import DocumentViewer to avoid SSR issues with react-pdf
 const DocumentViewer = dynamic(() => import('@/components/DocumentViewer'), {
@@ -33,7 +34,7 @@ export default function ProjectDocumentsPage() {
   const [showUploader, setShowUploader] = useState(false)
   const [showNewFolderModal, setShowNewFolderModal] = useState(false)
   const [newFolderName, setNewFolderName] = useState('')
-  const [viewerDoc, setViewerDoc] = useState<{ url: string; name: string; type: string; id: string; initialPage?: number } | null>(null)
+  const [viewerDoc, setViewerDoc] = useState<{ url: string; name: string; type: string; id: string; version: number; initialPage?: number } | null>(null)
   const [showAIWizard, setShowAIWizard] = useState(false)
   const [searchQuery, setSearchQuery] = useState('')
   const [sortField, setSortField] = useState('name')
@@ -44,6 +45,11 @@ export default function ProjectDocumentsPage() {
   const [subfolderParent, setSubfolderParent] = useState<string | null>(null)
   const [renameFolderPath, setRenameFolderPath] = useState<string | null>(null)
   const [renameFolderValue, setRenameFolderValue] = useState('')
+  const [duplicateCheck, setDuplicateCheck] = useState<{
+    existingDoc: Document
+    newFile: File
+    remainingFiles: File[]
+  } | null>(null)
 
   const loadDocuments = useCallback(async () => {
     try {
@@ -91,6 +97,7 @@ export default function ProjectDocumentsPage() {
               name: doc.name,
               type: doc.file_type,
               id: doc.id,
+              version: doc.version,
               initialPage: page ? parseInt(page, 10) : undefined
             })
           }
@@ -174,24 +181,105 @@ export default function ProjectDocumentsPage() {
     }
   }
 
-  const handleUpload = async (file: File) => {
+  // Helper to process a single file upload with duplicate checking
+  const processFileUpload = async (file: File, remainingFiles: File[] = []) => {
+    // Check if file with same name exists in current folder
+    const existingDoc = await checkDuplicateDocument(projectId, file.name, currentPath)
+
+    if (existingDoc) {
+      // Show replace/keep modal
+      setDuplicateCheck({
+        existingDoc,
+        newFile: file,
+        remainingFiles
+      })
+      return false // Indicates we're waiting for user decision
+    }
+
+    // No duplicate, upload normally
     await uploadDocument(projectId, file, {
       name: file.name,
       folder_path: currentPath
     })
+    return true
+  }
+
+  const handleUpload = async (file: File) => {
+    const uploaded = await processFileUpload(file)
+    if (uploaded) {
+      await loadDocuments()
+      setShowUploader(false)
+    }
+  }
+
+  const handleMultipleUpload = async (files: File[]) => {
+    // Process files one by one, checking for duplicates
+    for (let i = 0; i < files.length; i++) {
+      const file = files[i]
+      const remainingFiles = files.slice(i + 1)
+      const uploaded = await processFileUpload(file, remainingFiles)
+
+      if (!uploaded) {
+        // Duplicate found, stop and wait for user decision
+        // The remaining files are stored in duplicateCheck state
+        return
+      }
+    }
     await loadDocuments()
     setShowUploader(false)
   }
 
-  const handleMultipleUpload = async (files: File[]) => {
-    for (const file of files) {
-      await uploadDocument(projectId, file, {
-        name: file.name,
-        folder_path: currentPath
-      })
+  // Handler when user replaces existing document with new version
+  const handleDuplicateReplaced = async () => {
+    setDuplicateCheck(null)
+
+    // Continue with remaining files if any
+    if (duplicateCheck?.remainingFiles && duplicateCheck.remainingFiles.length > 0) {
+      await handleMultipleUpload(duplicateCheck.remainingFiles)
+    } else {
+      await loadDocuments()
+      setShowUploader(false)
     }
-    await loadDocuments()
-    setShowUploader(false)
+  }
+
+  // Handler when user chooses to keep both (upload with modified name)
+  const handleKeepBoth = async () => {
+    if (!duplicateCheck) return
+
+    const file = duplicateCheck.newFile
+    const remainingFiles = duplicateCheck.remainingFiles
+
+    // Generate a unique name by adding a number suffix
+    const nameParts = file.name.split('.')
+    const extension = nameParts.length > 1 ? nameParts.pop() : ''
+    const baseName = nameParts.join('.')
+    let newName = `${baseName} (1).${extension}`
+
+    // Check if the new name also exists and increment if needed
+    let counter = 1
+    while (true) {
+      const check = await checkDuplicateDocument(projectId, newName, currentPath)
+      if (!check) break
+      counter++
+      newName = `${baseName} (${counter}).${extension}`
+      if (counter > 100) break // Safety limit
+    }
+
+    // Upload with new name
+    await uploadDocument(projectId, file, {
+      name: newName,
+      folder_path: currentPath
+    })
+
+    setDuplicateCheck(null)
+
+    // Continue with remaining files if any
+    if (remainingFiles.length > 0) {
+      await handleMultipleUpload(remainingFiles)
+    } else {
+      await loadDocuments()
+      setShowUploader(false)
+    }
   }
 
   const handleDownload = async (documentId: string) => {
@@ -206,7 +294,7 @@ export default function ProjectDocumentsPage() {
   const handleView = async (doc: DocumentWithUploader) => {
     try {
       const url = await getDocumentDownloadUrl(doc.id)
-      setViewerDoc({ url, name: doc.name, type: doc.file_type, id: doc.id })
+      setViewerDoc({ url, name: doc.name, type: doc.file_type, id: doc.id, version: doc.version })
     } catch (error) {
       console.error('Failed to get document URL:', error)
     }
@@ -572,6 +660,8 @@ export default function ProjectDocumentsPage() {
         projectId={projectId}
         documentId={viewerDoc?.id}
         initialPage={viewerDoc?.initialPage}
+        currentVersion={viewerDoc?.version || 1}
+        onVersionChange={loadDocuments}
       />
 
       {/* New Folder Modal */}
@@ -707,6 +797,17 @@ export default function ProjectDocumentsPage() {
         onClose={() => setShowAIWizard(false)}
         onCreateFolders={handleCreateAIFolders}
       />
+
+      {/* Replace Version Modal for duplicate detection */}
+      {duplicateCheck && (
+        <ReplaceVersionModal
+          existingDocument={duplicateCheck.existingDoc}
+          newFile={duplicateCheck.newFile}
+          onClose={() => setDuplicateCheck(null)}
+          onReplaced={handleDuplicateReplaced}
+          onKeepBoth={handleKeepBoth}
+        />
+      )}
     </div>
   )
 }

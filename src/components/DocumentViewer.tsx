@@ -7,6 +7,9 @@ import * as XLSX from 'xlsx'
 import Papa from 'papaparse'
 import mammoth from 'mammoth'
 import CommentPanel from './documents/CommentPanel'
+import VersionHistoryPanel from './documents/VersionHistoryPanel'
+import UploadVersionModal from './documents/UploadVersionModal'
+import { getComparisonUrls, getDocumentDownloadUrl } from '@/app/actions/documents'
 
 // Set up PDF.js worker
 pdfjs.GlobalWorkerOptions.workerSrc = `//unpkg.com/pdfjs-dist@${pdfjs.version}/build/pdf.worker.min.mjs`
@@ -20,6 +23,8 @@ interface DocumentViewerProps {
   projectId?: string
   documentId?: string
   initialPage?: number
+  currentVersion?: number
+  onVersionChange?: () => void
 }
 
 type ViewerContent =
@@ -40,7 +45,9 @@ export default function DocumentViewer({
   fileType,
   projectId,
   documentId,
-  initialPage
+  initialPage,
+  currentVersion = 1,
+  onVersionChange
 }: DocumentViewerProps) {
   const [content, setContent] = useState<ViewerContent>({ type: 'loading' })
   const [numPages, setNumPages] = useState<number>(0)
@@ -52,9 +59,21 @@ export default function DocumentViewer({
   const [searchResults, setSearchResults] = useState<{ page: number; count: number }[]>([])
   const [currentSearchIndex, setCurrentSearchIndex] = useState<number>(0)
   const [commentsOpen, setCommentsOpen] = useState<boolean>(false)
+  const [versionsOpen, setVersionsOpen] = useState<boolean>(false)
+  const [uploadVersionOpen, setUploadVersionOpen] = useState<boolean>(false)
+  const [viewingOldVersion, setViewingOldVersion] = useState<{ url: string; version: number } | null>(null)
+  const [compareMode, setCompareMode] = useState<{ url1: string; url2: string; v1: number; v2: number } | null>(null)
+  const [actualFileUrl, setActualFileUrl] = useState<string>(fileUrl)
 
   const pdfContainerRef = useRef<HTMLDivElement>(null)
   const searchInputRef = useRef<HTMLInputElement>(null)
+
+  // Reset viewing state when document changes
+  useEffect(() => {
+    setActualFileUrl(fileUrl)
+    setViewingOldVersion(null)
+    setCompareMode(null)
+  }, [fileUrl, documentId])
 
   const loadContent = useCallback(async () => {
     setContent({ type: 'loading' })
@@ -62,6 +81,7 @@ export default function DocumentViewer({
 
     const extension = fileName.split('.').pop()?.toLowerCase() || ''
     const mimeType = fileType.toLowerCase()
+    const urlToLoad = viewingOldVersion?.url || actualFileUrl
 
     try {
       // PDF
@@ -72,13 +92,13 @@ export default function DocumentViewer({
 
       // Images
       if (mimeType.startsWith('image/') || ['jpg', 'jpeg', 'png', 'gif', 'webp', 'svg'].includes(extension)) {
-        setContent({ type: 'image', url: fileUrl })
+        setContent({ type: 'image', url: urlToLoad })
         return
       }
 
       // DOCX
       if (mimeType === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' || extension === 'docx') {
-        const response = await fetch(fileUrl)
+        const response = await fetch(urlToLoad)
         const arrayBuffer = await response.arrayBuffer()
         const result = await mammoth.convertToHtml({ arrayBuffer })
         setContent({ type: 'html', content: result.value })
@@ -87,7 +107,7 @@ export default function DocumentViewer({
 
       // XLSX
       if (mimeType === 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' || extension === 'xlsx' || extension === 'xls') {
-        const response = await fetch(fileUrl)
+        const response = await fetch(urlToLoad)
         const arrayBuffer = await response.arrayBuffer()
         const workbook = XLSX.read(arrayBuffer, { type: 'array' })
         const sheetName = workbook.SheetNames[0]
@@ -108,7 +128,7 @@ export default function DocumentViewer({
 
       // CSV
       if (mimeType === 'text/csv' || extension === 'csv') {
-        const response = await fetch(fileUrl)
+        const response = await fetch(urlToLoad)
         const text = await response.text()
         const result = Papa.parse<string[]>(text)
 
@@ -135,7 +155,7 @@ export default function DocumentViewer({
 
       // Plain text files
       if (mimeType.startsWith('text/') || ['txt', 'md', 'json', 'xml', 'html', 'css', 'js', 'ts'].includes(extension)) {
-        const response = await fetch(fileUrl)
+        const response = await fetch(urlToLoad)
         const text = await response.text()
         setContent({ type: 'text', content: text })
         return
@@ -154,13 +174,55 @@ export default function DocumentViewer({
         message: 'Kunde inte ladda dokumentet. Försök ladda ner det istället.'
       })
     }
-  }, [fileUrl, fileName, fileType])
+  }, [actualFileUrl, viewingOldVersion, fileName, fileType, initialPage])
 
   useEffect(() => {
-    if (isOpen && fileUrl) {
+    if (isOpen && (actualFileUrl || viewingOldVersion)) {
       loadContent()
     }
-  }, [isOpen, fileUrl, loadContent])
+  }, [isOpen, actualFileUrl, viewingOldVersion, loadContent])
+
+  // Handler for viewing old versions
+  const handleViewOldVersion = (url: string, version: number) => {
+    setViewingOldVersion({ url, version })
+    setCompareMode(null)
+  }
+
+  // Handler for returning to current version
+  const handleReturnToCurrent = async () => {
+    setViewingOldVersion(null)
+    setCompareMode(null)
+    if (documentId) {
+      try {
+        const url = await getDocumentDownloadUrl(documentId)
+        setActualFileUrl(url)
+      } catch (error) {
+        console.error('Error getting current version URL:', error)
+      }
+    }
+  }
+
+  // Handler for comparing versions
+  const handleCompareVersions = async (v1: number, v2: number) => {
+    if (!documentId) return
+    try {
+      const { url1, url2 } = await getComparisonUrls(documentId, v1, v2)
+      setCompareMode({ url1, url2, v1, v2 })
+      setViewingOldVersion(null)
+    } catch (error) {
+      console.error('Error getting comparison URLs:', error)
+    }
+  }
+
+  // Handler for version uploaded
+  const handleVersionUploaded = () => {
+    onVersionChange?.()
+    setViewingOldVersion(null)
+    setCompareMode(null)
+  }
+
+  // Determine if this is a PDF
+  const isPdf = fileType.toLowerCase() === 'application/pdf' || fileName.split('.').pop()?.toLowerCase() === 'pdf'
 
   const onDocumentLoadSuccess = ({ numPages }: { numPages: number }) => {
     setNumPages(numPages)
@@ -353,7 +415,12 @@ export default function DocumentViewer({
           <div className="flex items-center gap-4">
             <FileIcon fileType={fileType} fileName={fileName} />
             <div>
-              <h2 className="text-lg font-semibold text-white truncate max-w-md">{fileName}</h2>
+              <div className="flex items-center gap-2">
+                <h2 className="text-lg font-semibold text-white truncate max-w-md">{fileName}</h2>
+                <span className="px-2 py-0.5 text-xs font-medium bg-slate-700 text-slate-300 rounded">
+                  v{viewingOldVersion?.version || currentVersion}
+                </span>
+              </div>
               <p className="text-sm text-slate-400">{getFileTypeLabel(fileType, fileName)}</p>
             </div>
           </div>
@@ -430,6 +497,28 @@ export default function DocumentViewer({
                 title="Kommentarer"
               >
                 <CommentIcon />
+              </button>
+            )}
+
+            {/* Version history button */}
+            {documentId && (
+              <button
+                onClick={() => setVersionsOpen(!versionsOpen)}
+                className={`p-2 rounded-lg transition-colors ${versionsOpen ? 'text-orange-400 bg-slate-700' : 'text-slate-400 hover:text-white hover:bg-slate-700'}`}
+                title="Versionshistorik"
+              >
+                <ClockIcon />
+              </button>
+            )}
+
+            {/* Upload new version button */}
+            {documentId && !viewingOldVersion && !compareMode && (
+              <button
+                onClick={() => setUploadVersionOpen(true)}
+                className="p-2 text-slate-400 hover:text-white hover:bg-slate-700 rounded-lg transition-colors"
+                title="Ladda upp ny version"
+              >
+                <ArrowUpTrayIcon />
               </button>
             )}
 
@@ -510,10 +599,28 @@ export default function DocumentViewer({
             </div>
           )}
 
-          {content.type === 'pdf' && (
+          {content.type === 'pdf' && !compareMode && (
             <div ref={pdfContainerRef} className="flex flex-col items-center min-h-full">
+              {/* Old version banner */}
+              {viewingOldVersion && (
+                <div className="mb-4 w-full max-w-2xl p-3 bg-amber-900/30 border border-amber-700/50 rounded-lg flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <ClockIcon className="h-5 w-5 text-amber-500" />
+                    <span className="text-amber-300">
+                      Visar version {viewingOldVersion.version} av {currentVersion}
+                    </span>
+                  </div>
+                  <button
+                    onClick={handleReturnToCurrent}
+                    className="px-3 py-1 text-sm bg-amber-600 hover:bg-amber-500 text-white rounded transition-colors"
+                  >
+                    Tillbaka till aktuell
+                  </button>
+                </div>
+              )}
+
               <Document
-                file={fileUrl}
+                file={viewingOldVersion?.url || actualFileUrl}
                 onLoadSuccess={onDocumentLoadSuccessWithText}
                 loading={
                   <div className="flex items-center justify-center h-64">
@@ -538,6 +645,82 @@ export default function DocumentViewer({
               {/* Zoom hint tooltip */}
               <div className="mt-4 text-xs text-slate-500 text-center">
                 Scroll för att zooma • Ctrl+Scroll för att byta sida • Ctrl+F för att söka
+              </div>
+            </div>
+          )}
+
+          {/* PDF Comparison Mode - Side by Side */}
+          {content.type === 'pdf' && compareMode && (
+            <div className="flex flex-col h-full">
+              {/* Comparison header */}
+              <div className="flex items-center justify-between p-3 bg-purple-900/30 border-b border-purple-700/50">
+                <div className="flex items-center gap-2">
+                  <DocumentDuplicateIcon className="h-5 w-5 text-purple-400" />
+                  <span className="text-purple-300">
+                    Jämför version {compareMode.v1} med version {compareMode.v2}
+                  </span>
+                </div>
+                <button
+                  onClick={() => setCompareMode(null)}
+                  className="px-3 py-1 text-sm bg-purple-600 hover:bg-purple-500 text-white rounded transition-colors"
+                >
+                  Stäng jämförelse
+                </button>
+              </div>
+
+              {/* Side by side PDFs */}
+              <div className="flex-1 flex gap-2 p-2 overflow-hidden">
+                {/* Left PDF - Version 1 */}
+                <div className="flex-1 flex flex-col bg-slate-900 rounded-lg overflow-hidden">
+                  <div className="px-3 py-2 bg-slate-800 border-b border-slate-700">
+                    <span className="text-sm font-medium text-slate-300">Version {compareMode.v1}</span>
+                  </div>
+                  <div className="flex-1 overflow-auto p-2">
+                    <Document
+                      file={compareMode.url1}
+                      onLoadSuccess={onDocumentLoadSuccess}
+                      loading={
+                        <div className="flex items-center justify-center h-64">
+                          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500"></div>
+                        </div>
+                      }
+                    >
+                      <Page
+                        pageNumber={currentPage}
+                        scale={scale * 0.85}
+                        renderTextLayer={false}
+                        renderAnnotationLayer={false}
+                        className="shadow-lg mx-auto"
+                      />
+                    </Document>
+                  </div>
+                </div>
+
+                {/* Right PDF - Version 2 */}
+                <div className="flex-1 flex flex-col bg-slate-900 rounded-lg overflow-hidden">
+                  <div className="px-3 py-2 bg-slate-800 border-b border-slate-700">
+                    <span className="text-sm font-medium text-slate-300">Version {compareMode.v2}</span>
+                  </div>
+                  <div className="flex-1 overflow-auto p-2">
+                    <Document
+                      file={compareMode.url2}
+                      onLoadSuccess={onDocumentLoadSuccess}
+                      loading={
+                        <div className="flex items-center justify-center h-64">
+                          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500"></div>
+                        </div>
+                      }
+                    >
+                      <Page
+                        pageNumber={currentPage}
+                        scale={scale * 0.85}
+                        renderTextLayer={false}
+                        renderAnnotationLayer={false}
+                        className="shadow-lg mx-auto"
+                      />
+                    </Document>
+                  </div>
+                </div>
               </div>
             </div>
           )}
@@ -603,7 +786,44 @@ export default function DocumentViewer({
               onClose={() => setCommentsOpen(false)}
             />
           )}
+
+          {/* Version History Panel */}
+          {versionsOpen && documentId && (
+            <div className="w-80 border-l border-slate-700 bg-slate-900 flex flex-col">
+              <div className="flex items-center justify-between px-4 py-3 border-b border-slate-700">
+                <h3 className="font-medium text-white">Versioner</h3>
+                <button
+                  onClick={() => setVersionsOpen(false)}
+                  className="p-1 text-slate-400 hover:text-white rounded transition-colors"
+                >
+                  <CloseIcon />
+                </button>
+              </div>
+              <div className="flex-1 overflow-y-auto">
+                <VersionHistoryPanel
+                  documentId={documentId}
+                  documentName={fileName}
+                  currentVersion={currentVersion}
+                  onViewVersion={handleViewOldVersion}
+                  onCompareVersions={handleCompareVersions}
+                  onVersionRestored={handleVersionUploaded}
+                  isPdf={isPdf}
+                />
+              </div>
+            </div>
+          )}
         </div>
+
+        {/* Upload Version Modal */}
+        {uploadVersionOpen && documentId && (
+          <UploadVersionModal
+            documentId={documentId}
+            documentName={fileName}
+            currentVersion={currentVersion}
+            onClose={() => setUploadVersionOpen(false)}
+            onSuccess={handleVersionUploaded}
+          />
+        )}
 
         {/* Footer with pagination for PDF */}
         {content.type === 'pdf' && numPages > 1 && (
@@ -763,6 +983,30 @@ function ErrorIcon() {
   return (
     <svg className="h-16 w-16 text-red-400" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
       <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m9-.75a9 9 0 1 1-18 0 9 9 0 0 1 18 0Zm-9 3.75h.008v.008H12v-.008Z" />
+    </svg>
+  )
+}
+
+function ClockIcon({ className = 'h-5 w-5' }: { className?: string }) {
+  return (
+    <svg className={className} fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+      <path strokeLinecap="round" strokeLinejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" />
+    </svg>
+  )
+}
+
+function ArrowUpTrayIcon() {
+  return (
+    <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+      <path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5v2.25A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75V16.5m-13.5-9L12 3m0 0 4.5 4.5M12 3v13.5" />
+    </svg>
+  )
+}
+
+function DocumentDuplicateIcon({ className = 'h-5 w-5' }: { className?: string }) {
+  return (
+    <svg className={className} fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+      <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 17.25v3.375c0 .621-.504 1.125-1.125 1.125h-9.75a1.125 1.125 0 0 1-1.125-1.125V7.875c0-.621.504-1.125 1.125-1.125H6.75a9.06 9.06 0 0 1 1.5.124m7.5 10.376h3.375c.621 0 1.125-.504 1.125-1.125V11.25c0-4.46-3.243-8.161-7.5-8.876a9.06 9.06 0 0 0-1.5-.124H9.375c-.621 0-1.125.504-1.125 1.125v3.5m7.5 10.375H9.375a1.125 1.125 0 0 1-1.125-1.125v-9.25m12 6.625v-1.875a3.375 3.375 0 0 0-3.375-3.375h-1.5a1.125 1.125 0 0 1-1.125-1.125v-1.5a3.375 3.375 0 0 0-3.375-3.375H9.75" />
     </svg>
   )
 }
