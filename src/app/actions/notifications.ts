@@ -6,7 +6,7 @@ import { revalidatePath } from 'next/cache'
 export interface Notification {
   id: string
   user_id: string
-  type: 'comment_mention' | 'comment_reply' | 'issue_assigned' | 'rfi_assigned'
+  type: 'comment_mention' | 'comment_reply' | 'issue_assigned' | 'rfi_assigned' | 'deviation_mention'
   title: string
   message: string
   link: string
@@ -196,6 +196,36 @@ export async function createMentionNotification(
       document_name: documentName,
       page_number: pageNumber,
       folder_path: folderPath,
+    }
+  )
+}
+
+// Helper to create deviation mention notifications
+export async function createDeviationMentionNotification(
+  mentionedUserId: string,
+  mentionerName: string,
+  projectId: string,
+  deviationId: string,
+  deviationNumber: number,
+  deviationTitle: string,
+  commentPreview: string
+): Promise<void> {
+  const link = `/dashboard/projects/${projectId}/deviations?open=${deviationId}`
+
+  const title = `${mentionerName} nämnde dig i en avvikelsekommentar`
+  const message = `I AVV-${String(deviationNumber).padStart(3, '0')} "${deviationTitle}": "${commentPreview.substring(0, 100)}${commentPreview.length > 100 ? '...' : ''}"`
+
+  await createNotification(
+    mentionedUserId,
+    'deviation_mention',
+    title,
+    message,
+    link,
+    {
+      project_id: projectId,
+      deviation_id: deviationId,
+      deviation_number: deviationNumber,
+      deviation_title: deviationTitle,
     }
   )
 }

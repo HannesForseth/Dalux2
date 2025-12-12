@@ -1,7 +1,7 @@
 'use client'
 
 import { useParams } from 'next/navigation'
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import Link from 'next/link'
 import {
   getProjectDeviations,
@@ -257,6 +257,8 @@ interface DeviationDetailModalProps {
 }
 
 function DeviationDetailModal({ deviation, isOpen, onClose, onUpdate, members }: DeviationDetailModalProps) {
+  const params = useParams()
+  const projectId = params.id as string
   const [comments, setComments] = useState<DeviationComment[]>([])
   const [attachments, setAttachments] = useState<DeviationAttachment[]>([])
   const [newComment, setNewComment] = useState('')
@@ -265,6 +267,10 @@ function DeviationDetailModal({ deviation, isOpen, onClose, onUpdate, members }:
   const [correctiveAction, setCorrectiveAction] = useState(deviation.corrective_action || '')
   const [rootCause, setRootCause] = useState(deviation.root_cause || '')
   const [isSaving, setIsSaving] = useState(false)
+  const [showMentionSuggestions, setShowMentionSuggestions] = useState(false)
+  const [mentionFilter, setMentionFilter] = useState('')
+  const [cursorPosition, setCursorPosition] = useState(0)
+  const commentInputRef = useRef<HTMLInputElement>(null)
 
   useEffect(() => {
     if (isOpen) {
@@ -289,11 +295,66 @@ function DeviationDetailModal({ deviation, isOpen, onClose, onUpdate, members }:
 
     setIsSubmittingComment(true)
     try {
-      await addDeviationComment(deviation.id, newComment.trim())
+      await addDeviationComment(deviation.id, newComment.trim(), {
+        members: members.map(m => ({
+          user_id: m.user_id,
+          full_name: m.profile.full_name || ''
+        })),
+        deviationNumber: deviation.deviation_number,
+        deviationTitle: deviation.title,
+        projectId
+      })
       setNewComment('')
+      setShowMentionSuggestions(false)
       await loadComments()
     } finally {
       setIsSubmittingComment(false)
+    }
+  }
+
+  // Handle @ mention detection
+  function handleCommentChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const value = e.target.value
+    const position = e.target.selectionStart || 0
+    setNewComment(value)
+    setCursorPosition(position)
+
+    // Check if we're in a mention context (after @)
+    const textBeforeCursor = value.substring(0, position)
+    const lastAtIndex = textBeforeCursor.lastIndexOf('@')
+
+    if (lastAtIndex !== -1) {
+      const textAfterAt = textBeforeCursor.substring(lastAtIndex + 1)
+      // Only show suggestions if there's no space after @ or we're typing a name
+      if (!textAfterAt.includes(' ') || textAfterAt.split(' ').length <= 2) {
+        setMentionFilter(textAfterAt.toLowerCase())
+        setShowMentionSuggestions(true)
+      } else {
+        setShowMentionSuggestions(false)
+      }
+    } else {
+      setShowMentionSuggestions(false)
+    }
+  }
+
+  // Filter members for mention suggestions
+  const filteredMembers = members.filter(m =>
+    m.profile.full_name?.toLowerCase().includes(mentionFilter)
+  )
+
+  // Insert mention
+  function insertMention(memberName: string) {
+    const textBeforeCursor = newComment.substring(0, cursorPosition)
+    const textAfterCursor = newComment.substring(cursorPosition)
+    const lastAtIndex = textBeforeCursor.lastIndexOf('@')
+
+    const newText = textBeforeCursor.substring(0, lastAtIndex) + '@' + memberName + ' ' + textAfterCursor
+    setNewComment(newText)
+    setShowMentionSuggestions(false)
+
+    // Focus back on input
+    if (commentInputRef.current) {
+      commentInputRef.current.focus()
     }
   }
 
@@ -532,21 +593,45 @@ function DeviationDetailModal({ deviation, isOpen, onClose, onUpdate, members }:
                 ))
               )}
             </div>
-            <form onSubmit={handleAddComment} className="flex gap-2">
-              <input
-                type="text"
-                value={newComment}
-                onChange={(e) => setNewComment(e.target.value)}
-                placeholder="Skriv en kommentar..."
-                className="flex-1 px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-white placeholder-slate-500 focus:outline-none focus:border-blue-500"
-              />
-              <button
-                type="submit"
-                disabled={!newComment.trim() || isSubmittingComment}
-                className="px-4 py-2 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-500 transition-colors disabled:opacity-50"
-              >
-                Skicka
-              </button>
+            <form onSubmit={handleAddComment} className="relative">
+              <div className="flex gap-2">
+                <div className="relative flex-1">
+                  <input
+                    ref={commentInputRef}
+                    type="text"
+                    value={newComment}
+                    onChange={handleCommentChange}
+                    placeholder="Skriv en kommentar... (använd @ för att nämna någon)"
+                    className="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-white placeholder-slate-500 focus:outline-none focus:border-blue-500"
+                  />
+                  {/* Mention suggestions dropdown */}
+                  {showMentionSuggestions && filteredMembers.length > 0 && (
+                    <div className="absolute bottom-full left-0 right-0 mb-1 bg-slate-800 border border-slate-700 rounded-lg shadow-lg max-h-48 overflow-y-auto z-20">
+                      {filteredMembers.map((member) => (
+                        <button
+                          key={member.user_id}
+                          type="button"
+                          onClick={() => insertMention(member.profile.full_name || 'Okänd')}
+                          className="w-full px-3 py-2 text-left text-white hover:bg-slate-700 flex items-center gap-2 transition-colors"
+                        >
+                          <div className="w-6 h-6 rounded-full bg-blue-600 flex items-center justify-center text-xs font-medium">
+                            {member.profile.full_name?.charAt(0) || '?'}
+                          </div>
+                          <span>{member.profile.full_name || 'Okänd'}</span>
+                          <span className="text-slate-500 text-xs ml-auto">{String(member.role)}</span>
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
+                <button
+                  type="submit"
+                  disabled={!newComment.trim() || isSubmittingComment}
+                  className="px-4 py-2 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-500 transition-colors disabled:opacity-50"
+                >
+                  Skicka
+                </button>
+              </div>
             </form>
           </div>
         </div>

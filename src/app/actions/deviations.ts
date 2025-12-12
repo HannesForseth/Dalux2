@@ -14,6 +14,8 @@ import type {
   DeviationCategory
 } from '@/types/database'
 import { uploadFile, deleteFile, getSignedUrl } from './storage'
+import { createDeviationMentionNotification } from './notifications'
+import { parseMentions } from '@/lib/utils/mentions'
 
 export async function getProjectDeviations(
   projectId: string,
@@ -300,7 +302,13 @@ export async function getDeviationComments(deviationId: string): Promise<Deviati
 
 export async function addDeviationComment(
   deviationId: string,
-  content: string
+  content: string,
+  mentionData?: {
+    members: { user_id: string; full_name: string }[]
+    deviationNumber: number
+    deviationTitle: string
+    projectId: string
+  }
 ): Promise<DeviationComment> {
   const supabase = await createClient()
 
@@ -308,6 +316,13 @@ export async function addDeviationComment(
   if (!user) {
     throw new Error('Inte inloggad')
   }
+
+  // Get author's name for notification
+  const { data: authorProfile } = await supabase
+    .from('profiles')
+    .select('full_name')
+    .eq('id', user.id)
+    .single()
 
   const { data: comment, error } = await supabase
     .from('deviation_comments')
@@ -322,6 +337,26 @@ export async function addDeviationComment(
   if (error) {
     console.error('Error adding comment:', error)
     throw new Error('Kunde inte lägga till kommentaren')
+  }
+
+  // Parse mentions and create notifications
+  if (mentionData) {
+    const mentionedUserIds = parseMentions(content, mentionData.members)
+
+    // Create notification for each mentioned user (except self)
+    for (const mentionedUserId of mentionedUserIds) {
+      if (mentionedUserId !== user.id) {
+        await createDeviationMentionNotification(
+          mentionedUserId,
+          authorProfile?.full_name || 'Någon',
+          mentionData.projectId,
+          deviationId,
+          mentionData.deviationNumber,
+          mentionData.deviationTitle,
+          content
+        )
+      }
+    }
   }
 
   return comment
