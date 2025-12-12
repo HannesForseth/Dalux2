@@ -1,16 +1,15 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { useParams, useRouter } from 'next/navigation'
+import { useParams } from 'next/navigation'
 import Link from 'next/link'
-import { getProjectWithMembers, getUserRoleInProject, deleteProject, getProjectStats, getProjectActivity } from '@/app/actions/projects'
+import { getProjectWithMembers, getUserRoleInProject, getProjectStats, getProjectActivity } from '@/app/actions/projects'
 import type { ProjectStats, ActivityItem } from '@/app/actions/projects'
 import type { ProjectWithMembers, RoleName } from '@/types/database'
-import { canDeleteProject, canUpdateProject, canManageMembers, getRoleDisplayName } from '@/lib/permissions'
+import { canUpdateProject, canManageMembers, getRoleDisplayName } from '@/lib/permissions'
 
 export default function ProjectDetailPage() {
   const params = useParams()
-  const router = useRouter()
   const projectId = params.id as string
 
   const [project, setProject] = useState<ProjectWithMembers | null>(null)
@@ -18,8 +17,6 @@ export default function ProjectDetailPage() {
   const [stats, setStats] = useState<ProjectStats | null>(null)
   const [activities, setActivities] = useState<ActivityItem[]>([])
   const [isLoading, setIsLoading] = useState(true)
-  const [isDeleting, setIsDeleting] = useState(false)
-  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
 
   useEffect(() => {
     loadProject()
@@ -41,18 +38,6 @@ export default function ProjectDetailPage() {
       console.error('Failed to load project:', error)
     } finally {
       setIsLoading(false)
-    }
-  }
-
-  async function handleDelete() {
-    if (!project) return
-    setIsDeleting(true)
-    try {
-      await deleteProject(project.id)
-      router.push('/dashboard/projects')
-    } catch (error) {
-      console.error('Failed to delete project:', error)
-      setIsDeleting(false)
     }
   }
 
@@ -114,22 +99,12 @@ export default function ProjectDetailPage() {
         </div>
 
         {userRole && canUpdateProject(userRole) && (
-          <div className="flex items-center gap-2">
-            <Link
-              href={`/dashboard/projects/${project.id}/settings/members`}
-              className="px-4 py-2 bg-slate-800 text-slate-300 rounded-lg font-medium hover:bg-slate-700 transition-colors"
-            >
-              Inställningar
-            </Link>
-            {canDeleteProject(userRole) && (
-              <button
-                onClick={() => setShowDeleteConfirm(true)}
-                className="px-4 py-2 bg-red-600/10 text-red-400 rounded-lg font-medium hover:bg-red-600/20 transition-colors"
-              >
-                Radera
-              </button>
-            )}
-          </div>
+          <Link
+            href={`/dashboard/projects/${project.id}/settings/members`}
+            className="px-4 py-2 bg-slate-800 text-slate-300 rounded-lg font-medium hover:bg-slate-700 transition-colors"
+          >
+            Inställningar
+          </Link>
         )}
       </div>
 
@@ -303,34 +278,6 @@ export default function ProjectDetailPage() {
           )}
         </div>
       </div>
-
-      {/* Delete confirmation modal */}
-      {showDeleteConfirm && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center">
-          <div className="absolute inset-0 bg-black/60" onClick={() => setShowDeleteConfirm(false)} />
-          <div className="relative bg-slate-900 border border-slate-700 rounded-xl p-6 max-w-md mx-4">
-            <h3 className="text-lg font-semibold text-white mb-2">Radera projekt?</h3>
-            <p className="text-slate-400 mb-6">
-              Är du säker på att du vill radera "{project.name}"? Detta kan inte ångras.
-            </p>
-            <div className="flex justify-end gap-3">
-              <button
-                onClick={() => setShowDeleteConfirm(false)}
-                className="px-4 py-2 text-slate-300 hover:text-white transition-colors"
-              >
-                Avbryt
-              </button>
-              <button
-                onClick={handleDelete}
-                disabled={isDeleting}
-                className="px-4 py-2 bg-red-600 text-white rounded-lg font-medium hover:bg-red-700 transition-colors disabled:opacity-50"
-              >
-                {isDeleting ? 'Raderar...' : 'Radera projekt'}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   )
 }

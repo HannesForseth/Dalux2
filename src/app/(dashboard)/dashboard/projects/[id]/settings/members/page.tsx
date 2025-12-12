@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { useParams } from 'next/navigation'
+import { useParams, useRouter } from 'next/navigation'
 import Link from 'next/link'
 import {
   getProjectMembers,
@@ -11,13 +11,14 @@ import {
   updateMemberRole,
   cancelInvitation,
 } from '@/app/actions/members'
-import { getProject, getUserRoleInProject } from '@/app/actions/projects'
+import { getProject, getUserRoleInProject, deleteProject } from '@/app/actions/projects'
 import type { Project, ProjectMemberWithDetails, InvitationWithDetails, ProjectRole, RoleName } from '@/types/database'
-import { canManageMembers, canChangeRoles, isOwner, getRoleDisplayName, getAssignableRoles } from '@/lib/permissions'
+import { canManageMembers, canChangeRoles, canDeleteProject, isOwner, getRoleDisplayName, getAssignableRoles } from '@/lib/permissions'
 import InviteMemberModal from '@/components/members/InviteMemberModal'
 
 export default function MembersSettingsPage() {
   const params = useParams()
+  const router = useRouter()
   const projectId = params.id as string
 
   const [project, setProject] = useState<Project | null>(null)
@@ -28,6 +29,9 @@ export default function MembersSettingsPage() {
   const [isLoading, setIsLoading] = useState(true)
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [actionLoading, setActionLoading] = useState<string | null>(null)
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
+  const [isDeleting, setIsDeleting] = useState(false)
+  const [deleteConfirmText, setDeleteConfirmText] = useState('')
 
   useEffect(() => {
     loadData()
@@ -91,6 +95,20 @@ export default function MembersSettingsPage() {
       alert(error instanceof Error ? error.message : 'Kunde inte avbryta inbjudan')
     } finally {
       setActionLoading(null)
+    }
+  }
+
+  async function handleDeleteProject() {
+    if (!project || deleteConfirmText !== project.name) return
+
+    setIsDeleting(true)
+    try {
+      await deleteProject(project.id)
+      router.push('/dashboard/projects')
+    } catch (error) {
+      console.error('Failed to delete project:', error)
+      alert(error instanceof Error ? error.message : 'Kunde inte radera projektet')
+      setIsDeleting(false)
     }
   }
 
@@ -276,6 +294,73 @@ export default function MembersSettingsPage() {
         userRole={userRole}
         onSuccess={loadData}
       />
+
+      {/* Danger Zone - Delete Project */}
+      {canDeleteProject(userRole) && (
+        <div className="mt-12 bg-slate-900 border border-red-900/50 rounded-xl overflow-hidden">
+          <div className="p-4 border-b border-red-900/50 bg-red-950/20">
+            <h2 className="font-semibold text-red-400">Farozon</h2>
+          </div>
+          <div className="p-6">
+            <div className="flex items-start justify-between gap-4">
+              <div>
+                <h3 className="text-white font-medium mb-1">Radera projekt</h3>
+                <p className="text-slate-400 text-sm">
+                  När du raderar ett projekt tas alla dokument, ärenden, checklistor och annan data bort permanent.
+                  Denna åtgärd kan inte ångras.
+                </p>
+              </div>
+              <button
+                onClick={() => setShowDeleteConfirm(true)}
+                className="px-4 py-2 bg-red-600/10 text-red-400 rounded-lg font-medium hover:bg-red-600/20 transition-colors whitespace-nowrap"
+              >
+                Radera projekt
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Delete Confirmation Modal */}
+      {showDeleteConfirm && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-slate-900 border border-slate-800 rounded-xl max-w-md w-full p-6">
+            <h2 className="text-xl font-bold text-white mb-2">Radera projekt</h2>
+            <p className="text-slate-400 mb-4">
+              Är du säker på att du vill radera <span className="text-white font-medium">{project.name}</span>?
+              All data kommer att tas bort permanent.
+            </p>
+            <p className="text-slate-400 mb-2 text-sm">
+              Skriv projektnamnet för att bekräfta:
+            </p>
+            <input
+              type="text"
+              value={deleteConfirmText}
+              onChange={(e) => setDeleteConfirmText(e.target.value)}
+              placeholder={project.name}
+              className="w-full px-4 py-2 bg-slate-800 border border-slate-700 rounded-lg text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-red-500 mb-4"
+            />
+            <div className="flex gap-3 justify-end">
+              <button
+                onClick={() => {
+                  setShowDeleteConfirm(false)
+                  setDeleteConfirmText('')
+                }}
+                className="px-4 py-2 text-slate-400 hover:text-white transition-colors"
+              >
+                Avbryt
+              </button>
+              <button
+                onClick={handleDeleteProject}
+                disabled={deleteConfirmText !== project.name || isDeleting}
+                className="px-4 py-2 bg-red-600 text-white rounded-lg font-medium hover:bg-red-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {isDeleting ? 'Raderar...' : 'Radera permanent'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
