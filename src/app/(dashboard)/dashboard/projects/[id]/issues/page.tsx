@@ -1,8 +1,10 @@
 'use client'
 
 import { useParams, useSearchParams } from 'next/navigation'
-import { useState, useEffect, useCallback, useRef } from 'react'
+import { useState, useEffect, useCallback, useRef, useMemo } from 'react'
 import Link from 'next/link'
+import jsPDF from 'jspdf'
+import autoTable from 'jspdf-autotable'
 import {
   getProjectIssues,
   createIssue,
@@ -26,6 +28,8 @@ import type {
   IssueAttachment,
   ProjectMemberWithDetails
 } from '@/types/database'
+
+const ITEMS_PER_PAGE = 10
 
 const statusConfig: Record<IssueStatus, { label: string; color: string; bg: string }> = {
   open: { label: 'Öppen', color: 'text-yellow-400', bg: 'bg-yellow-400/10' },
@@ -600,6 +604,66 @@ export default function ProjectIssuesPage() {
   const [statusFilter, setStatusFilter] = useState<IssueStatus | 'all'>('all')
   const [priorityFilter, setPriorityFilter] = useState<IssuePriority | 'all'>('all')
   const [stats, setStats] = useState({ total: 0, open: 0, inProgress: 0, resolved: 0, closed: 0 })
+  const [searchQuery, setSearchQuery] = useState('')
+  const [currentPage, setCurrentPage] = useState(1)
+
+  // Filter issues by search query (client-side)
+  const filteredIssues = useMemo(() => {
+    if (!searchQuery.trim()) return issues
+    const query = searchQuery.toLowerCase()
+    return issues.filter(issue =>
+      issue.title.toLowerCase().includes(query) ||
+      issue.description?.toLowerCase().includes(query) ||
+      issue.location?.toLowerCase().includes(query) ||
+      issue.reporter?.full_name?.toLowerCase().includes(query) ||
+      issue.assignee?.full_name?.toLowerCase().includes(query)
+    )
+  }, [issues, searchQuery])
+
+  // Pagination
+  const totalPages = Math.ceil(filteredIssues.length / ITEMS_PER_PAGE)
+  const paginatedIssues = useMemo(() => {
+    const start = (currentPage - 1) * ITEMS_PER_PAGE
+    return filteredIssues.slice(start, start + ITEMS_PER_PAGE)
+  }, [filteredIssues, currentPage])
+
+  // Reset page when filters change
+  useEffect(() => {
+    setCurrentPage(1)
+  }, [statusFilter, priorityFilter, searchQuery])
+
+  // PDF Export function
+  const exportToPDF = useCallback(() => {
+    const doc = new jsPDF()
+
+    // Header
+    doc.setFontSize(20)
+    doc.text('Ärendelista', 14, 22)
+    doc.setFontSize(10)
+    doc.text(`Exporterad: ${new Date().toLocaleDateString('sv-SE')}`, 14, 30)
+    doc.text(`Totalt: ${filteredIssues.length} ärenden`, 14, 36)
+
+    // Table data
+    const tableData = filteredIssues.map(issue => [
+      issue.title,
+      statusConfig[issue.status].label,
+      priorityConfig[issue.priority].label,
+      issue.location || '-',
+      issue.reporter?.full_name || '-',
+      issue.assignee?.full_name || '-',
+      formatDate(issue.created_at)
+    ])
+
+    autoTable(doc, {
+      head: [['Titel', 'Status', 'Prioritet', 'Plats', 'Rapportör', 'Ansvarig', 'Skapad']],
+      body: tableData,
+      startY: 42,
+      styles: { fontSize: 8 },
+      headStyles: { fillColor: [59, 130, 246] },
+    })
+
+    doc.save(`arenden-${new Date().toISOString().split('T')[0]}.pdf`)
+  }, [filteredIssues])
 
   const loadData = useCallback(async () => {
     try {
@@ -716,8 +780,30 @@ export default function ProjectIssuesPage() {
         </div>
       </div>
 
-      {/* Filters */}
-      <div className="flex flex-wrap gap-4 mb-6">
+      {/* Search, Filters & Export */}
+      <div className="flex flex-wrap items-center gap-4 mb-6">
+        {/* Search */}
+        <div className="relative flex-1 min-w-[200px] max-w-md">
+          <svg className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-500" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" d="m21 21-5.197-5.197m0 0A7.5 7.5 0 1 0 5.196 5.196a7.5 7.5 0 0 0 10.607 10.607Z" />
+          </svg>
+          <input
+            type="text"
+            placeholder="Sök ärenden..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="w-full pl-10 pr-4 py-2 bg-slate-800 border border-slate-700 rounded-lg text-white placeholder-slate-500 focus:outline-none focus:border-blue-500"
+          />
+          {searchQuery && (
+            <button
+              onClick={() => setSearchQuery('')}
+              className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 hover:text-white"
+            >
+              <XIcon />
+            </button>
+          )}
+        </div>
+
         <select
           value={statusFilter}
           onChange={(e) => setStatusFilter(e.target.value as IssueStatus | 'all')}
@@ -739,9 +825,28 @@ export default function ProjectIssuesPage() {
             <option key={key} value={key}>{label}</option>
           ))}
         </select>
+
+        {/* Export PDF Button */}
+        <button
+          onClick={exportToPDF}
+          disabled={filteredIssues.length === 0}
+          className="px-4 py-2 bg-slate-800 border border-slate-700 text-white rounded-lg hover:bg-slate-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+        >
+          <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5v2.25A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75V16.5m-13.5-9L12 3m0 0 4.5 4.5M12 3v13.5" />
+          </svg>
+          Exportera PDF
+        </button>
       </div>
 
-      {issues.length === 0 ? (
+      {/* Search results info */}
+      {searchQuery && (
+        <div className="mb-4 text-sm text-slate-400">
+          Visar {filteredIssues.length} av {issues.length} ärenden för "{searchQuery}"
+        </div>
+      )}
+
+      {filteredIssues.length === 0 ? (
         <div className="bg-slate-900 border border-slate-800 rounded-xl p-12 text-center">
           <div className="w-16 h-16 bg-slate-800 rounded-full flex items-center justify-center mx-auto mb-4">
             <svg className="h-8 w-8 text-slate-500" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
@@ -749,16 +854,16 @@ export default function ProjectIssuesPage() {
             </svg>
           </div>
           <h2 className="text-lg font-semibold text-white mb-2">
-            {statusFilter !== 'all' || priorityFilter !== 'all'
-              ? 'Inga ärenden matchar filtret'
+            {searchQuery || statusFilter !== 'all' || priorityFilter !== 'all'
+              ? 'Inga ärenden matchar sökningen'
               : 'Inga ärenden än'}
           </h2>
           <p className="text-slate-400 mb-6 max-w-md mx-auto">
-            {statusFilter !== 'all' || priorityFilter !== 'all'
-              ? 'Prova att ändra filter för att se fler ärenden.'
+            {searchQuery || statusFilter !== 'all' || priorityFilter !== 'all'
+              ? 'Prova att ändra sök eller filter för att se fler ärenden.'
               : 'Skapa ärenden för att spåra problem, frågor och observationer i projektet.'}
           </p>
-          {statusFilter === 'all' && priorityFilter === 'all' && (
+          {!searchQuery && statusFilter === 'all' && priorityFilter === 'all' && (
             <button
               onClick={() => setShowCreateModal(true)}
               className="px-4 py-2 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-500 transition-colors"
@@ -769,7 +874,7 @@ export default function ProjectIssuesPage() {
         </div>
       ) : (
         <div className="space-y-4">
-          {issues.map((issue) => (
+          {paginatedIssues.map((issue) => (
             <div
               key={issue.id}
               className="bg-slate-900 border border-slate-800 rounded-xl p-5 hover:border-slate-700 transition-colors cursor-pointer"
@@ -849,6 +954,50 @@ export default function ProjectIssuesPage() {
               </div>
             </div>
           ))}
+
+          {/* Pagination */}
+          {totalPages > 1 && (
+            <div className="flex items-center justify-between pt-4 border-t border-slate-800">
+              <p className="text-sm text-slate-400">
+                Visar {((currentPage - 1) * ITEMS_PER_PAGE) + 1}-{Math.min(currentPage * ITEMS_PER_PAGE, filteredIssues.length)} av {filteredIssues.length}
+              </p>
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+                  disabled={currentPage === 1}
+                  className="px-3 py-1.5 bg-slate-800 border border-slate-700 rounded-lg text-white hover:bg-slate-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                >
+                  <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 19.5 8.25 12l7.5-7.5" />
+                  </svg>
+                </button>
+                <div className="flex items-center gap-1">
+                  {Array.from({ length: totalPages }, (_, i) => i + 1).map(page => (
+                    <button
+                      key={page}
+                      onClick={() => setCurrentPage(page)}
+                      className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${
+                        currentPage === page
+                          ? 'bg-blue-600 text-white'
+                          : 'bg-slate-800 text-slate-400 hover:bg-slate-700 hover:text-white'
+                      }`}
+                    >
+                      {page}
+                    </button>
+                  ))}
+                </div>
+                <button
+                  onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+                  disabled={currentPage === totalPages}
+                  className="px-3 py-1.5 bg-slate-800 border border-slate-700 rounded-lg text-white hover:bg-slate-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                >
+                  <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="m8.25 4.5 7.5 7.5-7.5 7.5" />
+                  </svg>
+                </button>
+              </div>
+            </div>
+          )}
         </div>
       )}
 

@@ -1,7 +1,9 @@
 'use client'
 
 import { useParams } from 'next/navigation'
-import { useState, useEffect, useCallback, useRef } from 'react'
+import { useState, useEffect, useCallback, useRef, useMemo } from 'react'
+import jsPDF from 'jspdf'
+import autoTable from 'jspdf-autotable'
 import Link from 'next/link'
 import {
   getProjectDeviations,
@@ -51,6 +53,8 @@ const categoryConfig: Record<DeviationCategory, { label: string }> = {
   documentation: { label: 'Dokumentation' },
   other: { label: 'Övrigt' },
 }
+
+const ITEMS_PER_PAGE = 10
 
 function formatDate(dateString: string): string {
   const date = new Date(dateString)
@@ -665,6 +669,8 @@ export default function ProjectDeviationsPage() {
   const [statusFilter, setStatusFilter] = useState<DeviationStatus | 'all'>('all')
   const [severityFilter, setSeverityFilter] = useState<DeviationSeverity | 'all'>('all')
   const [categoryFilter, setCategoryFilter] = useState<DeviationCategory | 'all'>('all')
+  const [searchQuery, setSearchQuery] = useState('')
+  const [currentPage, setCurrentPage] = useState(1)
   const [stats, setStats] = useState({
     total: 0,
     open: 0,
@@ -696,6 +702,79 @@ export default function ProjectDeviationsPage() {
       setIsLoading(false)
     }
   }, [projectId, statusFilter, severityFilter, categoryFilter])
+
+  // Client-side search filtering
+  const filteredDeviations = useMemo(() => {
+    if (!searchQuery.trim()) return deviations
+    const query = searchQuery.toLowerCase()
+    return deviations.filter(deviation =>
+      deviation.title.toLowerCase().includes(query) ||
+      deviation.description?.toLowerCase().includes(query) ||
+      deviation.location?.toLowerCase().includes(query) ||
+      deviation.drawing_reference?.toLowerCase().includes(query) ||
+      deviation.reporter?.full_name?.toLowerCase().includes(query) ||
+      deviation.assignee?.full_name?.toLowerCase().includes(query) ||
+      `AVV-${String(deviation.deviation_number).padStart(3, '0')}`.toLowerCase().includes(query)
+    )
+  }, [deviations, searchQuery])
+
+  // Pagination
+  const totalPages = Math.ceil(filteredDeviations.length / ITEMS_PER_PAGE)
+  const paginatedDeviations = useMemo(() => {
+    const start = (currentPage - 1) * ITEMS_PER_PAGE
+    return filteredDeviations.slice(start, start + ITEMS_PER_PAGE)
+  }, [filteredDeviations, currentPage])
+
+  // Reset page when search changes
+  useEffect(() => {
+    setCurrentPage(1)
+  }, [searchQuery])
+
+  // PDF Export
+  const exportToPDF = useCallback(() => {
+    const doc = new jsPDF()
+
+    // Title
+    doc.setFontSize(20)
+    doc.text('Avvikelselista (NCR)', 14, 22)
+
+    // Metadata
+    doc.setFontSize(10)
+    doc.text(`Exporterad: ${new Date().toLocaleDateString('sv-SE')}`, 14, 30)
+    doc.text(`Totalt: ${filteredDeviations.length} avvikelser`, 14, 36)
+
+    // Table data
+    const tableData = filteredDeviations.map(deviation => [
+      `AVV-${String(deviation.deviation_number).padStart(3, '0')}`,
+      deviation.title,
+      statusConfig[deviation.status].label,
+      severityConfig[deviation.severity].label,
+      categoryConfig[deviation.category].label,
+      deviation.location || '-',
+      deviation.reporter?.full_name || '-',
+      formatDate(deviation.created_at)
+    ])
+
+    autoTable(doc, {
+      head: [['Nr', 'Titel', 'Status', 'Allvarlighet', 'Kategori', 'Plats', 'Rapportör', 'Skapad']],
+      body: tableData,
+      startY: 42,
+      styles: { fontSize: 7 },
+      headStyles: { fillColor: [59, 130, 246] },
+      columnStyles: {
+        0: { cellWidth: 18 },
+        1: { cellWidth: 40 },
+        2: { cellWidth: 22 },
+        3: { cellWidth: 20 },
+        4: { cellWidth: 22 },
+        5: { cellWidth: 25 },
+        6: { cellWidth: 25 },
+        7: { cellWidth: 18 }
+      }
+    })
+
+    doc.save(`avvikelser-${new Date().toISOString().split('T')[0]}.pdf`)
+  }, [filteredDeviations])
 
   useEffect(() => {
     loadData()
@@ -798,8 +877,32 @@ export default function ProjectDeviationsPage() {
         <span className="text-red-400">◉ {stats.bySeverity.critical} kritiska</span>
       </div>
 
-      {/* Filters */}
+      {/* Search and Filters */}
       <div className="flex flex-wrap gap-4 mb-6">
+        {/* Search input */}
+        <div className="relative flex-1 min-w-[200px] max-w-md">
+          <input
+            type="text"
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            placeholder="Sök avvikelser..."
+            className="w-full pl-10 pr-10 py-2 bg-slate-800 border border-slate-700 rounded-lg text-white placeholder-slate-500 focus:outline-none focus:border-blue-500"
+          />
+          <svg className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-slate-500" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" d="m21 21-5.197-5.197m0 0A7.5 7.5 0 1 0 5.196 5.196a7.5 7.5 0 0 0 10.607 10.607Z" />
+          </svg>
+          {searchQuery && (
+            <button
+              onClick={() => setSearchQuery('')}
+              className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 hover:text-white"
+            >
+              <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M6 18 18 6M6 6l12 12" />
+              </svg>
+            </button>
+          )}
+        </div>
+
         <select
           value={statusFilter}
           onChange={(e) => setStatusFilter(e.target.value as DeviationStatus | 'all')}
@@ -832,9 +935,21 @@ export default function ProjectDeviationsPage() {
             <option key={key} value={key}>{label}</option>
           ))}
         </select>
+
+        {/* PDF Export button */}
+        <button
+          onClick={exportToPDF}
+          disabled={filteredDeviations.length === 0}
+          className="px-4 py-2 bg-slate-800 border border-slate-700 text-white rounded-lg font-medium hover:bg-slate-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+        >
+          <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5v2.25A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75V16.5M16.5 12 12 16.5m0 0L7.5 12m4.5 4.5V3" />
+          </svg>
+          Exportera PDF
+        </button>
       </div>
 
-      {deviations.length === 0 ? (
+      {filteredDeviations.length === 0 ? (
         <div className="bg-slate-900 border border-slate-800 rounded-xl p-12 text-center">
           <div className="w-16 h-16 bg-slate-800 rounded-full flex items-center justify-center mx-auto mb-4">
             <svg className="h-8 w-8 text-slate-500" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
@@ -842,16 +957,20 @@ export default function ProjectDeviationsPage() {
             </svg>
           </div>
           <h2 className="text-lg font-semibold text-white mb-2">
-            {statusFilter !== 'all' || severityFilter !== 'all' || categoryFilter !== 'all'
+            {searchQuery
+              ? 'Inga avvikelser matchar sökningen'
+              : statusFilter !== 'all' || severityFilter !== 'all' || categoryFilter !== 'all'
               ? 'Inga avvikelser matchar filtret'
               : 'Inga avvikelser än'}
           </h2>
           <p className="text-slate-400 mb-6 max-w-md mx-auto">
-            {statusFilter !== 'all' || severityFilter !== 'all' || categoryFilter !== 'all'
+            {searchQuery
+              ? `Inga resultat för "${searchQuery}". Prova en annan sökterm.`
+              : statusFilter !== 'all' || severityFilter !== 'all' || categoryFilter !== 'all'
               ? 'Prova att ändra filter för att se fler avvikelser.'
               : 'Rapportera och spåra avvikelser enligt ISO 9001-standard för kvalitetsstyrning.'}
           </p>
-          {statusFilter === 'all' && severityFilter === 'all' && categoryFilter === 'all' && (
+          {!searchQuery && statusFilter === 'all' && severityFilter === 'all' && categoryFilter === 'all' && (
             <button
               onClick={() => setShowCreateModal(true)}
               className="px-4 py-2 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-500 transition-colors"
@@ -862,7 +981,18 @@ export default function ProjectDeviationsPage() {
         </div>
       ) : (
         <div className="space-y-4">
-          {deviations.map((deviation) => (
+          {/* Results count */}
+          <div className="flex items-center justify-between text-sm text-slate-400">
+            <span>
+              Visar {paginatedDeviations.length} av {filteredDeviations.length} avvikelser
+              {searchQuery && ` för "${searchQuery}"`}
+            </span>
+            {totalPages > 1 && (
+              <span>Sida {currentPage} av {totalPages}</span>
+            )}
+          </div>
+
+          {paginatedDeviations.map((deviation) => (
             <div
               key={deviation.id}
               className="bg-slate-900 border border-slate-800 rounded-xl p-5 hover:border-slate-700 transition-colors cursor-pointer"
@@ -944,6 +1074,77 @@ export default function ProjectDeviationsPage() {
               </div>
             </div>
           ))}
+
+          {/* Pagination Controls */}
+          {totalPages > 1 && (
+            <div className="flex items-center justify-center gap-2 mt-6 pt-4 border-t border-slate-800">
+              <button
+                onClick={() => setCurrentPage(1)}
+                disabled={currentPage === 1}
+                className="px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-white disabled:opacity-50 disabled:cursor-not-allowed hover:bg-slate-700 transition-colors"
+              >
+                <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="m18.75 4.5-7.5 7.5 7.5 7.5m-6-15L5.25 12l7.5 7.5" />
+                </svg>
+              </button>
+              <button
+                onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+                disabled={currentPage === 1}
+                className="px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-white disabled:opacity-50 disabled:cursor-not-allowed hover:bg-slate-700 transition-colors"
+              >
+                <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 19.5 8.25 12l7.5-7.5" />
+                </svg>
+              </button>
+
+              <div className="flex items-center gap-1">
+                {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
+                  let pageNum: number
+                  if (totalPages <= 5) {
+                    pageNum = i + 1
+                  } else if (currentPage <= 3) {
+                    pageNum = i + 1
+                  } else if (currentPage >= totalPages - 2) {
+                    pageNum = totalPages - 4 + i
+                  } else {
+                    pageNum = currentPage - 2 + i
+                  }
+                  return (
+                    <button
+                      key={pageNum}
+                      onClick={() => setCurrentPage(pageNum)}
+                      className={`px-3 py-2 rounded-lg font-medium transition-colors ${
+                        currentPage === pageNum
+                          ? 'bg-blue-600 text-white'
+                          : 'bg-slate-800 border border-slate-700 text-white hover:bg-slate-700'
+                      }`}
+                    >
+                      {pageNum}
+                    </button>
+                  )
+                })}
+              </div>
+
+              <button
+                onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+                disabled={currentPage === totalPages}
+                className="px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-white disabled:opacity-50 disabled:cursor-not-allowed hover:bg-slate-700 transition-colors"
+              >
+                <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="m8.25 4.5 7.5 7.5-7.5 7.5" />
+                </svg>
+              </button>
+              <button
+                onClick={() => setCurrentPage(totalPages)}
+                disabled={currentPage === totalPages}
+                className="px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-white disabled:opacity-50 disabled:cursor-not-allowed hover:bg-slate-700 transition-colors"
+              >
+                <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="m5.25 4.5 7.5 7.5-7.5 7.5m6-15 7.5 7.5-7.5 7.5" />
+                </svg>
+              </button>
+            </div>
+          )}
         </div>
       )}
 
