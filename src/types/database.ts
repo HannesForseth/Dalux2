@@ -567,3 +567,107 @@ export interface DocumentVersionWithUploader extends DocumentVersion {
 export interface DocumentWithVersions extends Document {
   versions?: DocumentVersionWithUploader[]
 }
+
+// ===============================
+// Deviation (Avvikelse/NCR) Module Types
+// ===============================
+
+export type DeviationStatus =
+  | 'open'            // Öppen - nyrapporterad
+  | 'investigating'   // Under utredning
+  | 'action_required' // Kräver åtgärd
+  | 'corrected'       // Åtgärdad
+  | 'verified'        // Verifierad
+  | 'closed'          // Stängd
+
+export type DeviationSeverity = 'minor' | 'major' | 'critical'
+
+export type DeviationCategory =
+  | 'material'        // Materialfel
+  | 'workmanship'     // Utförandefel
+  | 'design'          // Projekteringsfel
+  | 'safety'          // Säkerhetsavvikelse
+  | 'documentation'   // Dokumentationsfel
+  | 'other'           // Övrigt
+
+export interface Deviation {
+  id: string
+  project_id: string
+  deviation_number: number
+  title: string
+  description: string | null
+  category: DeviationCategory
+  severity: DeviationSeverity
+  status: DeviationStatus
+  location: string | null
+  drawing_reference: string | null
+  due_date: string | null
+  corrected_at: string | null
+  verified_at: string | null
+  closed_at: string | null
+  reported_by: string
+  assigned_to: string | null
+  corrected_by: string | null
+  verified_by: string | null
+  corrective_action: string | null
+  root_cause: string | null
+  created_at: string
+  updated_at: string
+}
+
+export interface DeviationAttachment {
+  id: string
+  deviation_id: string
+  file_path: string
+  file_name: string
+  file_size: number
+  file_type: string
+  uploaded_by: string
+  created_at: string
+}
+
+export interface DeviationComment {
+  id: string
+  deviation_id: string
+  content: string
+  author_id: string
+  created_at: string
+}
+
+export interface DeviationCommentWithAuthor extends DeviationComment {
+  author: Profile
+}
+
+export interface DeviationWithDetails extends Deviation {
+  reporter: Profile
+  assignee: Profile | null
+  corrector: Profile | null
+  verifier: Profile | null
+  attachments?: DeviationAttachment[]
+  comments?: DeviationCommentWithAuthor[]
+}
+
+export interface CreateDeviationData {
+  title: string
+  description?: string
+  category: DeviationCategory
+  severity?: DeviationSeverity
+  location?: string
+  drawing_reference?: string
+  assigned_to?: string
+  due_date?: string
+}
+
+export interface UpdateDeviationData {
+  title?: string
+  description?: string
+  category?: DeviationCategory
+  severity?: DeviationSeverity
+  status?: DeviationStatus
+  location?: string
+  drawing_reference?: string
+  assigned_to?: string | null
+  due_date?: string | null
+  corrective_action?: string
+  root_cause?: string
+}

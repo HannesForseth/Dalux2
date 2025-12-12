@@ -8,6 +8,7 @@ export type StorageBucket =
   | 'drawings'
   | 'issue-attachments'
   | 'rfi-attachments'
+  | 'deviation-attachments'
 
 interface UploadResult {
   path: string
