@@ -6,7 +6,7 @@ import { revalidatePath } from 'next/cache'
 export interface Notification {
   id: string
   user_id: string
-  type: 'comment_mention' | 'comment_reply' | 'issue_assigned' | 'rfi_assigned' | 'deviation_mention'
+  type: 'comment_mention' | 'comment_reply' | 'issue_assigned' | 'rfi_assigned' | 'deviation_mention' | 'issue_mention'
   title: string
   message: string
   link: string
@@ -226,6 +226,34 @@ export async function createDeviationMentionNotification(
       deviation_id: deviationId,
       deviation_number: deviationNumber,
       deviation_title: deviationTitle,
+    }
+  )
+}
+
+// Helper to create issue mention notifications
+export async function createIssueMentionNotification(
+  mentionedUserId: string,
+  mentionerName: string,
+  projectId: string,
+  issueId: string,
+  issueTitle: string,
+  commentPreview: string
+): Promise<void> {
+  const link = `/dashboard/projects/${projectId}/issues?open=${issueId}`
+
+  const title = `${mentionerName} nämnde dig i en ärendekommentar`
+  const message = `I ärendet "${issueTitle}": "${commentPreview.substring(0, 100)}${commentPreview.length > 100 ? '...' : ''}"`
+
+  await createNotification(
+    mentionedUserId,
+    'issue_mention',
+    title,
+    message,
+    link,
+    {
+      project_id: projectId,
+      issue_id: issueId,
+      issue_title: issueTitle,
     }
   )
 }

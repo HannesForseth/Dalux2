@@ -1,10 +1,31 @@
 'use client'
 
-import { useParams } from 'next/navigation'
-import { useState, useEffect, useCallback } from 'react'
+import { useParams, useSearchParams } from 'next/navigation'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import Link from 'next/link'
-import { getProjectIssues, createIssue, updateIssue, deleteIssue, getIssueStats } from '@/app/actions/issues'
-import type { IssueWithDetails, IssueStatus, IssuePriority, CreateIssueData } from '@/types/database'
+import {
+  getProjectIssues,
+  createIssue,
+  updateIssue,
+  deleteIssue,
+  getIssueStats,
+  getIssueComments,
+  addIssueComment,
+  getIssueAttachments,
+  addIssueAttachment,
+  deleteIssueAttachment,
+  getAttachmentDownloadUrl
+} from '@/app/actions/issues'
+import { getProjectMembers } from '@/app/actions/members'
+import type {
+  IssueWithDetails,
+  IssueStatus,
+  IssuePriority,
+  CreateIssueData,
+  IssueComment,
+  IssueAttachment,
+  ProjectMemberWithDetails
+} from '@/types/database'
 
 const statusConfig: Record<IssueStatus, { label: string; color: string; bg: string }> = {
   open: { label: 'Öppen', color: 'text-yellow-400', bg: 'bg-yellow-400/10' },
@@ -33,13 +54,16 @@ interface CreateIssueModalProps {
   isOpen: boolean
   onClose: () => void
   onCreate: (data: CreateIssueData) => Promise<void>
+  members: ProjectMemberWithDetails[]
 }
 
-function CreateIssueModal({ isOpen, onClose, onCreate }: CreateIssueModalProps) {
+function CreateIssueModal({ isOpen, onClose, onCreate, members }: CreateIssueModalProps) {
   const [title, setTitle] = useState('')
   const [description, setDescription] = useState('')
   const [priority, setPriority] = useState<IssuePriority>('medium')
   const [location, setLocation] = useState('')
+  const [assignedTo, setAssignedTo] = useState('')
+  const [dueDate, setDueDate] = useState('')
   const [isSubmitting, setIsSubmitting] = useState(false)
 
   if (!isOpen) return null
@@ -55,11 +79,15 @@ function CreateIssueModal({ isOpen, onClose, onCreate }: CreateIssueModalProps) 
         description: description.trim() || undefined,
         priority,
         location: location.trim() || undefined,
+        assigned_to: assignedTo || undefined,
+        due_date: dueDate || undefined,
       })
       setTitle('')
       setDescription('')
       setPriority('medium')
       setLocation('')
+      setAssignedTo('')
+      setDueDate('')
       onClose()
     } finally {
       setIsSubmitting(false)
@@ -68,16 +96,11 @@ function CreateIssueModal({ isOpen, onClose, onCreate }: CreateIssueModalProps) 
 
   return (
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-      <div className="bg-slate-900 border border-slate-700 rounded-xl w-full max-w-lg">
-        <div className="flex items-center justify-between px-6 py-4 border-b border-slate-800">
+      <div className="bg-slate-900 border border-slate-700 rounded-xl w-full max-w-lg max-h-[90vh] overflow-y-auto">
+        <div className="flex items-center justify-between px-6 py-4 border-b border-slate-800 sticky top-0 bg-slate-900">
           <h2 className="text-lg font-semibold text-white">Nytt ärende</h2>
-          <button
-            onClick={onClose}
-            className="text-slate-400 hover:text-white transition-colors"
-          >
-            <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" d="M6 18 18 6M6 6l12 12" />
-            </svg>
+          <button onClick={onClose} className="text-slate-400 hover:text-white transition-colors">
+            <XIcon />
           </button>
         </div>
 
@@ -139,6 +162,38 @@ function CreateIssueModal({ isOpen, onClose, onCreate }: CreateIssueModalProps) 
             </div>
           </div>
 
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className="block text-sm font-medium text-slate-300 mb-1">
+                Ansvarig
+              </label>
+              <select
+                value={assignedTo}
+                onChange={(e) => setAssignedTo(e.target.value)}
+                className="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-white focus:outline-none focus:border-blue-500"
+              >
+                <option value="">Ingen tilldelad</option>
+                {members.map((member) => (
+                  <option key={member.user_id} value={member.user_id}>
+                    {member.profile.full_name || member.profile.email || 'Okänd'}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-slate-300 mb-1">
+                Förfaller
+              </label>
+              <input
+                type="date"
+                value={dueDate}
+                onChange={(e) => setDueDate(e.target.value)}
+                className="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-white focus:outline-none focus:border-blue-500"
+              />
+            </div>
+          </div>
+
           <div className="flex justify-end gap-3 pt-4">
             <button
               type="button"
@@ -161,48 +216,433 @@ function CreateIssueModal({ isOpen, onClose, onCreate }: CreateIssueModalProps) 
   )
 }
 
+interface IssueDetailModalProps {
+  issue: IssueWithDetails
+  isOpen: boolean
+  onClose: () => void
+  onUpdate: () => void
+  members: ProjectMemberWithDetails[]
+}
+
+function IssueDetailModal({ issue, isOpen, onClose, onUpdate, members }: IssueDetailModalProps) {
+  const params = useParams()
+  const projectId = params.id as string
+  const [comments, setComments] = useState<IssueComment[]>([])
+  const [attachments, setAttachments] = useState<IssueAttachment[]>([])
+  const [newComment, setNewComment] = useState('')
+  const [isSubmittingComment, setIsSubmittingComment] = useState(false)
+  const [isUploading, setIsUploading] = useState(false)
+  const [showMentionSuggestions, setShowMentionSuggestions] = useState(false)
+  const [mentionFilter, setMentionFilter] = useState('')
+  const [cursorPosition, setCursorPosition] = useState(0)
+  const commentInputRef = useRef<HTMLInputElement>(null)
+
+  useEffect(() => {
+    if (isOpen) {
+      loadComments()
+      loadAttachments()
+    }
+  }, [isOpen, issue.id])
+
+  async function loadComments() {
+    const data = await getIssueComments(issue.id)
+    setComments(data)
+  }
+
+  async function loadAttachments() {
+    const data = await getIssueAttachments(issue.id)
+    setAttachments(data)
+  }
+
+  async function handleAddComment(e: React.FormEvent) {
+    e.preventDefault()
+    if (!newComment.trim()) return
+
+    setIsSubmittingComment(true)
+    try {
+      await addIssueComment(issue.id, newComment.trim(), {
+        members: members.map(m => ({
+          user_id: m.user_id,
+          full_name: m.profile.full_name || '',
+          email: m.profile.email || undefined
+        })),
+        issueTitle: issue.title,
+        projectId
+      })
+      setNewComment('')
+      setShowMentionSuggestions(false)
+      await loadComments()
+    } finally {
+      setIsSubmittingComment(false)
+    }
+  }
+
+  // Handle @ mention detection
+  function handleCommentChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const value = e.target.value
+    const position = e.target.selectionStart || 0
+    setNewComment(value)
+    setCursorPosition(position)
+
+    // Check if we're in a mention context (after @)
+    const textBeforeCursor = value.substring(0, position)
+    const lastAtIndex = textBeforeCursor.lastIndexOf('@')
+
+    if (lastAtIndex !== -1) {
+      const textAfterAt = textBeforeCursor.substring(lastAtIndex + 1)
+      // Only show suggestions if there's no space after @ or we're typing a name
+      if (!textAfterAt.includes(' ') || textAfterAt.split(' ').length <= 2) {
+        setMentionFilter(textAfterAt.toLowerCase())
+        setShowMentionSuggestions(true)
+      } else {
+        setShowMentionSuggestions(false)
+      }
+    } else {
+      setShowMentionSuggestions(false)
+    }
+  }
+
+  // Filter members for mention suggestions (include members without name using email)
+  const filteredMembers = members.filter(m => {
+    const name = m.profile.full_name || m.profile.email || ''
+    return name.toLowerCase().includes(mentionFilter)
+  })
+
+  // Insert mention
+  function insertMention(memberName: string) {
+    const textBeforeCursor = newComment.substring(0, cursorPosition)
+    const textAfterCursor = newComment.substring(cursorPosition)
+    const lastAtIndex = textBeforeCursor.lastIndexOf('@')
+
+    const newText = textBeforeCursor.substring(0, lastAtIndex) + '@' + memberName + ' ' + textAfterCursor
+    setNewComment(newText)
+    setShowMentionSuggestions(false)
+
+    // Focus back on input
+    if (commentInputRef.current) {
+      commentInputRef.current.focus()
+    }
+  }
+
+  async function handleFileUpload(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0]
+    if (!file) return
+
+    setIsUploading(true)
+    try {
+      await addIssueAttachment(issue.id, file)
+      await loadAttachments()
+    } catch (error) {
+      console.error('Upload failed:', error)
+    } finally {
+      setIsUploading(false)
+    }
+  }
+
+  async function handleDeleteAttachment(attachmentId: string) {
+    if (!confirm('Ta bort denna bilaga?')) return
+    try {
+      await deleteIssueAttachment(attachmentId)
+      await loadAttachments()
+    } catch (error) {
+      console.error('Delete failed:', error)
+    }
+  }
+
+  async function handleViewAttachment(attachmentId: string) {
+    try {
+      const url = await getAttachmentDownloadUrl(attachmentId)
+      window.open(url, '_blank')
+    } catch (error) {
+      console.error('Failed to get attachment URL:', error)
+    }
+  }
+
+  async function handleStatusChange(newStatus: IssueStatus) {
+    try {
+      await updateIssue(issue.id, { status: newStatus })
+      onUpdate()
+    } catch (error) {
+      console.error('Status update failed:', error)
+    }
+  }
+
+  async function handlePriorityChange(newPriority: IssuePriority) {
+    try {
+      await updateIssue(issue.id, { priority: newPriority })
+      onUpdate()
+    } catch (error) {
+      console.error('Priority update failed:', error)
+    }
+  }
+
+  if (!isOpen) return null
+
+  return (
+    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+      <div className="bg-slate-900 border border-slate-700 rounded-xl w-full max-w-2xl max-h-[90vh] overflow-y-auto">
+        <div className="flex items-center justify-between px-6 py-4 border-b border-slate-800 sticky top-0 bg-slate-900 z-10">
+          <div className="flex items-center gap-3">
+            <span className={`text-lg ${priorityConfig[issue.priority].color}`}>
+              {priorityConfig[issue.priority].icon}
+            </span>
+            <h2 className="text-lg font-semibold text-white">Ärende</h2>
+          </div>
+          <button onClick={onClose} className="text-slate-400 hover:text-white transition-colors">
+            <XIcon />
+          </button>
+        </div>
+
+        <div className="p-6 space-y-6">
+          {/* Header Info */}
+          <div>
+            <h3 className="text-xl font-semibold text-white mb-2">{issue.title}</h3>
+            {issue.description && (
+              <p className="text-slate-400">{issue.description}</p>
+            )}
+          </div>
+
+          {/* Status & Priority */}
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className="block text-xs font-medium text-slate-500 mb-1">Status</label>
+              <select
+                value={issue.status}
+                onChange={(e) => handleStatusChange(e.target.value as IssueStatus)}
+                className="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-white focus:outline-none focus:border-blue-500"
+              >
+                {Object.entries(statusConfig).map(([key, { label }]) => (
+                  <option key={key} value={key}>{label}</option>
+                ))}
+              </select>
+            </div>
+            <div>
+              <label className="block text-xs font-medium text-slate-500 mb-1">Prioritet</label>
+              <select
+                value={issue.priority}
+                onChange={(e) => handlePriorityChange(e.target.value as IssuePriority)}
+                className="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-white focus:outline-none focus:border-blue-500"
+              >
+                {Object.entries(priorityConfig).map(([key, { label }]) => (
+                  <option key={key} value={key}>{label}</option>
+                ))}
+              </select>
+            </div>
+          </div>
+
+          {/* Details */}
+          <div className="grid grid-cols-2 gap-4 text-sm">
+            {issue.location && (
+              <div>
+                <span className="text-slate-500">Plats:</span>
+                <span className="text-white ml-2">{issue.location}</span>
+              </div>
+            )}
+            {issue.due_date && (
+              <div>
+                <span className="text-slate-500">Förfaller:</span>
+                <span className="text-white ml-2">{formatDate(issue.due_date)}</span>
+              </div>
+            )}
+            <div>
+              <span className="text-slate-500">Skapad:</span>
+              <span className="text-white ml-2">{formatDate(issue.created_at)}</span>
+            </div>
+            {issue.resolved_at && (
+              <div>
+                <span className="text-slate-500">Löst:</span>
+                <span className="text-white ml-2">{formatDate(issue.resolved_at)}</span>
+              </div>
+            )}
+          </div>
+
+          {/* People */}
+          <div className="grid grid-cols-2 gap-4 text-sm">
+            <div>
+              <span className="text-slate-500">Rapporterad av:</span>
+              <span className="text-white ml-2">{issue.reporter?.full_name || 'Okänd'}</span>
+            </div>
+            {issue.assignee && (
+              <div>
+                <span className="text-slate-500">Ansvarig:</span>
+                <span className="text-white ml-2">{issue.assignee.full_name}</span>
+              </div>
+            )}
+          </div>
+
+          {/* Attachments */}
+          <div>
+            <label className="block text-sm font-medium text-slate-300 mb-2">Bilagor</label>
+            <div className="flex flex-wrap gap-2 mb-2">
+              {attachments.map((att) => (
+                <div
+                  key={att.id}
+                  className="flex items-center gap-2 px-3 py-1.5 bg-slate-800 rounded-lg text-sm"
+                >
+                  <button
+                    onClick={() => handleViewAttachment(att.id)}
+                    className="text-blue-400 hover:text-blue-300"
+                  >
+                    {att.file_name}
+                  </button>
+                  <button
+                    onClick={() => handleDeleteAttachment(att.id)}
+                    className="text-slate-500 hover:text-red-400"
+                  >
+                    <XIcon />
+                  </button>
+                </div>
+              ))}
+              {attachments.length === 0 && (
+                <span className="text-slate-500 text-sm">Inga bilagor</span>
+              )}
+            </div>
+            <label className="inline-flex items-center gap-2 px-3 py-1.5 bg-slate-800 hover:bg-slate-700 rounded-lg text-sm text-slate-400 cursor-pointer transition-colors">
+              <input
+                type="file"
+                className="hidden"
+                onChange={handleFileUpload}
+                disabled={isUploading}
+              />
+              {isUploading ? 'Laddar upp...' : '+ Lägg till bilaga'}
+            </label>
+          </div>
+
+          {/* Comments */}
+          <div>
+            <label className="block text-sm font-medium text-slate-300 mb-2">Kommentarer</label>
+            <div className="space-y-3 mb-4">
+              {comments.length === 0 ? (
+                <p className="text-slate-500 text-sm">Inga kommentarer än.</p>
+              ) : (
+                comments.map((comment) => (
+                  <div key={comment.id} className="bg-slate-800 rounded-lg p-3">
+                    <div className="flex items-center gap-2 mb-1">
+                      <span className="text-white text-sm font-medium">
+                        {(comment as IssueComment & { author?: { full_name: string } }).author?.full_name || 'Okänd'}
+                      </span>
+                      <span className="text-slate-500 text-xs">
+                        {formatDate(comment.created_at)}
+                      </span>
+                    </div>
+                    <p className="text-slate-300 text-sm">{comment.content}</p>
+                  </div>
+                ))
+              )}
+            </div>
+            <form onSubmit={handleAddComment} className="relative">
+              <div className="flex gap-2">
+                <div className="relative flex-1">
+                  <input
+                    ref={commentInputRef}
+                    type="text"
+                    value={newComment}
+                    onChange={handleCommentChange}
+                    placeholder="Skriv en kommentar... (använd @ för att nämna någon)"
+                    className="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-white placeholder-slate-500 focus:outline-none focus:border-blue-500"
+                  />
+                  {/* Mention suggestions dropdown */}
+                  {showMentionSuggestions && filteredMembers.length > 0 && (
+                    <div className="absolute bottom-full left-0 right-0 mb-1 bg-slate-800 border border-slate-700 rounded-lg shadow-lg max-h-48 overflow-y-auto z-20">
+                      {filteredMembers.map((member) => {
+                        const displayName = member.profile.full_name || member.profile.email || 'Okänd'
+                        return (
+                          <button
+                            key={member.user_id}
+                            type="button"
+                            onClick={() => insertMention(displayName)}
+                            className="w-full px-3 py-2 text-left text-white hover:bg-slate-700 flex items-center gap-2 transition-colors"
+                          >
+                            <div className="w-6 h-6 rounded-full bg-blue-600 flex items-center justify-center text-xs font-medium">
+                              {displayName.charAt(0).toUpperCase()}
+                            </div>
+                            <span>{displayName}</span>
+                          </button>
+                        )
+                      })}
+                    </div>
+                  )}
+                </div>
+                <button
+                  type="submit"
+                  disabled={!newComment.trim() || isSubmittingComment}
+                  className="px-4 py-2 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-500 transition-colors disabled:opacity-50"
+                >
+                  Skicka
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+function XIcon() {
+  return (
+    <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+      <path strokeLinecap="round" strokeLinejoin="round" d="M6 18 18 6M6 6l12 12" />
+    </svg>
+  )
+}
+
 export default function ProjectIssuesPage() {
   const params = useParams()
+  const searchParams = useSearchParams()
   const projectId = params.id as string
 
   const [issues, setIssues] = useState<IssueWithDetails[]>([])
+  const [members, setMembers] = useState<ProjectMemberWithDetails[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [showCreateModal, setShowCreateModal] = useState(false)
+  const [selectedIssue, setSelectedIssue] = useState<IssueWithDetails | null>(null)
   const [statusFilter, setStatusFilter] = useState<IssueStatus | 'all'>('all')
   const [priorityFilter, setPriorityFilter] = useState<IssuePriority | 'all'>('all')
   const [stats, setStats] = useState({ total: 0, open: 0, inProgress: 0, resolved: 0, closed: 0 })
 
-  const loadIssues = useCallback(async () => {
+  const loadData = useCallback(async () => {
     try {
-      const [issueData, statsData] = await Promise.all([
+      const [issueData, statsData, membersData] = await Promise.all([
         getProjectIssues(projectId, {
           status: statusFilter,
           priority: priorityFilter,
         }),
-        getIssueStats(projectId)
+        getIssueStats(projectId),
+        getProjectMembers(projectId)
       ])
       setIssues(issueData)
       setStats(statsData)
+      setMembers(membersData)
+
+      // Check if we should open a specific issue from URL
+      const openIssueId = searchParams.get('open')
+      if (openIssueId) {
+        const issueToOpen = issueData.find(i => i.id === openIssueId)
+        if (issueToOpen) {
+          setSelectedIssue(issueToOpen)
+        }
+      }
     } catch (error) {
-      console.error('Failed to load issues:', error)
+      console.error('Failed to load data:', error)
     } finally {
       setIsLoading(false)
     }
-  }, [projectId, statusFilter, priorityFilter])
+  }, [projectId, statusFilter, priorityFilter, searchParams])
 
   useEffect(() => {
-    loadIssues()
-  }, [loadIssues])
+    loadData()
+  }, [loadData])
 
   const handleCreate = async (data: CreateIssueData) => {
     await createIssue(projectId, data)
-    await loadIssues()
+    await loadData()
   }
 
   const handleStatusChange = async (issueId: string, newStatus: IssueStatus) => {
     try {
       await updateIssue(issueId, { status: newStatus })
-      await loadIssues()
+      await loadData()
     } catch (error) {
       console.error('Failed to update status:', error)
     }
@@ -213,7 +653,7 @@ export default function ProjectIssuesPage() {
 
     try {
       await deleteIssue(issueId)
-      await loadIssues()
+      await loadData()
     } catch (error) {
       console.error('Failed to delete issue:', error)
     }
@@ -332,7 +772,8 @@ export default function ProjectIssuesPage() {
           {issues.map((issue) => (
             <div
               key={issue.id}
-              className="bg-slate-900 border border-slate-800 rounded-xl p-5 hover:border-slate-700 transition-colors"
+              className="bg-slate-900 border border-slate-800 rounded-xl p-5 hover:border-slate-700 transition-colors cursor-pointer"
+              onClick={() => setSelectedIssue(issue)}
             >
               <div className="flex items-start justify-between gap-4">
                 <div className="flex-1 min-w-0">
@@ -383,7 +824,7 @@ export default function ProjectIssuesPage() {
                   </div>
                 </div>
 
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-2" onClick={(e) => e.stopPropagation()}>
                   {/* Status change dropdown */}
                   <select
                     value={issue.status}
@@ -415,7 +856,23 @@ export default function ProjectIssuesPage() {
         isOpen={showCreateModal}
         onClose={() => setShowCreateModal(false)}
         onCreate={handleCreate}
+        members={members}
       />
+
+      {selectedIssue && (
+        <IssueDetailModal
+          issue={selectedIssue}
+          isOpen={!!selectedIssue}
+          onClose={() => setSelectedIssue(null)}
+          onUpdate={() => {
+            loadData()
+            // Refresh selected issue
+            const updated = issues.find(i => i.id === selectedIssue.id)
+            if (updated) setSelectedIssue(updated)
+          }}
+          members={members}
+        />
+      )}
     </div>
   )
 }

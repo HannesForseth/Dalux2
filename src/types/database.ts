@@ -672,3 +672,24 @@ export interface UpdateDeviationData {
   corrective_action?: string
   root_cause?: string
 }
+
+// ===============================
+// Status History (Audit Trail) Types
+// ===============================
+
+export type StatusHistoryEntityType = 'issue' | 'deviation' | 'rfi'
+
+export interface StatusHistory {
+  id: string
+  entity_type: StatusHistoryEntityType
+  entity_id: string
+  old_status: string | null
+  new_status: string
+  changed_by: string
+  changed_at: string
+  comment: string | null
+}
+
+export interface StatusHistoryWithUser extends StatusHistory {
+  changer: Profile
+}

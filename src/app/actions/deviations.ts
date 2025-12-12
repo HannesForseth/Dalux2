@@ -149,7 +149,8 @@ export async function createDeviation(
 
 export async function updateDeviation(
   deviationId: string,
-  data: UpdateDeviationData
+  data: UpdateDeviationData,
+  statusChangeComment?: string
 ): Promise<Deviation> {
   const supabase = await createClient()
 
@@ -175,8 +176,11 @@ export async function updateDeviation(
     updated_at: new Date().toISOString(),
   }
 
+  // Track if status is changing for audit trail
+  const statusChanged = data.status && data.status !== existing.status
+
   // Handle status transitions and set appropriate timestamps
-  if (data.status && data.status !== existing.status) {
+  if (statusChanged) {
     const now = new Date().toISOString()
 
     // Set corrected_at when moving to corrected
@@ -195,7 +199,7 @@ export async function updateDeviation(
     }
 
     // Clear timestamps if moving backwards
-    if (['open', 'investigating', 'action_required'].includes(data.status)) {
+    if (['open', 'investigating', 'action_required'].includes(data.status!)) {
       updateData.corrected_at = null
       updateData.corrected_by = null
       updateData.verified_at = null
@@ -214,6 +218,25 @@ export async function updateDeviation(
   if (error) {
     console.error('Error updating deviation:', error)
     throw new Error('Kunde inte uppdatera avvikelsen')
+  }
+
+  // Log status change to audit trail
+  if (statusChanged && data.status) {
+    const { error: historyError } = await supabase
+      .from('status_history')
+      .insert({
+        entity_type: 'deviation',
+        entity_id: deviationId,
+        old_status: existing.status,
+        new_status: data.status,
+        changed_by: user.id,
+        comment: statusChangeComment || null,
+      })
+
+    if (historyError) {
+      // Log but don't fail the main operation
+      console.error('Error logging status change to audit trail:', historyError)
+    }
   }
 
   revalidatePath(`/dashboard/projects/${existing.project_id}/deviations`)

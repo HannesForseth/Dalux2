@@ -13,6 +13,8 @@ import type {
   IssuePriority
 } from '@/types/database'
 import { uploadFile, deleteFile, getSignedUrl } from './storage'
+import { createIssueMentionNotification } from './notifications'
+import { parseMentions } from '@/lib/utils/mentions'
 
 export async function getProjectIssues(
   projectId: string,
@@ -136,7 +138,8 @@ export async function createIssue(
 
 export async function updateIssue(
   issueId: string,
-  data: UpdateIssueData
+  data: UpdateIssueData,
+  statusChangeComment?: string
 ): Promise<Issue> {
   const supabase = await createClient()
 
@@ -153,8 +156,11 @@ export async function updateIssue(
     .single()
 
   if (!existing) {
-    throw new Error('Avvikelsen hittades inte')
+    throw new Error('Ärendet hittades inte')
   }
+
+  // Track if status is changing for audit trail
+  const statusChanged = data.status && data.status !== existing.status
 
   // If status is changing to resolved, set resolved_at
   const updateData: Record<string, unknown> = {
@@ -177,7 +183,26 @@ export async function updateIssue(
 
   if (error) {
     console.error('Error updating issue:', error)
-    throw new Error('Kunde inte uppdatera avvikelsen')
+    throw new Error('Kunde inte uppdatera ärendet')
+  }
+
+  // Log status change to audit trail
+  if (statusChanged && data.status) {
+    const { error: historyError } = await supabase
+      .from('status_history')
+      .insert({
+        entity_type: 'issue',
+        entity_id: issueId,
+        old_status: existing.status,
+        new_status: data.status,
+        changed_by: user.id,
+        comment: statusChangeComment || null,
+      })
+
+    if (historyError) {
+      // Log but don't fail the main operation
+      console.error('Error logging status change to audit trail:', historyError)
+    }
   }
 
   revalidatePath(`/dashboard/projects/${existing.project_id}/issues`)
@@ -266,7 +291,12 @@ export async function getIssueComments(issueId: string): Promise<IssueComment[]>
 
 export async function addIssueComment(
   issueId: string,
-  content: string
+  content: string,
+  mentionData?: {
+    members: { user_id: string; full_name: string; email?: string }[]
+    issueTitle: string
+    projectId: string
+  }
 ): Promise<IssueComment> {
   const supabase = await createClient()
 
@@ -274,6 +304,13 @@ export async function addIssueComment(
   if (!user) {
     throw new Error('Inte inloggad')
   }
+
+  // Get author's name for notification
+  const { data: authorProfile } = await supabase
+    .from('profiles')
+    .select('full_name')
+    .eq('id', user.id)
+    .single()
 
   const { data: comment, error } = await supabase
     .from('issue_comments')
@@ -288,6 +325,25 @@ export async function addIssueComment(
   if (error) {
     console.error('Error adding comment:', error)
     throw new Error('Kunde inte lägga till kommentaren')
+  }
+
+  // Parse mentions and create notifications
+  if (mentionData) {
+    const mentionedUserIds = parseMentions(content, mentionData.members)
+
+    // Create notification for each mentioned user (except self)
+    for (const mentionedUserId of mentionedUserIds) {
+      if (mentionedUserId !== user.id) {
+        await createIssueMentionNotification(
+          mentionedUserId,
+          authorProfile?.full_name || 'Någon',
+          mentionData.projectId,
+          issueId,
+          mentionData.issueTitle,
+          content
+        )
+      }
+    }
   }
 
   return comment
