@@ -693,3 +693,256 @@ export interface StatusHistory {
 export interface StatusHistoryWithUser extends StatusHistory {
   changer: Profile
 }
+
+// ===============================
+// Protocol (Mötesprotokoll) Module Types
+// ===============================
+
+export type ProtocolMeetingType =
+  | 'byggmote'        // Byggmöte
+  | 'projektmote'     // Projektmöte
+  | 'samordningsmote' // Samordningsmöte
+  | 'startmote'       // Startmöte
+  | 'slutmote'        // Slutmöte
+  | 'besiktning'      // Besiktning
+  | 'other'           // Övrigt
+
+export type ProtocolStatus = 'draft' | 'finalized' | 'archived'
+
+export type ProtocolAttendeeRole = 'organizer' | 'recorder' | 'attendee' | 'absent_notified'
+
+export type ProtocolActionItemStatus = 'pending' | 'in_progress' | 'completed' | 'cancelled'
+
+export type ProtocolActionItemPriority = 'low' | 'medium' | 'high' | 'critical'
+
+export type ProtocolLinkType = 'issue' | 'deviation' | 'rfi' | 'checklist' | 'document'
+
+export type ProtocolLinkDirection = 'referenced' | 'created_from'
+
+export interface Protocol {
+  id: string
+  project_id: string
+  protocol_number: number
+  title: string
+  meeting_type: ProtocolMeetingType
+  meeting_date: string
+  start_time: string | null
+  end_time: string | null
+  location: string | null
+  notes: string | null
+  ai_summary: string | null
+  previous_protocol_id: string | null
+  status: ProtocolStatus
+  created_by: string
+  created_at: string
+  updated_at: string
+}
+
+export interface ProtocolAttendee {
+  id: string
+  protocol_id: string
+  user_id: string | null
+  name: string
+  email: string | null
+  company: string | null
+  role: ProtocolAttendeeRole
+  attended: boolean
+  created_at: string
+}
+
+export interface ProtocolAgendaItem {
+  id: string
+  protocol_id: string
+  order_index: number
+  title: string
+  description: string | null
+  duration_minutes: number | null
+  presenter_id: string | null
+  notes: string | null
+  created_at: string
+}
+
+export interface ProtocolDecision {
+  id: string
+  protocol_id: string
+  decision_number: number
+  description: string
+  decided_by: string | null
+  created_at: string
+}
+
+export interface ProtocolActionItem {
+  id: string
+  protocol_id: string
+  action_number: number
+  description: string
+  assigned_to: string | null
+  assigned_to_name: string | null
+  deadline: string | null
+  priority: ProtocolActionItemPriority
+  status: ProtocolActionItemStatus
+  completed_at: string | null
+  notes: string | null
+  created_at: string
+  updated_at: string
+}
+
+export interface ProtocolAttachment {
+  id: string
+  protocol_id: string
+  file_name: string
+  file_path: string
+  file_size: number | null
+  file_type: string | null
+  uploaded_by: string
+  created_at: string
+}
+
+export interface ProtocolLink {
+  id: string
+  protocol_id: string
+  link_type: ProtocolLinkType
+  linked_item_id: string
+  link_direction: ProtocolLinkDirection
+  created_by: string
+  created_at: string
+}
+
+// Extended types with relations
+export interface ProtocolAttendeeWithProfile extends ProtocolAttendee {
+  profile: Profile | null
+}
+
+export interface ProtocolAgendaItemWithPresenter extends ProtocolAgendaItem {
+  presenter: Profile | null
+}
+
+export interface ProtocolActionItemWithAssignee extends ProtocolActionItem {
+  assignee: Profile | null
+}
+
+export interface ProtocolAttachmentWithUploader extends ProtocolAttachment {
+  uploader: Profile
+}
+
+export interface ProtocolLinkWithItem extends ProtocolLink {
+  linked_issue?: Issue | null
+  linked_deviation?: Deviation | null
+  linked_rfi?: Rfi | null
+}
+
+export interface ProtocolWithDetails extends Protocol {
+  creator: Profile
+  attendees: ProtocolAttendeeWithProfile[]
+  agenda_items: ProtocolAgendaItemWithPresenter[]
+  decisions: ProtocolDecision[]
+  action_items: ProtocolActionItemWithAssignee[]
+  attachments: ProtocolAttachmentWithUploader[]
+  links: ProtocolLinkWithItem[]
+  previous_protocol?: Protocol | null
+}
+
+export interface ProtocolWithCreator extends Protocol {
+  creator: Profile
+}
+
+// Form types
+export interface CreateProtocolData {
+  title: string
+  meeting_type: ProtocolMeetingType
+  meeting_date: string
+  start_time?: string
+  end_time?: string
+  location?: string
+  previous_protocol_id?: string
+}
+
+export interface UpdateProtocolData {
+  title?: string
+  meeting_type?: ProtocolMeetingType
+  meeting_date?: string
+  start_time?: string | null
+  end_time?: string | null
+  location?: string | null
+  notes?: string | null
+  ai_summary?: string | null
+  status?: ProtocolStatus
+}
+
+export interface CreateProtocolAttendeeData {
+  user_id?: string
+  name: string
+  email?: string
+  company?: string
+  role?: ProtocolAttendeeRole
+  attended?: boolean
+}
+
+export interface CreateProtocolAgendaItemData {
+  order_index: number
+  title: string
+  description?: string
+  duration_minutes?: number
+  presenter_id?: string
+  notes?: string
+}
+
+export interface UpdateProtocolAgendaItemData {
+  order_index?: number
+  title?: string
+  description?: string | null
+  duration_minutes?: number | null
+  presenter_id?: string | null
+  notes?: string | null
+}
+
+export interface CreateProtocolDecisionData {
+  description: string
+  decided_by?: string
+}
+
+export interface CreateProtocolActionItemData {
+  description: string
+  assigned_to?: string
+  assigned_to_name?: string
+  deadline?: string
+  priority?: ProtocolActionItemPriority
+}
+
+export interface UpdateProtocolActionItemData {
+  description?: string
+  assigned_to?: string | null
+  assigned_to_name?: string | null
+  deadline?: string | null
+  priority?: ProtocolActionItemPriority
+  status?: ProtocolActionItemStatus
+  notes?: string | null
+}
+
+export interface CreateProtocolLinkData {
+  link_type: ProtocolLinkType
+  linked_item_id: string
+  link_direction?: ProtocolLinkDirection
+}
+
+// AI-related types
+export interface AIExtractedAction {
+  description: string
+  assigned_to_name?: string
+  deadline?: string
+  priority?: ProtocolActionItemPriority
+}
+
+export interface AISummaryResponse {
+  summary: string
+  key_points: string[]
+  extracted_actions: AIExtractedAction[]
+}
+
+export interface AIAgendaSuggestion {
+  title: string
+  description: string
+  source: 'open_issues' | 'pending_actions' | 'previous_meeting' | 'suggested'
+  related_item_id?: string
+  related_item_type?: ProtocolLinkType
+}

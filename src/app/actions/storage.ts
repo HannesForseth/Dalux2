@@ -9,6 +9,7 @@ export type StorageBucket =
   | 'issue-attachments'
   | 'rfi-attachments'
   | 'deviation-attachments'
+  | 'protocol-attachments'
 
 interface UploadResult {
   path: string
