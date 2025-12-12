@@ -21,15 +21,27 @@ export default function InviteMemberModal({
   onSuccess,
 }: InviteMemberModalProps) {
   const [roles, setRoles] = useState<ProjectRole[]>([])
+  const [selectedRoleId, setSelectedRoleId] = useState<string>('')
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [success, setSuccess] = useState<string | null>(null)
+
+  const assignableRoleNames = getAssignableRoles(userRole)
+  const assignableRoles = roles.filter((r) => assignableRoleNames.includes(r.name as RoleName))
+  const selectedRole = assignableRoles.find((r) => r.id === selectedRoleId)
 
   useEffect(() => {
     if (isOpen) {
       loadRoles()
     }
   }, [isOpen])
+
+  // Set default selected role when roles are loaded
+  useEffect(() => {
+    if (assignableRoles.length > 0 && !selectedRoleId) {
+      setSelectedRoleId(assignableRoles[0].id)
+    }
+  }, [assignableRoles.length, selectedRoleId])
 
   async function loadRoles() {
     try {
@@ -41,9 +53,6 @@ export default function InviteMemberModal({
   }
 
   if (!isOpen) return null
-
-  const assignableRoleNames = getAssignableRoles(userRole)
-  const assignableRoles = roles.filter((r) => assignableRoleNames.includes(r.name as RoleName))
 
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault()
@@ -129,6 +138,8 @@ export default function InviteMemberModal({
                 id="role_id"
                 name="role_id"
                 required
+                value={selectedRoleId}
+                onChange={(e) => setSelectedRoleId(e.target.value)}
                 className="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
               >
                 {assignableRoles.map((role) => (
@@ -137,11 +148,9 @@ export default function InviteMemberModal({
                   </option>
                 ))}
               </select>
-              {assignableRoles.length > 0 && (
+              {selectedRole && (
                 <p className="mt-1 text-xs text-slate-500">
-                  {getRoleDescription(
-                    assignableRoles.find((r) => r.id === (document.getElementById('role_id') as HTMLSelectElement)?.value)?.name as RoleName || assignableRoles[0].name as RoleName
-                  )}
+                  {getRoleDescription(selectedRole.name as RoleName)}
                 </p>
               )}
             </div>
