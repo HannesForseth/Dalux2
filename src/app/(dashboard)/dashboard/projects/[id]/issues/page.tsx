@@ -70,7 +70,7 @@ function CreateIssueModal({ isOpen, onClose, onCreate }: CreateIssueModalProps) 
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
       <div className="bg-slate-900 border border-slate-700 rounded-xl w-full max-w-lg">
         <div className="flex items-center justify-between px-6 py-4 border-b border-slate-800">
-          <h2 className="text-lg font-semibold text-white">Ny avvikelse</h2>
+          <h2 className="text-lg font-semibold text-white">Nytt ärende</h2>
           <button
             onClick={onClose}
             className="text-slate-400 hover:text-white transition-colors"
@@ -91,7 +91,7 @@ function CreateIssueModal({ isOpen, onClose, onCreate }: CreateIssueModalProps) 
               value={title}
               onChange={(e) => setTitle(e.target.value)}
               className="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-white placeholder-slate-500 focus:outline-none focus:border-blue-500"
-              placeholder="Beskriv avvikelsen kort"
+              placeholder="Beskriv ärendet kort"
               required
             />
           </div>
@@ -152,7 +152,7 @@ function CreateIssueModal({ isOpen, onClose, onCreate }: CreateIssueModalProps) 
               disabled={!title.trim() || isSubmitting}
               className="px-4 py-2 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-500 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              {isSubmitting ? 'Skapar...' : 'Skapa avvikelse'}
+              {isSubmitting ? 'Skapar...' : 'Skapa ärende'}
             </button>
           </div>
         </form>
@@ -209,7 +209,7 @@ export default function ProjectIssuesPage() {
   }
 
   const handleDelete = async (issueId: string) => {
-    if (!confirm('Är du säker på att du vill ta bort denna avvikelse?')) return
+    if (!confirm('Är du säker på att du vill ta bort detta ärende?')) return
 
     try {
       await deleteIssue(issueId)
@@ -239,7 +239,7 @@ export default function ProjectIssuesPage() {
               <path strokeLinecap="round" strokeLinejoin="round" d="M10.5 19.5 3 12m0 0 7.5-7.5M3 12h18" />
             </svg>
           </Link>
-          <h1 className="text-2xl font-bold text-white">Avvikelser</h1>
+          <h1 className="text-2xl font-bold text-white">Ärenden</h1>
         </div>
         <button
           onClick={() => setShowCreateModal(true)}
@@ -248,7 +248,7 @@ export default function ProjectIssuesPage() {
           <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
             <path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
           </svg>
-          Rapportera
+          Nytt ärende
         </button>
       </div>
 
@@ -310,20 +310,20 @@ export default function ProjectIssuesPage() {
           </div>
           <h2 className="text-lg font-semibold text-white mb-2">
             {statusFilter !== 'all' || priorityFilter !== 'all'
-              ? 'Inga avvikelser matchar filtret'
-              : 'Inga avvikelser än'}
+              ? 'Inga ärenden matchar filtret'
+              : 'Inga ärenden än'}
           </h2>
           <p className="text-slate-400 mb-6 max-w-md mx-auto">
             {statusFilter !== 'all' || priorityFilter !== 'all'
-              ? 'Prova att ändra filter för att se fler avvikelser.'
-              : 'Rapportera och spåra avvikelser, fel och problem som upptäcks under projektet.'}
+              ? 'Prova att ändra filter för att se fler ärenden.'
+              : 'Skapa ärenden för att spåra problem, frågor och observationer i projektet.'}
           </p>
           {statusFilter === 'all' && priorityFilter === 'all' && (
             <button
               onClick={() => setShowCreateModal(true)}
               className="px-4 py-2 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-500 transition-colors"
             >
-              Rapportera avvikelse
+              Skapa ärende
             </button>
           )}
         </div>
