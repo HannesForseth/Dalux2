@@ -298,7 +298,8 @@ function DeviationDetailModal({ deviation, isOpen, onClose, onUpdate, members }:
       await addDeviationComment(deviation.id, newComment.trim(), {
         members: members.map(m => ({
           user_id: m.user_id,
-          full_name: m.profile.full_name || ''
+          full_name: m.profile.full_name || '',
+          email: m.profile.email || undefined
         })),
         deviationNumber: deviation.deviation_number,
         deviationTitle: deviation.title,
@@ -337,10 +338,11 @@ function DeviationDetailModal({ deviation, isOpen, onClose, onUpdate, members }:
     }
   }
 
-  // Filter members for mention suggestions
-  const filteredMembers = members.filter(m =>
-    m.profile.full_name?.toLowerCase().includes(mentionFilter)
-  )
+  // Filter members for mention suggestions (include members without name using email)
+  const filteredMembers = members.filter(m => {
+    const name = m.profile.full_name || m.profile.email || ''
+    return name.toLowerCase().includes(mentionFilter)
+  })
 
   // Insert mention
   function insertMention(memberName: string) {
@@ -607,20 +609,23 @@ function DeviationDetailModal({ deviation, isOpen, onClose, onUpdate, members }:
                   {/* Mention suggestions dropdown */}
                   {showMentionSuggestions && filteredMembers.length > 0 && (
                     <div className="absolute bottom-full left-0 right-0 mb-1 bg-slate-800 border border-slate-700 rounded-lg shadow-lg max-h-48 overflow-y-auto z-20">
-                      {filteredMembers.map((member) => (
-                        <button
-                          key={member.user_id}
-                          type="button"
-                          onClick={() => insertMention(member.profile.full_name || 'Okänd')}
-                          className="w-full px-3 py-2 text-left text-white hover:bg-slate-700 flex items-center gap-2 transition-colors"
-                        >
-                          <div className="w-6 h-6 rounded-full bg-blue-600 flex items-center justify-center text-xs font-medium">
-                            {member.profile.full_name?.charAt(0) || '?'}
-                          </div>
-                          <span>{member.profile.full_name || 'Okänd'}</span>
-                          <span className="text-slate-500 text-xs ml-auto">{String(member.role)}</span>
-                        </button>
-                      ))}
+                      {filteredMembers.map((member) => {
+                        const displayName = member.profile.full_name || member.profile.email || 'Okänd'
+                        return (
+                          <button
+                            key={member.user_id}
+                            type="button"
+                            onClick={() => insertMention(displayName)}
+                            className="w-full px-3 py-2 text-left text-white hover:bg-slate-700 flex items-center gap-2 transition-colors"
+                          >
+                            <div className="w-6 h-6 rounded-full bg-blue-600 flex items-center justify-center text-xs font-medium">
+                              {displayName.charAt(0).toUpperCase()}
+                            </div>
+                            <span>{displayName}</span>
+                            <span className="text-slate-500 text-xs ml-auto">{String(member.role)}</span>
+                          </button>
+                        )
+                      })}
                     </div>
                   )}
                 </div>

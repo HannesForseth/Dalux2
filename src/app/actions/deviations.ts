@@ -304,7 +304,7 @@ export async function addDeviationComment(
   deviationId: string,
   content: string,
   mentionData?: {
-    members: { user_id: string; full_name: string }[]
+    members: { user_id: string; full_name: string; email?: string }[]
     deviationNumber: number
     deviationTitle: string
     projectId: string
