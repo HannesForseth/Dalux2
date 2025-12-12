@@ -261,3 +261,334 @@ export async function getUserRoleInProject(projectId: string): Promise<string | 
     return null
   }
 }
+
+export interface ProjectStats {
+  documentsCount: number
+  issuesCount: number
+  openIssuesCount: number
+  checklistsCount: number
+  completedChecklistsCount: number
+  rfisCount: number
+  openRfisCount: number
+}
+
+export async function getProjectStats(projectId: string): Promise<ProjectStats> {
+  const supabase = await createClient()
+
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) {
+    throw new Error('Inte inloggad')
+  }
+
+  // Fetch all counts in parallel
+  const [
+    documentsResult,
+    issuesResult,
+    openIssuesResult,
+    checklistsResult,
+    completedChecklistsResult,
+    rfisResult,
+    openRfisResult
+  ] = await Promise.all([
+    supabase.from('documents').select('id', { count: 'exact', head: true }).eq('project_id', projectId),
+    supabase.from('issues').select('id', { count: 'exact', head: true }).eq('project_id', projectId),
+    supabase.from('issues').select('id', { count: 'exact', head: true }).eq('project_id', projectId).in('status', ['open', 'in_progress']),
+    supabase.from('checklists').select('id', { count: 'exact', head: true }).eq('project_id', projectId),
+    supabase.from('checklists').select('id', { count: 'exact', head: true }).eq('project_id', projectId).eq('status', 'completed'),
+    supabase.from('rfis').select('id', { count: 'exact', head: true }).eq('project_id', projectId),
+    supabase.from('rfis').select('id', { count: 'exact', head: true }).eq('project_id', projectId).in('status', ['open', 'pending'])
+  ])
+
+  return {
+    documentsCount: documentsResult.count || 0,
+    issuesCount: issuesResult.count || 0,
+    openIssuesCount: openIssuesResult.count || 0,
+    checklistsCount: checklistsResult.count || 0,
+    completedChecklistsCount: completedChecklistsResult.count || 0,
+    rfisCount: rfisResult.count || 0,
+    openRfisCount: openRfisResult.count || 0
+  }
+}
+
+export type ActivityType =
+  | 'document_uploaded'
+  | 'document_updated'
+  | 'document_version'
+  | 'document_comment'
+  | 'issue_created'
+  | 'issue_updated'
+  | 'checklist_created'
+  | 'checklist_completed'
+
+export interface ActivityItem {
+  id: string
+  type: ActivityType
+  title: string
+  description: string
+  timestamp: string
+  user: {
+    id: string
+    name: string
+    avatar?: string
+  }
+  metadata?: {
+    documentId?: string
+    documentName?: string
+    issueId?: string
+    checklistId?: string
+    version?: number
+    commentId?: string
+  }
+}
+
+export async function getProjectActivity(projectId: string, limit: number = 20): Promise<ActivityItem[]> {
+  const supabase = await createClient()
+
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) {
+    throw new Error('Inte inloggad')
+  }
+
+  const activities: ActivityItem[] = []
+
+  // Fetch recent documents (uploaded/updated)
+  const { data: documents } = await supabase
+    .from('documents')
+    .select(`
+      id,
+      name,
+      created_at,
+      updated_at,
+      version,
+      uploaded_by,
+      uploader:profiles!documents_uploaded_by_fkey(id, full_name, avatar_url)
+    `)
+    .eq('project_id', projectId)
+    .order('updated_at', { ascending: false })
+    .limit(10)
+
+  if (documents) {
+    for (const doc of documents) {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const uploaderData = doc.uploader as any
+      const uploader = Array.isArray(uploaderData) ? uploaderData[0] : uploaderData
+
+      // Check if it was recently updated (different from created)
+      const createdAt = new Date(doc.created_at).getTime()
+      const updatedAt = new Date(doc.updated_at).getTime()
+      const isUpdate = updatedAt - createdAt > 60000 // More than 1 minute difference
+
+      activities.push({
+        id: `doc-${doc.id}-${isUpdate ? 'update' : 'create'}`,
+        type: isUpdate ? 'document_updated' : 'document_uploaded',
+        title: isUpdate ? 'Dokument uppdaterat' : 'Nytt dokument',
+        description: doc.name,
+        timestamp: isUpdate ? doc.updated_at : doc.created_at,
+        user: {
+          id: uploader?.id || '',
+          name: uploader?.full_name || 'Okänd användare',
+          avatar: uploader?.avatar_url || undefined
+        },
+        metadata: {
+          documentId: doc.id,
+          documentName: doc.name,
+          version: doc.version
+        }
+      })
+    }
+  }
+
+  // Fetch recent document versions
+  const { data: versions } = await supabase
+    .from('document_versions')
+    .select(`
+      id,
+      version,
+      change_note,
+      created_at,
+      document:documents!document_versions_document_id_fkey(id, name, project_id),
+      uploader:profiles!document_versions_uploaded_by_fkey(id, full_name, avatar_url)
+    `)
+    .order('created_at', { ascending: false })
+    .limit(10)
+
+  if (versions) {
+    for (const ver of versions) {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const docData = ver.document as any
+      const doc = Array.isArray(docData) ? docData[0] : docData
+      if (doc?.project_id !== projectId) continue
+
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const uploaderData = ver.uploader as any
+      const uploader = Array.isArray(uploaderData) ? uploaderData[0] : uploaderData
+
+      activities.push({
+        id: `ver-${ver.id}`,
+        type: 'document_version',
+        title: `Ny version (v${ver.version})`,
+        description: ver.change_note || doc?.name || 'Dokument',
+        timestamp: ver.created_at,
+        user: {
+          id: uploader?.id || '',
+          name: uploader?.full_name || 'Okänd användare',
+          avatar: uploader?.avatar_url || undefined
+        },
+        metadata: {
+          documentId: doc?.id,
+          documentName: doc?.name,
+          version: ver.version
+        }
+      })
+    }
+  }
+
+  // Fetch recent document comments
+  const { data: comments } = await supabase
+    .from('document_comments')
+    .select(`
+      id,
+      content,
+      created_at,
+      document:documents!document_comments_document_id_fkey(id, name),
+      author:profiles!document_comments_author_id_fkey(id, full_name, avatar_url)
+    `)
+    .eq('project_id', projectId)
+    .is('parent_id', null) // Only top-level comments
+    .order('created_at', { ascending: false })
+    .limit(10)
+
+  if (comments) {
+    for (const comment of comments) {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const docData = comment.document as any
+      const doc = Array.isArray(docData) ? docData[0] : docData
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const authorData = comment.author as any
+      const author = Array.isArray(authorData) ? authorData[0] : authorData
+
+      activities.push({
+        id: `comment-${comment.id}`,
+        type: 'document_comment',
+        title: 'Ny kommentar',
+        description: `${comment.content.substring(0, 100)}${comment.content.length > 100 ? '...' : ''}`,
+        timestamp: comment.created_at,
+        user: {
+          id: author?.id || '',
+          name: author?.full_name || 'Okänd användare',
+          avatar: author?.avatar_url || undefined
+        },
+        metadata: {
+          documentId: doc?.id,
+          documentName: doc?.name,
+          commentId: comment.id
+        }
+      })
+    }
+  }
+
+  // Fetch recent issues
+  const { data: issues } = await supabase
+    .from('issues')
+    .select(`
+      id,
+      title,
+      status,
+      created_at,
+      updated_at,
+      reporter:profiles!issues_reported_by_fkey(id, full_name, avatar_url)
+    `)
+    .eq('project_id', projectId)
+    .order('created_at', { ascending: false })
+    .limit(10)
+
+  if (issues) {
+    for (const issue of issues) {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const reporterData = issue.reporter as any
+      const reporter = Array.isArray(reporterData) ? reporterData[0] : reporterData
+
+      activities.push({
+        id: `issue-${issue.id}`,
+        type: 'issue_created',
+        title: 'Ny avvikelse',
+        description: issue.title,
+        timestamp: issue.created_at,
+        user: {
+          id: reporter?.id || '',
+          name: reporter?.full_name || 'Okänd användare',
+          avatar: reporter?.avatar_url || undefined
+        },
+        metadata: {
+          issueId: issue.id
+        }
+      })
+    }
+  }
+
+  // Fetch recent checklists
+  const { data: checklists } = await supabase
+    .from('checklists')
+    .select(`
+      id,
+      name,
+      status,
+      created_at,
+      completed_at,
+      creator:profiles!checklists_created_by_fkey(id, full_name, avatar_url),
+      completer:profiles!checklists_completed_by_fkey(id, full_name, avatar_url)
+    `)
+    .eq('project_id', projectId)
+    .order('created_at', { ascending: false })
+    .limit(10)
+
+  if (checklists) {
+    for (const checklist of checklists) {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const creatorData = checklist.creator as any
+      const creator = Array.isArray(creatorData) ? creatorData[0] : creatorData
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const completerData = checklist.completer as any
+      const completer = Array.isArray(completerData) ? completerData[0] : completerData
+
+      activities.push({
+        id: `checklist-${checklist.id}-create`,
+        type: 'checklist_created',
+        title: 'Ny checklista',
+        description: checklist.name,
+        timestamp: checklist.created_at,
+        user: {
+          id: creator?.id || '',
+          name: creator?.full_name || 'Okänd användare',
+          avatar: creator?.avatar_url || undefined
+        },
+        metadata: {
+          checklistId: checklist.id
+        }
+      })
+
+      if (checklist.status === 'completed' && checklist.completed_at) {
+        activities.push({
+          id: `checklist-${checklist.id}-complete`,
+          type: 'checklist_completed',
+          title: 'Checklista slutförd',
+          description: checklist.name,
+          timestamp: checklist.completed_at,
+          user: {
+            id: completer?.id || creator?.id || '',
+            name: completer?.full_name || creator?.full_name || 'Okänd användare',
+            avatar: completer?.avatar_url || creator?.avatar_url || undefined
+          },
+          metadata: {
+            checklistId: checklist.id
+          }
+        })
+      }
+    }
+  }
+
+  // Sort all activities by timestamp (newest first) and limit
+  return activities
+    .sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())
+    .slice(0, limit)
+}
