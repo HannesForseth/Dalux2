@@ -42,49 +42,51 @@ import type {
   DeviationWithDetails
 } from '@/types/database'
 
-const statusConfig: Record<ProtocolStatus, { label: string; color: string; bg: string }> = {
-  draft: { label: 'Utkast', color: 'text-yellow-400', bg: 'bg-yellow-400/10' },
-  finalized: { label: 'Slutfört', color: 'text-green-400', bg: 'bg-green-400/10' },
-  archived: { label: 'Arkiverat', color: 'text-slate-400', bg: 'bg-slate-400/10' },
+type TabType = 'overview' | 'attendees' | 'agenda' | 'notes' | 'decisions' | 'actions' | 'links' | 'attachments'
+
+const statusConfig: Record<ProtocolStatus, { label: string; color: string; bg: string; icon: string }> = {
+  draft: { label: 'Utkast', color: 'text-yellow-400', bg: 'bg-yellow-400/10', icon: '✏️' },
+  finalized: { label: 'Slutfört', color: 'text-green-400', bg: 'bg-green-400/10', icon: '✅' },
+  archived: { label: 'Arkiverat', color: 'text-slate-400', bg: 'bg-slate-400/10', icon: '📦' },
 }
 
-const meetingTypeConfig: Record<ProtocolMeetingType, { label: string; color: string }> = {
-  byggmote: { label: 'Byggmöte', color: 'text-blue-400' },
-  projektmote: { label: 'Projektmöte', color: 'text-purple-400' },
-  samordningsmote: { label: 'Samordningsmöte', color: 'text-cyan-400' },
-  startmote: { label: 'Startmöte', color: 'text-green-400' },
-  slutmote: { label: 'Slutmöte', color: 'text-orange-400' },
-  besiktning: { label: 'Besiktning', color: 'text-red-400' },
-  other: { label: 'Övrigt', color: 'text-slate-400' },
+const meetingTypeConfig: Record<ProtocolMeetingType, { label: string; color: string; bg: string; icon: string }> = {
+  byggmote: { label: 'Byggmöte', color: 'text-blue-400', bg: 'bg-blue-500/10', icon: '🏗️' },
+  projektmote: { label: 'Projektmöte', color: 'text-purple-400', bg: 'bg-purple-500/10', icon: '📊' },
+  samordningsmote: { label: 'Samordningsmöte', color: 'text-cyan-400', bg: 'bg-cyan-500/10', icon: '🤝' },
+  startmote: { label: 'Startmöte', color: 'text-green-400', bg: 'bg-green-500/10', icon: '🚀' },
+  slutmote: { label: 'Slutmöte', color: 'text-orange-400', bg: 'bg-orange-500/10', icon: '🏁' },
+  besiktning: { label: 'Besiktning', color: 'text-red-400', bg: 'bg-red-500/10', icon: '🔍' },
+  other: { label: 'Övrigt', color: 'text-slate-400', bg: 'bg-slate-500/10', icon: '📋' },
 }
 
-const attendeeRoleConfig: Record<ProtocolAttendeeRole, string> = {
-  organizer: 'Organisatör',
-  recorder: 'Protokollförare',
-  attendee: 'Deltagare',
-  absent_notified: 'Frånvarande (anmält)',
+const attendeeRoleConfig: Record<ProtocolAttendeeRole, { label: string; icon: string }> = {
+  organizer: { label: 'Organisatör', icon: '👑' },
+  recorder: { label: 'Protokollförare', icon: '📝' },
+  attendee: { label: 'Deltagare', icon: '👤' },
+  absent_notified: { label: 'Frånvarande', icon: '❌' },
 }
 
-const actionStatusConfig: Record<ProtocolActionItemStatus, { label: string; color: string; bg: string }> = {
-  pending: { label: 'Ej påbörjad', color: 'text-yellow-400', bg: 'bg-yellow-400/10' },
-  in_progress: { label: 'Pågående', color: 'text-blue-400', bg: 'bg-blue-400/10' },
-  completed: { label: 'Slutförd', color: 'text-green-400', bg: 'bg-green-400/10' },
-  cancelled: { label: 'Avbruten', color: 'text-slate-400', bg: 'bg-slate-400/10' },
+const actionStatusConfig: Record<ProtocolActionItemStatus, { label: string; color: string; bg: string; icon: string }> = {
+  pending: { label: 'Ej påbörjad', color: 'text-yellow-400', bg: 'bg-yellow-400/10', icon: '⏳' },
+  in_progress: { label: 'Pågående', color: 'text-blue-400', bg: 'bg-blue-400/10', icon: '🔄' },
+  completed: { label: 'Slutförd', color: 'text-green-400', bg: 'bg-green-400/10', icon: '✅' },
+  cancelled: { label: 'Avbruten', color: 'text-slate-400', bg: 'bg-slate-400/10', icon: '⛔' },
 }
 
-const actionPriorityConfig: Record<ProtocolActionItemPriority, { label: string; color: string }> = {
-  low: { label: 'Låg', color: 'text-slate-400' },
-  medium: { label: 'Medium', color: 'text-yellow-400' },
-  high: { label: 'Hög', color: 'text-orange-400' },
-  critical: { label: 'Kritisk', color: 'text-red-400' },
+const actionPriorityConfig: Record<ProtocolActionItemPriority, { label: string; color: string; bg: string }> = {
+  low: { label: 'Låg', color: 'text-slate-400', bg: 'bg-slate-400/20' },
+  medium: { label: 'Medium', color: 'text-yellow-400', bg: 'bg-yellow-400/20' },
+  high: { label: 'Hög', color: 'text-orange-400', bg: 'bg-orange-400/20' },
+  critical: { label: 'Kritisk', color: 'text-red-400', bg: 'bg-red-400/20' },
 }
 
-const linkTypeConfig: Record<ProtocolLinkType, string> = {
-  issue: 'Ärende',
-  deviation: 'Avvikelse',
-  rfi: 'RFI',
-  checklist: 'Checklista',
-  document: 'Dokument',
+const linkTypeConfig: Record<ProtocolLinkType, { label: string; icon: string }> = {
+  issue: { label: 'Ärende', icon: '📌' },
+  deviation: { label: 'Avvikelse', icon: '⚠️' },
+  rfi: { label: 'RFI', icon: '❓' },
+  checklist: { label: 'Checklista', icon: '☑️' },
+  document: { label: 'Dokument', icon: '📄' },
 }
 
 function formatDate(dateString: string): string {
@@ -101,6 +103,7 @@ function formatTime(timeString: string | null): string {
   return timeString.substring(0, 5)
 }
 
+// Icons
 function XIcon() {
   return (
     <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
@@ -117,10 +120,10 @@ function PlusIcon({ className = "h-4 w-4" }: { className?: string }) {
   )
 }
 
-function ChevronIcon({ className = "h-4 w-4", direction = "down" }: { className?: string; direction?: "up" | "down" }) {
+function ArrowLeftIcon() {
   return (
-    <svg className={`${className} transition-transform ${direction === "up" ? "rotate-180" : ""}`} fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
-      <path strokeLinecap="round" strokeLinejoin="round" d="m19.5 8.25-7.5 7.5-7.5-7.5" />
+    <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+      <path strokeLinecap="round" strokeLinejoin="round" d="M10.5 19.5 3 12m0 0 7.5-7.5M3 12h18" />
     </svg>
   )
 }
@@ -138,17 +141,7 @@ export default function ProtocolDetailPage() {
   const [attachments, setAttachments] = useState<ProtocolAttachment[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [isSaving, setIsSaving] = useState(false)
-
-  // Expanded sections
-  const [expandedSections, setExpandedSections] = useState({
-    attendees: true,
-    agenda: true,
-    notes: true,
-    decisions: true,
-    actions: true,
-    links: true,
-    attachments: true,
-  })
+  const [activeTab, setActiveTab] = useState<TabType>('overview')
 
   // Form states
   const [editingNotes, setEditingNotes] = useState(false)
@@ -159,10 +152,7 @@ export default function ProtocolDetailPage() {
   const [showAddAction, setShowAddAction] = useState(false)
   const [showAddLink, setShowAddLink] = useState(false)
   const [isGeneratingSummary, setIsGeneratingSummary] = useState(false)
-
-  const toggleSection = (section: keyof typeof expandedSections) => {
-    setExpandedSections(prev => ({ ...prev, [section]: !prev[section] }))
-  }
+  const [showQuickAdd, setShowQuickAdd] = useState(false)
 
   const loadData = useCallback(async () => {
     try {
@@ -195,6 +185,31 @@ export default function ProtocolDetailPage() {
   useEffect(() => {
     loadData()
   }, [loadData])
+
+  // Calculate completion percentage
+  const calculateCompletion = (): number => {
+    if (!protocol) return 0
+    let completed = 0
+    let total = 0
+
+    // Has attendees
+    total++
+    if ((protocol.attendees?.length || 0) > 0) completed++
+
+    // Has agenda
+    total++
+    if ((protocol.agenda_items?.length || 0) > 0) completed++
+
+    // Has notes
+    total++
+    if (protocol.notes && protocol.notes.length > 0) completed++
+
+    // Has decisions OR actions
+    total++
+    if ((protocol.decisions?.length || 0) > 0 || (protocol.action_items?.length || 0) > 0) completed++
+
+    return Math.round((completed / total) * 100)
+  }
 
   // Save notes
   const handleSaveNotes = async () => {
@@ -430,473 +445,681 @@ export default function ProtocolDetailPage() {
   }
 
   const isEditable = protocol.status === 'draft'
+  const completionPercent = calculateCompletion()
+  const typeConfig = meetingTypeConfig[protocol.meeting_type]
+
+  const tabs: { id: TabType; label: string; count?: number; icon: string }[] = [
+    { id: 'overview', label: 'Översikt', icon: '📋' },
+    { id: 'attendees', label: 'Deltagare', count: protocol.attendees?.length || 0, icon: '👥' },
+    { id: 'agenda', label: 'Dagordning', count: protocol.agenda_items?.length || 0, icon: '📝' },
+    { id: 'notes', label: 'Anteckningar', icon: '📄' },
+    { id: 'decisions', label: 'Beslut', count: protocol.decisions?.length || 0, icon: '⚖️' },
+    { id: 'actions', label: 'Åtgärder', count: protocol.action_items?.length || 0, icon: '✅' },
+    { id: 'links', label: 'Kopplingar', count: protocol.links?.length || 0, icon: '🔗' },
+    { id: 'attachments', label: 'Bilagor', count: attachments.length, icon: '📎' },
+  ]
 
   return (
-    <div className="max-w-4xl mx-auto">
-      {/* Header */}
-      <div className="flex items-start justify-between mb-6">
-        <div>
-          <div className="flex items-center gap-3 mb-2">
+    <div className="max-w-5xl mx-auto relative pb-20">
+      {/* Sticky Header */}
+      <div className="sticky top-0 z-10 bg-slate-950/95 backdrop-blur-sm pb-4 -mx-4 px-4">
+        {/* Top row */}
+        <div className="flex items-start justify-between py-4">
+          <div className="flex items-start gap-4">
             <Link
               href={`/dashboard/projects/${projectId}/protocols`}
-              className="text-slate-400 hover:text-white transition-colors"
+              className="mt-1 text-slate-400 hover:text-white transition-colors p-2 hover:bg-slate-800 rounded-lg"
             >
-              <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" d="M10.5 19.5 3 12m0 0 7.5-7.5M3 12h18" />
-              </svg>
+              <ArrowLeftIcon />
             </Link>
-            <span className="text-blue-400 font-mono">#{protocol.protocol_number}</span>
-            <h1 className="text-2xl font-bold text-white">{protocol.title}</h1>
+            <div>
+              <div className="flex items-center gap-3 mb-1">
+                <span className="text-3xl">{typeConfig.icon}</span>
+                <div>
+                  <div className="flex items-center gap-2">
+                    <span className="text-blue-400 font-mono text-sm">#{protocol.protocol_number}</span>
+                    <span className={`px-2 py-0.5 rounded-full text-xs ${statusConfig[protocol.status].bg} ${statusConfig[protocol.status].color}`}>
+                      {statusConfig[protocol.status].icon} {statusConfig[protocol.status].label}
+                    </span>
+                  </div>
+                  <h1 className="text-xl font-bold text-white">{protocol.title}</h1>
+                </div>
+              </div>
+              <div className="flex items-center gap-4 text-sm text-slate-400 ml-12">
+                <span className={typeConfig.color}>{typeConfig.label}</span>
+                <span>📅 {formatDate(protocol.meeting_date)}</span>
+                {protocol.start_time && (
+                  <span>🕐 {formatTime(protocol.start_time)}{protocol.end_time && ` - ${formatTime(protocol.end_time)}`}</span>
+                )}
+                {protocol.location && <span>📍 {protocol.location}</span>}
+              </div>
+            </div>
           </div>
-          <div className="flex items-center gap-4 text-sm">
-            <span className={`px-2 py-0.5 rounded-full ${statusConfig[protocol.status].bg} ${statusConfig[protocol.status].color}`}>
-              {statusConfig[protocol.status].label}
-            </span>
-            <span className={meetingTypeConfig[protocol.meeting_type].color}>
-              {meetingTypeConfig[protocol.meeting_type].label}
-            </span>
-            <span className="text-slate-400">{formatDate(protocol.meeting_date)}</span>
-            {protocol.start_time && (
-              <span className="text-slate-500">
-                {formatTime(protocol.start_time)}
-                {protocol.end_time && ` - ${formatTime(protocol.end_time)}`}
-              </span>
-            )}
-            {protocol.location && (
-              <span className="text-slate-500">{protocol.location}</span>
+
+          <div className="flex items-center gap-3">
+            {/* Progress indicator */}
+            <div className="text-right">
+              <div className="text-xs text-slate-500 mb-1">Ifylld</div>
+              <div className="flex items-center gap-2">
+                <div className="w-24 h-2 bg-slate-800 rounded-full overflow-hidden">
+                  <div
+                    className={`h-full transition-all duration-300 ${completionPercent === 100 ? 'bg-green-500' : 'bg-blue-500'}`}
+                    style={{ width: `${completionPercent}%` }}
+                  />
+                </div>
+                <span className={`text-sm font-medium ${completionPercent === 100 ? 'text-green-400' : 'text-slate-400'}`}>
+                  {completionPercent}%
+                </span>
+              </div>
+            </div>
+
+            {isEditable && (
+              <button
+                onClick={handleFinalize}
+                disabled={completionPercent < 50}
+                className="px-4 py-2 bg-green-600 text-white rounded-lg font-medium hover:bg-green-500 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+              >
+                ✅ Slutför
+              </button>
             )}
           </div>
         </div>
 
-        {isEditable && (
-          <button
-            onClick={handleFinalize}
-            className="px-4 py-2 bg-green-600 text-white rounded-lg font-medium hover:bg-green-500 transition-colors"
-          >
-            Slutför protokoll
-          </button>
-        )}
+        {/* Tabs */}
+        <div className="flex gap-1 overflow-x-auto pb-1">
+          {tabs.map(tab => (
+            <button
+              key={tab.id}
+              onClick={() => setActiveTab(tab.id)}
+              className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-colors whitespace-nowrap ${
+                activeTab === tab.id
+                  ? 'bg-blue-600 text-white'
+                  : 'text-slate-400 hover:text-white hover:bg-slate-800'
+              }`}
+            >
+              <span>{tab.icon}</span>
+              <span>{tab.label}</span>
+              {tab.count !== undefined && (
+                <span className={`px-1.5 py-0.5 rounded-full text-xs ${
+                  activeTab === tab.id ? 'bg-blue-500' : 'bg-slate-700'
+                }`}>
+                  {tab.count}
+                </span>
+              )}
+            </button>
+          ))}
+        </div>
       </div>
 
-      <div className="space-y-6">
-        {/* Attendees Section */}
-        <section className="bg-slate-900 border border-slate-800 rounded-xl overflow-hidden">
-          <button
-            onClick={() => toggleSection('attendees')}
-            className="w-full flex items-center justify-between px-6 py-4 text-left"
-          >
-            <h2 className="text-lg font-semibold text-white">Deltagare ({protocol.attendees?.length || 0})</h2>
-            <ChevronIcon direction={expandedSections.attendees ? "up" : "down"} />
-          </button>
+      {/* Tab Content */}
+      <div className="mt-6">
+        {/* Overview Tab */}
+        {activeTab === 'overview' && (
+          <div className="space-y-6">
+            {/* Stats Grid */}
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+              <button
+                onClick={() => setActiveTab('attendees')}
+                className="bg-slate-900 border border-slate-800 rounded-xl p-4 text-left hover:border-slate-700 transition-colors"
+              >
+                <div className="text-2xl mb-2">👥</div>
+                <div className="text-2xl font-bold text-white">{protocol.attendees?.length || 0}</div>
+                <div className="text-sm text-slate-400">Deltagare</div>
+                <div className="text-xs text-slate-500 mt-1">
+                  {protocol.attendees?.filter(a => a.attended).length || 0} närvarande
+                </div>
+              </button>
+              <button
+                onClick={() => setActiveTab('agenda')}
+                className="bg-slate-900 border border-slate-800 rounded-xl p-4 text-left hover:border-slate-700 transition-colors"
+              >
+                <div className="text-2xl mb-2">📝</div>
+                <div className="text-2xl font-bold text-white">{protocol.agenda_items?.length || 0}</div>
+                <div className="text-sm text-slate-400">Punkter</div>
+                <div className="text-xs text-slate-500 mt-1">
+                  {protocol.agenda_items?.reduce((acc, item) => acc + (item.duration_minutes || 0), 0) || 0} min totalt
+                </div>
+              </button>
+              <button
+                onClick={() => setActiveTab('decisions')}
+                className="bg-slate-900 border border-slate-800 rounded-xl p-4 text-left hover:border-slate-700 transition-colors"
+              >
+                <div className="text-2xl mb-2">⚖️</div>
+                <div className="text-2xl font-bold text-white">{protocol.decisions?.length || 0}</div>
+                <div className="text-sm text-slate-400">Beslut</div>
+              </button>
+              <button
+                onClick={() => setActiveTab('actions')}
+                className="bg-slate-900 border border-slate-800 rounded-xl p-4 text-left hover:border-slate-700 transition-colors"
+              >
+                <div className="text-2xl mb-2">✅</div>
+                <div className="text-2xl font-bold text-white">{protocol.action_items?.length || 0}</div>
+                <div className="text-sm text-slate-400">Åtgärder</div>
+                <div className="text-xs text-slate-500 mt-1">
+                  {protocol.action_items?.filter(a => a.status === 'completed').length || 0} slutförda
+                </div>
+              </button>
+            </div>
 
-          {expandedSections.attendees && (
-            <div className="px-6 pb-4 space-y-3">
-              {protocol.attendees?.map((attendee) => (
-                <div key={attendee.id} className="flex items-center justify-between py-2 border-b border-slate-800 last:border-0">
-                  <div className="flex items-center gap-3">
-                    <input
-                      type="checkbox"
-                      checked={attendee.attended}
-                      onChange={(e) => isEditable && handleToggleAttendance(attendee.id, e.target.checked)}
-                      disabled={!isEditable}
-                      className="w-4 h-4 rounded bg-slate-700 border-slate-600 text-blue-500 focus:ring-blue-500"
-                    />
-                    <div>
-                      <span className="text-white">{attendee.name}</span>
-                      {attendee.company && (
-                        <span className="text-slate-500 ml-2">({attendee.company})</span>
+            {/* AI Summary or Quick Overview */}
+            {protocol.ai_summary ? (
+              <div className="bg-gradient-to-r from-blue-900/20 to-purple-900/20 border border-blue-800/50 rounded-xl p-6">
+                <div className="flex items-center gap-2 mb-3">
+                  <span className="text-xl">✨</span>
+                  <h3 className="text-lg font-semibold text-white">AI-sammanfattning</h3>
+                </div>
+                <p className="text-slate-300">{protocol.ai_summary}</p>
+              </div>
+            ) : protocol.notes ? (
+              <div className="bg-slate-900 border border-slate-800 rounded-xl p-6">
+                <div className="flex items-center justify-between mb-3">
+                  <h3 className="text-lg font-semibold text-white">Anteckningar</h3>
+                  {isEditable && (
+                    <button
+                      onClick={handleGenerateSummary}
+                      disabled={isGeneratingSummary}
+                      className="flex items-center gap-2 px-3 py-1.5 bg-blue-600/20 text-blue-400 rounded-lg hover:bg-blue-600/30 text-sm disabled:opacity-50"
+                    >
+                      ✨ {isGeneratingSummary ? 'Genererar...' : 'Generera AI-sammanfattning'}
+                    </button>
+                  )}
+                </div>
+                <p className="text-slate-300 line-clamp-4">{protocol.notes}</p>
+                <button
+                  onClick={() => setActiveTab('notes')}
+                  className="text-blue-400 hover:text-blue-300 text-sm mt-2"
+                >
+                  Läs mer →
+                </button>
+              </div>
+            ) : (
+              <div className="bg-slate-900 border border-slate-800 rounded-xl p-6 text-center">
+                <div className="text-4xl mb-3">📝</div>
+                <h3 className="text-lg font-semibold text-white mb-2">Inga anteckningar än</h3>
+                <p className="text-slate-400 text-sm mb-4">Börja dokumentera mötet genom att lägga till anteckningar</p>
+                {isEditable && (
+                  <button
+                    onClick={() => {
+                      setActiveTab('notes')
+                      setEditingNotes(true)
+                    }}
+                    className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-500 transition-colors"
+                  >
+                    Lägg till anteckningar
+                  </button>
+                )}
+              </div>
+            )}
+
+            {/* Recent Actions */}
+            {(protocol.action_items?.length || 0) > 0 && (
+              <div className="bg-slate-900 border border-slate-800 rounded-xl p-6">
+                <div className="flex items-center justify-between mb-4">
+                  <h3 className="text-lg font-semibold text-white">Senaste åtgärder</h3>
+                  <button
+                    onClick={() => setActiveTab('actions')}
+                    className="text-blue-400 hover:text-blue-300 text-sm"
+                  >
+                    Visa alla →
+                  </button>
+                </div>
+                <div className="space-y-3">
+                  {protocol.action_items?.slice(0, 3).map((action) => (
+                    <div key={action.id} className="flex items-center gap-3 py-2 border-b border-slate-800 last:border-0">
+                      <span className={`px-2 py-1 rounded-full text-xs ${actionStatusConfig[action.status].bg} ${actionStatusConfig[action.status].color}`}>
+                        {actionStatusConfig[action.status].icon}
+                      </span>
+                      <div className="flex-1">
+                        <p className="text-white text-sm">{action.description}</p>
+                        {action.assigned_to_name && (
+                          <span className="text-xs text-slate-500">→ {action.assigned_to_name}</span>
+                        )}
+                      </div>
+                      {action.deadline && (
+                        <span className="text-xs text-slate-500">{formatDate(action.deadline)}</span>
                       )}
-                      <span className="text-slate-500 text-sm ml-2">{attendeeRoleConfig[attendee.role]}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Attendees Tab */}
+        {activeTab === 'attendees' && (
+          <div className="bg-slate-900 border border-slate-800 rounded-xl p-6">
+            <div className="flex items-center justify-between mb-6">
+              <h3 className="text-lg font-semibold text-white">Deltagare</h3>
+              {isEditable && !showAddAttendee && (
+                <button
+                  onClick={() => setShowAddAttendee(true)}
+                  className="flex items-center gap-2 px-3 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-500 text-sm"
+                >
+                  <PlusIcon /> Lägg till
+                </button>
+              )}
+            </div>
+
+            {showAddAttendee && (
+              <div className="mb-6">
+                <AddAttendeeForm
+                  members={members}
+                  onSubmit={handleAddAttendee}
+                  onCancel={() => setShowAddAttendee(false)}
+                />
+              </div>
+            )}
+
+            <div className="grid gap-3">
+              {protocol.attendees?.map((attendee) => (
+                <div key={attendee.id} className="flex items-center justify-between p-3 bg-slate-800 rounded-lg">
+                  <div className="flex items-center gap-3">
+                    <button
+                      onClick={() => isEditable && handleToggleAttendance(attendee.id, !attendee.attended)}
+                      disabled={!isEditable}
+                      className={`w-10 h-10 rounded-full flex items-center justify-center text-lg transition-colors ${
+                        attendee.attended
+                          ? 'bg-green-500/20 text-green-400'
+                          : 'bg-slate-700 text-slate-500'
+                      }`}
+                    >
+                      {attendee.attended ? '✓' : '—'}
+                    </button>
+                    <div>
+                      <div className="flex items-center gap-2">
+                        <span className="text-white font-medium">{attendee.name}</span>
+                        <span className="text-xs px-2 py-0.5 rounded-full bg-slate-700 text-slate-400">
+                          {attendeeRoleConfig[attendee.role].icon} {attendeeRoleConfig[attendee.role].label}
+                        </span>
+                      </div>
+                      {(attendee.company || attendee.email) && (
+                        <div className="text-sm text-slate-500">
+                          {attendee.company}{attendee.company && attendee.email && ' • '}{attendee.email}
+                        </div>
+                      )}
                     </div>
                   </div>
                   {isEditable && (
                     <button
                       onClick={() => handleRemoveAttendee(attendee.id)}
-                      className="text-slate-500 hover:text-red-400"
+                      className="text-slate-500 hover:text-red-400 p-2"
                     >
                       <XIcon />
                     </button>
                   )}
                 </div>
               ))}
-
-              {isEditable && (
-                showAddAttendee ? (
-                  <AddAttendeeForm
-                    members={members}
-                    onSubmit={handleAddAttendee}
-                    onCancel={() => setShowAddAttendee(false)}
-                  />
-                ) : (
-                  <button
-                    onClick={() => setShowAddAttendee(true)}
-                    className="flex items-center gap-2 text-blue-400 hover:text-blue-300 text-sm"
-                  >
-                    <PlusIcon /> Lägg till deltagare
-                  </button>
-                )
+              {(protocol.attendees?.length || 0) === 0 && !showAddAttendee && (
+                <div className="text-center py-8 text-slate-500">
+                  <div className="text-4xl mb-2">👥</div>
+                  <p>Inga deltagare tillagda</p>
+                </div>
               )}
             </div>
-          )}
-        </section>
+          </div>
+        )}
 
-        {/* Agenda Section */}
-        <section className="bg-slate-900 border border-slate-800 rounded-xl overflow-hidden">
-          <button
-            onClick={() => toggleSection('agenda')}
-            className="w-full flex items-center justify-between px-6 py-4 text-left"
-          >
-            <h2 className="text-lg font-semibold text-white">Dagordning ({protocol.agenda_items?.length || 0})</h2>
-            <ChevronIcon direction={expandedSections.agenda ? "up" : "down"} />
-          </button>
+        {/* Agenda Tab */}
+        {activeTab === 'agenda' && (
+          <div className="bg-slate-900 border border-slate-800 rounded-xl p-6">
+            <div className="flex items-center justify-between mb-6">
+              <h3 className="text-lg font-semibold text-white">Dagordning</h3>
+              {isEditable && !showAddAgenda && (
+                <button
+                  onClick={() => setShowAddAgenda(true)}
+                  className="flex items-center gap-2 px-3 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-500 text-sm"
+                >
+                  <PlusIcon /> Lägg till punkt
+                </button>
+              )}
+            </div>
 
-          {expandedSections.agenda && (
-            <div className="px-6 pb-4 space-y-3">
+            {showAddAgenda && (
+              <div className="mb-6">
+                <AddAgendaForm
+                  onSubmit={handleAddAgendaItem}
+                  onCancel={() => setShowAddAgenda(false)}
+                />
+              </div>
+            )}
+
+            <div className="space-y-3">
               {protocol.agenda_items?.sort((a, b) => a.order_index - b.order_index).map((item, index) => (
-                <div key={item.id} className="flex items-start justify-between py-2 border-b border-slate-800 last:border-0">
-                  <div className="flex items-start gap-3">
-                    <span className="text-blue-400 font-mono text-sm w-6">{index + 1}.</span>
-                    <div>
-                      <h4 className="text-white">{item.title}</h4>
-                      {item.description && (
-                        <p className="text-slate-400 text-sm mt-1">{item.description}</p>
-                      )}
-                      {item.duration_minutes && (
-                        <span className="text-slate-500 text-xs">{item.duration_minutes} min</span>
-                      )}
-                    </div>
+                <div key={item.id} className="flex items-start gap-4 p-4 bg-slate-800 rounded-lg group">
+                  <div className="w-8 h-8 rounded-full bg-blue-500/20 text-blue-400 flex items-center justify-center font-mono text-sm flex-shrink-0">
+                    {index + 1}
+                  </div>
+                  <div className="flex-1">
+                    <h4 className="text-white font-medium">{item.title}</h4>
+                    {item.description && (
+                      <p className="text-slate-400 text-sm mt-1">{item.description}</p>
+                    )}
+                    {item.duration_minutes && (
+                      <span className="inline-flex items-center gap-1 text-xs text-slate-500 mt-2">
+                        🕐 {item.duration_minutes} min
+                      </span>
+                    )}
                   </div>
                   {isEditable && (
                     <button
                       onClick={() => handleDeleteAgendaItem(item.id)}
-                      className="text-slate-500 hover:text-red-400"
+                      className="text-slate-500 hover:text-red-400 p-2 opacity-0 group-hover:opacity-100 transition-opacity"
                     >
                       <XIcon />
                     </button>
                   )}
                 </div>
               ))}
-
-              {isEditable && (
-                showAddAgenda ? (
-                  <AddAgendaForm
-                    onSubmit={handleAddAgendaItem}
-                    onCancel={() => setShowAddAgenda(false)}
-                  />
-                ) : (
-                  <button
-                    onClick={() => setShowAddAgenda(true)}
-                    className="flex items-center gap-2 text-blue-400 hover:text-blue-300 text-sm"
-                  >
-                    <PlusIcon /> Lägg till punkt
-                  </button>
-                )
+              {(protocol.agenda_items?.length || 0) === 0 && !showAddAgenda && (
+                <div className="text-center py-8 text-slate-500">
+                  <div className="text-4xl mb-2">📝</div>
+                  <p>Ingen dagordning skapad</p>
+                </div>
               )}
             </div>
-          )}
-        </section>
+          </div>
+        )}
 
-        {/* Notes Section */}
-        <section className="bg-slate-900 border border-slate-800 rounded-xl overflow-hidden">
-          <button
-            onClick={() => toggleSection('notes')}
-            className="w-full flex items-center justify-between px-6 py-4 text-left"
-          >
-            <h2 className="text-lg font-semibold text-white">Anteckningar</h2>
-            <ChevronIcon direction={expandedSections.notes ? "up" : "down"} />
-          </button>
-
-          {expandedSections.notes && (
-            <div className="px-6 pb-4 space-y-4">
-              {editingNotes ? (
-                <div className="space-y-3">
-                  <textarea
-                    value={notesValue}
-                    onChange={(e) => setNotesValue(e.target.value)}
-                    rows={10}
-                    className="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-white placeholder-slate-500 focus:outline-none focus:border-blue-500"
-                    placeholder="Skriv mötesanteckningar..."
-                  />
-                  <div className="flex justify-end gap-2">
-                    <button
-                      onClick={() => {
-                        setNotesValue(protocol.notes || '')
-                        setEditingNotes(false)
-                      }}
-                      className="px-3 py-1.5 text-slate-400 hover:text-white"
-                    >
-                      Avbryt
-                    </button>
-                    <button
-                      onClick={handleSaveNotes}
-                      disabled={isSaving}
-                      className="px-3 py-1.5 bg-blue-600 text-white rounded-lg hover:bg-blue-500 disabled:opacity-50"
-                    >
-                      {isSaving ? 'Sparar...' : 'Spara'}
-                    </button>
-                  </div>
-                </div>
-              ) : (
-                <>
-                  {protocol.notes ? (
-                    <div className="prose prose-invert max-w-none">
-                      <pre className="whitespace-pre-wrap text-slate-300 font-sans text-sm bg-slate-800 p-4 rounded-lg">
-                        {protocol.notes}
-                      </pre>
-                    </div>
-                  ) : (
-                    <p className="text-slate-500 text-sm">Inga anteckningar än.</p>
-                  )}
-                  {isEditable && (
-                    <button
-                      onClick={() => setEditingNotes(true)}
-                      className="text-blue-400 hover:text-blue-300 text-sm"
-                    >
-                      Redigera anteckningar
-                    </button>
-                  )}
-                </>
-              )}
-
-              {/* AI Summary */}
-              {protocol.ai_summary && (
-                <div className="mt-4 p-4 bg-slate-800 border border-blue-900 rounded-lg">
-                  <h4 className="text-blue-400 text-sm font-medium mb-2">AI-sammanfattning</h4>
-                  <p className="text-slate-300 text-sm">{protocol.ai_summary}</p>
-                </div>
-              )}
-
-              {isEditable && protocol.notes && (
+        {/* Notes Tab */}
+        {activeTab === 'notes' && (
+          <div className="bg-slate-900 border border-slate-800 rounded-xl p-6">
+            <div className="flex items-center justify-between mb-6">
+              <h3 className="text-lg font-semibold text-white">Anteckningar</h3>
+              {isEditable && !editingNotes && (
                 <button
-                  onClick={handleGenerateSummary}
-                  disabled={isGeneratingSummary}
-                  className="flex items-center gap-2 px-3 py-1.5 bg-blue-600/20 text-blue-400 rounded-lg hover:bg-blue-600/30 text-sm disabled:opacity-50"
+                  onClick={() => setEditingNotes(true)}
+                  className="text-blue-400 hover:text-blue-300 text-sm"
                 >
-                  <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M9.813 15.904 9 18.75l-.813-2.846a4.5 4.5 0 0 0-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 0 0 3.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 0 0 3.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 0 0-3.09 3.09Z" />
-                  </svg>
-                  {isGeneratingSummary ? 'Genererar...' : 'Generera AI-sammanfattning'}
+                  Redigera
                 </button>
               )}
             </div>
-          )}
-        </section>
 
-        {/* Decisions Section */}
-        <section className="bg-slate-900 border border-slate-800 rounded-xl overflow-hidden">
-          <button
-            onClick={() => toggleSection('decisions')}
-            className="w-full flex items-center justify-between px-6 py-4 text-left"
-          >
-            <h2 className="text-lg font-semibold text-white">Beslut ({protocol.decisions?.length || 0})</h2>
-            <ChevronIcon direction={expandedSections.decisions ? "up" : "down"} />
-          </button>
+            {editingNotes ? (
+              <div className="space-y-4">
+                <textarea
+                  value={notesValue}
+                  onChange={(e) => setNotesValue(e.target.value)}
+                  rows={15}
+                  className="w-full px-4 py-3 bg-slate-800 border border-slate-700 rounded-lg text-white placeholder-slate-500 focus:outline-none focus:border-blue-500 resize-none"
+                  placeholder="Skriv mötesanteckningar..."
+                />
+                <div className="flex justify-end gap-3">
+                  <button
+                    onClick={() => {
+                      setNotesValue(protocol.notes || '')
+                      setEditingNotes(false)
+                    }}
+                    className="px-4 py-2 text-slate-400 hover:text-white"
+                  >
+                    Avbryt
+                  </button>
+                  <button
+                    onClick={handleSaveNotes}
+                    disabled={isSaving}
+                    className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-500 disabled:opacity-50"
+                  >
+                    {isSaving ? 'Sparar...' : 'Spara'}
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <>
+                {protocol.notes ? (
+                  <pre className="whitespace-pre-wrap text-slate-300 font-sans text-sm bg-slate-800 p-4 rounded-lg">
+                    {protocol.notes}
+                  </pre>
+                ) : (
+                  <div className="text-center py-8 text-slate-500">
+                    <div className="text-4xl mb-2">📄</div>
+                    <p>Inga anteckningar än</p>
+                    {isEditable && (
+                      <button
+                        onClick={() => setEditingNotes(true)}
+                        className="mt-4 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-500"
+                      >
+                        Lägg till anteckningar
+                      </button>
+                    )}
+                  </div>
+                )}
 
-          {expandedSections.decisions && (
-            <div className="px-6 pb-4 space-y-3">
-              {protocol.decisions?.map((decision) => (
-                <div key={decision.id} className="flex items-start justify-between py-2 border-b border-slate-800 last:border-0">
-                  <div className="flex items-start gap-3">
-                    <span className="text-green-400 font-mono text-sm">B{decision.decision_number}</span>
-                    <div>
-                      <p className="text-white">{decision.description}</p>
-                      {decision.decided_by && (
-                        <span className="text-slate-500 text-xs">Beslutat av: {decision.decided_by}</span>
-                      )}
+                {/* AI Summary Section */}
+                {protocol.ai_summary && (
+                  <div className="mt-6 p-4 bg-gradient-to-r from-blue-900/20 to-purple-900/20 border border-blue-800/50 rounded-lg">
+                    <div className="flex items-center gap-2 mb-2">
+                      <span>✨</span>
+                      <h4 className="text-blue-400 font-medium">AI-sammanfattning</h4>
                     </div>
+                    <p className="text-slate-300 text-sm">{protocol.ai_summary}</p>
+                  </div>
+                )}
+
+                {isEditable && protocol.notes && !protocol.ai_summary && (
+                  <button
+                    onClick={handleGenerateSummary}
+                    disabled={isGeneratingSummary}
+                    className="mt-4 flex items-center gap-2 px-4 py-2 bg-blue-600/20 text-blue-400 rounded-lg hover:bg-blue-600/30 disabled:opacity-50"
+                  >
+                    ✨ {isGeneratingSummary ? 'Genererar...' : 'Generera AI-sammanfattning'}
+                  </button>
+                )}
+              </>
+            )}
+          </div>
+        )}
+
+        {/* Decisions Tab */}
+        {activeTab === 'decisions' && (
+          <div className="bg-slate-900 border border-slate-800 rounded-xl p-6">
+            <div className="flex items-center justify-between mb-6">
+              <h3 className="text-lg font-semibold text-white">Beslut</h3>
+              {isEditable && !showAddDecision && (
+                <button
+                  onClick={() => setShowAddDecision(true)}
+                  className="flex items-center gap-2 px-3 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-500 text-sm"
+                >
+                  <PlusIcon /> Lägg till beslut
+                </button>
+              )}
+            </div>
+
+            {showAddDecision && (
+              <div className="mb-6">
+                <AddDecisionForm
+                  onSubmit={handleAddDecision}
+                  onCancel={() => setShowAddDecision(false)}
+                />
+              </div>
+            )}
+
+            <div className="space-y-3">
+              {protocol.decisions?.map((decision) => (
+                <div key={decision.id} className="flex items-start gap-4 p-4 bg-slate-800 rounded-lg group">
+                  <div className="w-10 h-10 rounded-full bg-green-500/20 text-green-400 flex items-center justify-center font-mono text-sm flex-shrink-0">
+                    B{decision.decision_number}
+                  </div>
+                  <div className="flex-1">
+                    <p className="text-white">{decision.description}</p>
+                    {decision.decided_by && (
+                      <span className="text-xs text-slate-500 mt-1 block">Beslutat av: {decision.decided_by}</span>
+                    )}
                   </div>
                   {isEditable && (
                     <button
                       onClick={() => handleDeleteDecision(decision.id)}
-                      className="text-slate-500 hover:text-red-400"
+                      className="text-slate-500 hover:text-red-400 p-2 opacity-0 group-hover:opacity-100 transition-opacity"
                     >
                       <XIcon />
                     </button>
                   )}
                 </div>
               ))}
-
-              {isEditable && (
-                showAddDecision ? (
-                  <AddDecisionForm
-                    onSubmit={handleAddDecision}
-                    onCancel={() => setShowAddDecision(false)}
-                  />
-                ) : (
-                  <button
-                    onClick={() => setShowAddDecision(true)}
-                    className="flex items-center gap-2 text-blue-400 hover:text-blue-300 text-sm"
-                  >
-                    <PlusIcon /> Lägg till beslut
-                  </button>
-                )
+              {(protocol.decisions?.length || 0) === 0 && !showAddDecision && (
+                <div className="text-center py-8 text-slate-500">
+                  <div className="text-4xl mb-2">⚖️</div>
+                  <p>Inga beslut dokumenterade</p>
+                </div>
               )}
             </div>
-          )}
-        </section>
+          </div>
+        )}
 
-        {/* Action Items Section */}
-        <section className="bg-slate-900 border border-slate-800 rounded-xl overflow-hidden">
-          <button
-            onClick={() => toggleSection('actions')}
-            className="w-full flex items-center justify-between px-6 py-4 text-left"
-          >
-            <h2 className="text-lg font-semibold text-white">Åtgärdspunkter ({protocol.action_items?.length || 0})</h2>
-            <ChevronIcon direction={expandedSections.actions ? "up" : "down"} />
-          </button>
+        {/* Actions Tab */}
+        {activeTab === 'actions' && (
+          <div className="bg-slate-900 border border-slate-800 rounded-xl p-6">
+            <div className="flex items-center justify-between mb-6">
+              <h3 className="text-lg font-semibold text-white">Åtgärdspunkter</h3>
+              {isEditable && !showAddAction && (
+                <button
+                  onClick={() => setShowAddAction(true)}
+                  className="flex items-center gap-2 px-3 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-500 text-sm"
+                >
+                  <PlusIcon /> Lägg till åtgärd
+                </button>
+              )}
+            </div>
 
-          {expandedSections.actions && (
-            <div className="px-6 pb-4 space-y-3">
+            {showAddAction && (
+              <div className="mb-6">
+                <AddActionForm
+                  members={members}
+                  onSubmit={handleAddActionItem}
+                  onCancel={() => setShowAddAction(false)}
+                />
+              </div>
+            )}
+
+            <div className="space-y-3">
               {protocol.action_items?.map((action) => (
-                <div key={action.id} className="flex items-start justify-between py-3 border-b border-slate-800 last:border-0">
-                  <div className="flex-1">
-                    <div className="flex items-center gap-3 mb-1">
-                      <span className="text-orange-400 font-mono text-sm">Å{action.action_number}</span>
-                      <span className={`px-2 py-0.5 rounded-full text-xs ${actionStatusConfig[action.status].bg} ${actionStatusConfig[action.status].color}`}>
-                        {actionStatusConfig[action.status].label}
+                <div key={action.id} className="p-4 bg-slate-800 rounded-lg group">
+                  <div className="flex items-start justify-between">
+                    <div className="flex items-start gap-3">
+                      <span className="text-orange-400 font-mono text-sm bg-orange-500/10 px-2 py-1 rounded">
+                        Å{action.action_number}
                       </span>
-                      <span className={`text-xs ${actionPriorityConfig[action.priority].color}`}>
-                        {actionPriorityConfig[action.priority].label}
-                      </span>
+                      <div className="flex-1">
+                        <p className="text-white mb-2">{action.description}</p>
+                        <div className="flex flex-wrap items-center gap-2">
+                          <span className={`px-2 py-0.5 rounded-full text-xs ${actionStatusConfig[action.status].bg} ${actionStatusConfig[action.status].color}`}>
+                            {actionStatusConfig[action.status].icon} {actionStatusConfig[action.status].label}
+                          </span>
+                          <span className={`px-2 py-0.5 rounded-full text-xs ${actionPriorityConfig[action.priority].bg} ${actionPriorityConfig[action.priority].color}`}>
+                            {actionPriorityConfig[action.priority].label}
+                          </span>
+                          {action.assigned_to_name && (
+                            <span className="text-xs text-slate-400">👤 {action.assigned_to_name}</span>
+                          )}
+                          {action.deadline && (
+                            <span className="text-xs text-slate-400">📅 {formatDate(action.deadline)}</span>
+                          )}
+                        </div>
+                      </div>
                     </div>
-                    <p className="text-white mb-1">{action.description}</p>
-                    <div className="flex items-center gap-4 text-xs text-slate-500">
-                      {action.assigned_to_name && (
-                        <span>Ansvarig: {action.assigned_to_name}</span>
-                      )}
-                      {action.deadline && (
-                        <span>Deadline: {formatDate(action.deadline)}</span>
+                    <div className="flex items-center gap-2">
+                      <select
+                        value={action.status}
+                        onChange={(e) => handleUpdateActionStatus(action.id, e.target.value as ProtocolActionItemStatus)}
+                        className="px-2 py-1 bg-slate-700 border border-slate-600 rounded text-sm text-white focus:outline-none focus:border-blue-500"
+                      >
+                        {Object.entries(actionStatusConfig).map(([key, { label }]) => (
+                          <option key={key} value={key}>{label}</option>
+                        ))}
+                      </select>
+                      {isEditable && (
+                        <button
+                          onClick={() => handleDeleteAction(action.id)}
+                          className="text-slate-500 hover:text-red-400 p-2 opacity-0 group-hover:opacity-100 transition-opacity"
+                        >
+                          <XIcon />
+                        </button>
                       )}
                     </div>
                   </div>
-                  <div className="flex items-center gap-2">
-                    <select
-                      value={action.status}
-                      onChange={(e) => handleUpdateActionStatus(action.id, e.target.value as ProtocolActionItemStatus)}
-                      className="px-2 py-1 bg-slate-800 border border-slate-700 rounded text-sm text-white focus:outline-none focus:border-blue-500"
-                    >
-                      {Object.entries(actionStatusConfig).map(([key, { label }]) => (
-                        <option key={key} value={key}>{label}</option>
-                      ))}
-                    </select>
+                </div>
+              ))}
+              {(protocol.action_items?.length || 0) === 0 && !showAddAction && (
+                <div className="text-center py-8 text-slate-500">
+                  <div className="text-4xl mb-2">✅</div>
+                  <p>Inga åtgärder tillagda</p>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+
+        {/* Links Tab */}
+        {activeTab === 'links' && (
+          <div className="bg-slate-900 border border-slate-800 rounded-xl p-6">
+            <div className="flex items-center justify-between mb-6">
+              <h3 className="text-lg font-semibold text-white">Kopplingar</h3>
+              {isEditable && !showAddLink && (
+                <button
+                  onClick={() => setShowAddLink(true)}
+                  className="flex items-center gap-2 px-3 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-500 text-sm"
+                >
+                  <PlusIcon /> Lägg till koppling
+                </button>
+              )}
+            </div>
+
+            {showAddLink && (
+              <div className="mb-6">
+                <AddLinkForm
+                  issues={issues}
+                  deviations={deviations}
+                  onSubmit={handleAddLink}
+                  onCancel={() => setShowAddLink(false)}
+                />
+              </div>
+            )}
+
+            <div className="space-y-3">
+              {protocol.links?.map((link) => {
+                const linkedItem = link.link_type === 'issue'
+                  ? issues.find(i => i.id === link.linked_item_id)
+                  : link.link_type === 'deviation'
+                  ? deviations.find(d => d.id === link.linked_item_id)
+                  : null
+
+                return (
+                  <div key={link.id} className="flex items-center justify-between p-4 bg-slate-800 rounded-lg group">
+                    <div className="flex items-center gap-3">
+                      <span className="text-xl">{linkTypeConfig[link.link_type].icon}</span>
+                      <div>
+                        <span className="text-xs text-slate-500 block">{linkTypeConfig[link.link_type].label}</span>
+                        <span className="text-white">{linkedItem?.title || link.linked_item_id}</span>
+                      </div>
+                    </div>
                     {isEditable && (
                       <button
-                        onClick={() => handleDeleteAction(action.id)}
-                        className="text-slate-500 hover:text-red-400"
+                        onClick={() => handleRemoveLink(link.id)}
+                        className="text-slate-500 hover:text-red-400 p-2 opacity-0 group-hover:opacity-100 transition-opacity"
                       >
                         <XIcon />
                       </button>
                     )}
                   </div>
-                </div>
-              ))}
-
-              {isEditable && (
-                showAddAction ? (
-                  <AddActionForm
-                    members={members}
-                    onSubmit={handleAddActionItem}
-                    onCancel={() => setShowAddAction(false)}
-                  />
-                ) : (
-                  <button
-                    onClick={() => setShowAddAction(true)}
-                    className="flex items-center gap-2 text-blue-400 hover:text-blue-300 text-sm"
-                  >
-                    <PlusIcon /> Lägg till åtgärd
-                  </button>
                 )
+              })}
+              {(protocol.links?.length || 0) === 0 && !showAddLink && (
+                <div className="text-center py-8 text-slate-500">
+                  <div className="text-4xl mb-2">🔗</div>
+                  <p>Inga kopplingar till andra objekt</p>
+                </div>
               )}
             </div>
-          )}
-        </section>
+          </div>
+        )}
 
-        {/* Links Section */}
-        <section className="bg-slate-900 border border-slate-800 rounded-xl overflow-hidden">
-          <button
-            onClick={() => toggleSection('links')}
-            className="w-full flex items-center justify-between px-6 py-4 text-left"
-          >
-            <h2 className="text-lg font-semibold text-white">Kopplingar ({protocol.links?.length || 0})</h2>
-            <ChevronIcon direction={expandedSections.links ? "up" : "down"} />
-          </button>
-
-          {expandedSections.links && (
-            <div className="px-6 pb-4 space-y-3">
-              {protocol.links?.map((link) => (
-                <div key={link.id} className="flex items-center justify-between py-2 border-b border-slate-800 last:border-0">
-                  <div className="flex items-center gap-3">
-                    <span className="text-slate-400 text-sm">{linkTypeConfig[link.link_type]}</span>
-                    <span className="text-white">{link.linked_item_id}</span>
-                  </div>
-                  {isEditable && (
-                    <button
-                      onClick={() => handleRemoveLink(link.id)}
-                      className="text-slate-500 hover:text-red-400"
-                    >
-                      <XIcon />
-                    </button>
-                  )}
-                </div>
-              ))}
-
+        {/* Attachments Tab */}
+        {activeTab === 'attachments' && (
+          <div className="bg-slate-900 border border-slate-800 rounded-xl p-6">
+            <div className="flex items-center justify-between mb-6">
+              <h3 className="text-lg font-semibold text-white">Bilagor</h3>
               {isEditable && (
-                showAddLink ? (
-                  <AddLinkForm
-                    issues={issues}
-                    deviations={deviations}
-                    onSubmit={handleAddLink}
-                    onCancel={() => setShowAddLink(false)}
-                  />
-                ) : (
-                  <button
-                    onClick={() => setShowAddLink(true)}
-                    className="flex items-center gap-2 text-blue-400 hover:text-blue-300 text-sm"
-                  >
-                    <PlusIcon /> Lägg till koppling
-                  </button>
-                )
-              )}
-            </div>
-          )}
-        </section>
-
-        {/* Attachments Section */}
-        <section className="bg-slate-900 border border-slate-800 rounded-xl overflow-hidden">
-          <button
-            onClick={() => toggleSection('attachments')}
-            className="w-full flex items-center justify-between px-6 py-4 text-left"
-          >
-            <h2 className="text-lg font-semibold text-white">Bilagor ({attachments.length})</h2>
-            <ChevronIcon direction={expandedSections.attachments ? "up" : "down"} />
-          </button>
-
-          {expandedSections.attachments && (
-            <div className="px-6 pb-4 space-y-3">
-              {attachments.map((attachment) => (
-                <div key={attachment.id} className="flex items-center justify-between py-2 border-b border-slate-800 last:border-0">
-                  <button
-                    onClick={() => handleViewAttachment(attachment.file_path)}
-                    className="text-blue-400 hover:text-blue-300 flex items-center gap-2"
-                  >
-                    <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" d="M18.375 12.739l-7.693 7.693a4.5 4.5 0 01-6.364-6.364l10.94-10.94A3 3 0 1119.5 7.372L8.552 18.32m.009-.01l-.01.01m5.699-9.941l-7.81 7.81a1.5 1.5 0 002.112 2.13" />
-                    </svg>
-                    {attachment.file_name}
-                  </button>
-                  {isEditable && (
-                    <button
-                      onClick={() => handleDeleteAttachment(attachment.id)}
-                      className="text-slate-500 hover:text-red-400"
-                    >
-                      <XIcon />
-                    </button>
-                  )}
-                </div>
-              ))}
-
-              {isEditable && (
-                <label className="flex items-center gap-2 text-blue-400 hover:text-blue-300 text-sm cursor-pointer">
+                <label className="flex items-center gap-2 px-3 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-500 text-sm cursor-pointer">
                   <input
                     type="file"
                     className="hidden"
@@ -905,13 +1128,90 @@ export default function ProtocolDetailPage() {
                       if (file) handleUploadAttachment(file)
                     }}
                   />
-                  <PlusIcon /> Lägg till bilaga
+                  <PlusIcon /> Ladda upp
                 </label>
               )}
             </div>
-          )}
-        </section>
+
+            <div className="grid gap-3">
+              {attachments.map((attachment) => (
+                <div key={attachment.id} className="flex items-center justify-between p-4 bg-slate-800 rounded-lg group">
+                  <button
+                    onClick={() => handleViewAttachment(attachment.file_path)}
+                    className="flex items-center gap-3 text-left hover:text-blue-400 transition-colors"
+                  >
+                    <div className="w-10 h-10 rounded-lg bg-slate-700 flex items-center justify-center text-xl">
+                      📎
+                    </div>
+                    <div>
+                      <span className="text-white block">{attachment.file_name}</span>
+                      {attachment.file_size && (
+                        <span className="text-xs text-slate-500">{Math.round(attachment.file_size / 1024)} KB</span>
+                      )}
+                    </div>
+                  </button>
+                  {isEditable && (
+                    <button
+                      onClick={() => handleDeleteAttachment(attachment.id)}
+                      className="text-slate-500 hover:text-red-400 p-2 opacity-0 group-hover:opacity-100 transition-opacity"
+                    >
+                      <XIcon />
+                    </button>
+                  )}
+                </div>
+              ))}
+              {attachments.length === 0 && (
+                <div className="text-center py-8 text-slate-500">
+                  <div className="text-4xl mb-2">📎</div>
+                  <p>Inga bilagor uppladdade</p>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
       </div>
+
+      {/* Floating Action Button (FAB) */}
+      {isEditable && (
+        <div className="fixed bottom-6 right-6 z-20">
+          <div className="relative">
+            {showQuickAdd && (
+              <div className="absolute bottom-16 right-0 bg-slate-900 border border-slate-700 rounded-xl shadow-xl p-2 w-48 animate-in fade-in slide-in-from-bottom-2">
+                <button
+                  onClick={() => { setActiveTab('attendees'); setShowAddAttendee(true); setShowQuickAdd(false) }}
+                  className="w-full flex items-center gap-3 px-3 py-2 text-left text-white hover:bg-slate-800 rounded-lg text-sm"
+                >
+                  <span>👥</span> Deltagare
+                </button>
+                <button
+                  onClick={() => { setActiveTab('agenda'); setShowAddAgenda(true); setShowQuickAdd(false) }}
+                  className="w-full flex items-center gap-3 px-3 py-2 text-left text-white hover:bg-slate-800 rounded-lg text-sm"
+                >
+                  <span>📝</span> Dagordning
+                </button>
+                <button
+                  onClick={() => { setActiveTab('decisions'); setShowAddDecision(true); setShowQuickAdd(false) }}
+                  className="w-full flex items-center gap-3 px-3 py-2 text-left text-white hover:bg-slate-800 rounded-lg text-sm"
+                >
+                  <span>⚖️</span> Beslut
+                </button>
+                <button
+                  onClick={() => { setActiveTab('actions'); setShowAddAction(true); setShowQuickAdd(false) }}
+                  className="w-full flex items-center gap-3 px-3 py-2 text-left text-white hover:bg-slate-800 rounded-lg text-sm"
+                >
+                  <span>✅</span> Åtgärd
+                </button>
+              </div>
+            )}
+            <button
+              onClick={() => setShowQuickAdd(!showQuickAdd)}
+              className={`w-14 h-14 rounded-full bg-blue-600 text-white shadow-lg hover:bg-blue-500 transition-all flex items-center justify-center text-2xl ${showQuickAdd ? 'rotate-45' : ''}`}
+            >
+              +
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
@@ -952,9 +1252,9 @@ function AddAttendeeForm({ members, onSubmit, onCancel }: {
   }
 
   return (
-    <form onSubmit={handleSubmit} className="bg-slate-800 rounded-lg p-4 space-y-3">
+    <form onSubmit={handleSubmit} className="bg-slate-800 rounded-lg p-4 space-y-4">
       <div className="flex gap-4">
-        <label className="flex items-center gap-2 text-sm text-slate-300">
+        <label className="flex items-center gap-2 text-sm text-slate-300 cursor-pointer">
           <input
             type="radio"
             checked={mode === 'member'}
@@ -963,7 +1263,7 @@ function AddAttendeeForm({ members, onSubmit, onCancel }: {
           />
           Projektmedlem
         </label>
-        <label className="flex items-center gap-2 text-sm text-slate-300">
+        <label className="flex items-center gap-2 text-sm text-slate-300 cursor-pointer">
           <input
             type="radio"
             checked={mode === 'external'}
@@ -1019,19 +1319,19 @@ function AddAttendeeForm({ members, onSubmit, onCancel }: {
         onChange={(e) => setRole(e.target.value as ProtocolAttendeeRole)}
         className="w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white"
       >
-        {Object.entries(attendeeRoleConfig).map(([key, label]) => (
-          <option key={key} value={key}>{label}</option>
+        {Object.entries(attendeeRoleConfig).map(([key, { label, icon }]) => (
+          <option key={key} value={key}>{icon} {label}</option>
         ))}
       </select>
 
       <div className="flex justify-end gap-2">
-        <button type="button" onClick={onCancel} className="px-3 py-1.5 text-slate-400 hover:text-white">
+        <button type="button" onClick={onCancel} className="px-4 py-2 text-slate-400 hover:text-white">
           Avbryt
         </button>
         <button
           type="submit"
           disabled={(mode === 'member' && !selectedMember) || (mode === 'external' && !name)}
-          className="px-3 py-1.5 bg-blue-600 text-white rounded-lg hover:bg-blue-500 disabled:opacity-50"
+          className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-500 disabled:opacity-50"
         >
           Lägg till
         </button>
@@ -1056,7 +1356,7 @@ function AddAgendaForm({ onSubmit, onCancel }: {
         description: description || undefined,
         duration_minutes: duration ? parseInt(duration) : undefined,
       })
-    }} className="bg-slate-800 rounded-lg p-4 space-y-3">
+    }} className="bg-slate-800 rounded-lg p-4 space-y-4">
       <input
         type="text"
         value={title}
@@ -1068,7 +1368,7 @@ function AddAgendaForm({ onSubmit, onCancel }: {
       <textarea
         value={description}
         onChange={(e) => setDescription(e.target.value)}
-        placeholder="Beskrivning"
+        placeholder="Beskrivning (valfritt)"
         rows={2}
         className="w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white placeholder-slate-500"
       />
@@ -1076,18 +1376,18 @@ function AddAgendaForm({ onSubmit, onCancel }: {
         type="number"
         value={duration}
         onChange={(e) => setDuration(e.target.value)}
-        placeholder="Beräknad tid (minuter)"
+        placeholder="Tid i minuter (valfritt)"
         min="1"
         className="w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white placeholder-slate-500"
       />
       <div className="flex justify-end gap-2">
-        <button type="button" onClick={onCancel} className="px-3 py-1.5 text-slate-400 hover:text-white">
+        <button type="button" onClick={onCancel} className="px-4 py-2 text-slate-400 hover:text-white">
           Avbryt
         </button>
         <button
           type="submit"
           disabled={!title}
-          className="px-3 py-1.5 bg-blue-600 text-white rounded-lg hover:bg-blue-500 disabled:opacity-50"
+          className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-500 disabled:opacity-50"
         >
           Lägg till
         </button>
@@ -1106,23 +1406,23 @@ function AddDecisionForm({ onSubmit, onCancel }: {
     <form onSubmit={(e) => {
       e.preventDefault()
       onSubmit(description)
-    }} className="bg-slate-800 rounded-lg p-4 space-y-3">
+    }} className="bg-slate-800 rounded-lg p-4 space-y-4">
       <textarea
         value={description}
         onChange={(e) => setDescription(e.target.value)}
         placeholder="Beskriv beslutet *"
-        rows={2}
+        rows={3}
         className="w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white placeholder-slate-500"
         required
       />
       <div className="flex justify-end gap-2">
-        <button type="button" onClick={onCancel} className="px-3 py-1.5 text-slate-400 hover:text-white">
+        <button type="button" onClick={onCancel} className="px-4 py-2 text-slate-400 hover:text-white">
           Avbryt
         </button>
         <button
           type="submit"
           disabled={!description}
-          className="px-3 py-1.5 bg-blue-600 text-white rounded-lg hover:bg-blue-500 disabled:opacity-50"
+          className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-500 disabled:opacity-50"
         >
           Lägg till
         </button>
@@ -1152,12 +1452,12 @@ function AddActionForm({ members, onSubmit, onCancel }: {
         deadline: deadline || undefined,
         priority,
       })
-    }} className="bg-slate-800 rounded-lg p-4 space-y-3">
+    }} className="bg-slate-800 rounded-lg p-4 space-y-4">
       <textarea
         value={description}
         onChange={(e) => setDescription(e.target.value)}
         placeholder="Beskriv åtgärden *"
-        rows={2}
+        rows={3}
         className="w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white placeholder-slate-500"
         required
       />
@@ -1187,17 +1487,17 @@ function AddActionForm({ members, onSubmit, onCancel }: {
         className="w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white"
       >
         {Object.entries(actionPriorityConfig).map(([key, { label }]) => (
-          <option key={key} value={key}>{label}</option>
+          <option key={key} value={key}>{label} prioritet</option>
         ))}
       </select>
       <div className="flex justify-end gap-2">
-        <button type="button" onClick={onCancel} className="px-3 py-1.5 text-slate-400 hover:text-white">
+        <button type="button" onClick={onCancel} className="px-4 py-2 text-slate-400 hover:text-white">
           Avbryt
         </button>
         <button
           type="submit"
           disabled={!description}
-          className="px-3 py-1.5 bg-blue-600 text-white rounded-lg hover:bg-blue-500 disabled:opacity-50"
+          className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-500 disabled:opacity-50"
         >
           Lägg till
         </button>
@@ -1221,7 +1521,7 @@ function AddLinkForm({ issues, deviations, onSubmit, onCancel }: {
     <form onSubmit={(e) => {
       e.preventDefault()
       onSubmit({ link_type: linkType, linked_item_id: linkedItemId })
-    }} className="bg-slate-800 rounded-lg p-4 space-y-3">
+    }} className="bg-slate-800 rounded-lg p-4 space-y-4">
       <select
         value={linkType}
         onChange={(e) => {
@@ -1230,15 +1530,15 @@ function AddLinkForm({ issues, deviations, onSubmit, onCancel }: {
         }}
         className="w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white"
       >
-        <option value="issue">Ärende</option>
-        <option value="deviation">Avvikelse</option>
+        <option value="issue">{linkTypeConfig.issue.icon} Ärende</option>
+        <option value="deviation">{linkTypeConfig.deviation.icon} Avvikelse</option>
       </select>
       <select
         value={linkedItemId}
         onChange={(e) => setLinkedItemId(e.target.value)}
         className="w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white"
       >
-        <option value="">Välj {linkTypeConfig[linkType].toLowerCase()}...</option>
+        <option value="">Välj {linkTypeConfig[linkType].label.toLowerCase()}...</option>
         {items.map((item) => (
           <option key={item.id} value={item.id}>
             {item.title}
@@ -1246,13 +1546,13 @@ function AddLinkForm({ issues, deviations, onSubmit, onCancel }: {
         ))}
       </select>
       <div className="flex justify-end gap-2">
-        <button type="button" onClick={onCancel} className="px-3 py-1.5 text-slate-400 hover:text-white">
+        <button type="button" onClick={onCancel} className="px-4 py-2 text-slate-400 hover:text-white">
           Avbryt
         </button>
         <button
           type="submit"
           disabled={!linkedItemId}
-          className="px-3 py-1.5 bg-blue-600 text-white rounded-lg hover:bg-blue-500 disabled:opacity-50"
+          className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-500 disabled:opacity-50"
         >
           Lägg till
         </button>
