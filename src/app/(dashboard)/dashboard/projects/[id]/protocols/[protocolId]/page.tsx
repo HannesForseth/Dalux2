@@ -267,8 +267,12 @@ export default function ProtocolDetailPage() {
   // Add attendee
   const handleAddAttendee = async (data: { user_id?: string; name: string; email?: string; company?: string; role: ProtocolAttendeeRole }) => {
     try {
-      await addAttendee(protocolId, data)
-      await loadData()
+      const newAttendee = await addAttendee(protocolId, data)
+      // Update state directly for immediate UI feedback
+      setProtocol(prev => prev ? {
+        ...prev,
+        attendees: [...(prev.attendees || []), newAttendee]
+      } : null)
       setShowAddAttendee(false)
     } catch (error) {
       console.error('Failed to add attendee:', error)
@@ -279,7 +283,11 @@ export default function ProtocolDetailPage() {
   const handleToggleAttendance = async (attendeeId: string, attended: boolean) => {
     try {
       await updateAttendee(attendeeId, { attended })
-      await loadData()
+      // Update state directly
+      setProtocol(prev => prev ? {
+        ...prev,
+        attendees: prev.attendees?.map(a => a.id === attendeeId ? { ...a, attended } : a) || []
+      } : null)
     } catch (error) {
       console.error('Failed to update attendance:', error)
     }
@@ -290,7 +298,11 @@ export default function ProtocolDetailPage() {
     if (!confirm('Ta bort denna deltagare?')) return
     try {
       await removeAttendee(attendeeId)
-      await loadData()
+      // Update state directly
+      setProtocol(prev => prev ? {
+        ...prev,
+        attendees: prev.attendees?.filter(a => a.id !== attendeeId) || []
+      } : null)
     } catch (error) {
       console.error('Failed to remove attendee:', error)
     }
@@ -300,8 +312,12 @@ export default function ProtocolDetailPage() {
   const handleAddAgendaItem = async (data: { title: string; description?: string; duration_minutes?: number }) => {
     try {
       const nextOrder = (protocol?.agenda_items?.length || 0) + 1
-      await addAgendaItem(protocolId, { ...data, order_index: nextOrder })
-      await loadData()
+      const newItem = await addAgendaItem(protocolId, { ...data, order_index: nextOrder })
+      // Update state directly for immediate UI feedback
+      setProtocol(prev => prev ? {
+        ...prev,
+        agenda_items: [...(prev.agenda_items || []), newItem]
+      } : null)
       setShowAddAgenda(false)
     } catch (error) {
       console.error('Failed to add agenda item:', error)
@@ -313,7 +329,11 @@ export default function ProtocolDetailPage() {
     if (!confirm('Ta bort denna punkt?')) return
     try {
       await deleteAgendaItem(itemId)
-      await loadData()
+      // Update state directly
+      setProtocol(prev => prev ? {
+        ...prev,
+        agenda_items: prev.agenda_items?.filter(a => a.id !== itemId) || []
+      } : null)
     } catch (error) {
       console.error('Failed to delete agenda item:', error)
     }
@@ -322,8 +342,12 @@ export default function ProtocolDetailPage() {
   // Add decision
   const handleAddDecision = async (description: string) => {
     try {
-      await addDecision(protocolId, { description })
-      await loadData()
+      const newDecision = await addDecision(protocolId, { description })
+      // Update state directly for immediate UI feedback
+      setProtocol(prev => prev ? {
+        ...prev,
+        decisions: [...(prev.decisions || []), newDecision]
+      } : null)
       setShowAddDecision(false)
     } catch (error) {
       console.error('Failed to add decision:', error)
@@ -335,7 +359,11 @@ export default function ProtocolDetailPage() {
     if (!confirm('Ta bort detta beslut?')) return
     try {
       await deleteDecision(decisionId)
-      await loadData()
+      // Update state directly
+      setProtocol(prev => prev ? {
+        ...prev,
+        decisions: prev.decisions?.filter(d => d.id !== decisionId) || []
+      } : null)
     } catch (error) {
       console.error('Failed to delete decision:', error)
     }
@@ -344,8 +372,12 @@ export default function ProtocolDetailPage() {
   // Add action item
   const handleAddActionItem = async (data: { description: string; assigned_to?: string; assigned_to_name?: string; deadline?: string; priority: ProtocolActionItemPriority }) => {
     try {
-      await addActionItem(protocolId, data)
-      await loadData()
+      const newAction = await addActionItem(protocolId, data)
+      // Update state directly for immediate UI feedback
+      setProtocol(prev => prev ? {
+        ...prev,
+        action_items: [...(prev.action_items || []), newAction]
+      } : null)
       setShowAddAction(false)
     } catch (error) {
       console.error('Failed to add action item:', error)
@@ -356,7 +388,11 @@ export default function ProtocolDetailPage() {
   const handleUpdateActionStatus = async (actionId: string, status: ProtocolActionItemStatus) => {
     try {
       await updateActionItem(actionId, { status })
-      await loadData()
+      // Update state directly
+      setProtocol(prev => prev ? {
+        ...prev,
+        action_items: prev.action_items?.map(a => a.id === actionId ? { ...a, status } : a) || []
+      } : null)
     } catch (error) {
       console.error('Failed to update action status:', error)
     }
@@ -367,7 +403,11 @@ export default function ProtocolDetailPage() {
     if (!confirm('Ta bort denna åtgärd?')) return
     try {
       await deleteActionItem(actionId)
-      await loadData()
+      // Update state directly
+      setProtocol(prev => prev ? {
+        ...prev,
+        action_items: prev.action_items?.filter(a => a.id !== actionId) || []
+      } : null)
     } catch (error) {
       console.error('Failed to delete action:', error)
     }
@@ -376,8 +416,12 @@ export default function ProtocolDetailPage() {
   // Add link
   const handleAddLink = async (data: { link_type: ProtocolLinkType; linked_item_id: string }) => {
     try {
-      await addLink(protocolId, data)
-      await loadData()
+      const newLink = await addLink(protocolId, data)
+      // Update state directly
+      setProtocol(prev => prev ? {
+        ...prev,
+        links: [...(prev.links || []), newLink]
+      } : null)
       setShowAddLink(false)
     } catch (error) {
       console.error('Failed to add link:', error)
@@ -389,7 +433,11 @@ export default function ProtocolDetailPage() {
     if (!confirm('Ta bort denna koppling?')) return
     try {
       await removeLink(linkId)
-      await loadData()
+      // Update state directly
+      setProtocol(prev => prev ? {
+        ...prev,
+        links: prev.links?.filter(l => l.id !== linkId) || []
+      } : null)
     } catch (error) {
       console.error('Failed to remove link:', error)
     }
