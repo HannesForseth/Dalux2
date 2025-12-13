@@ -270,6 +270,9 @@ export interface ProjectStats {
   completedChecklistsCount: number
   rfisCount: number
   openRfisCount: number
+  protocolsCount: number
+  draftProtocolsCount: number
+  unseenProtocolsCount: number
 }
 
 export async function getProjectStats(projectId: string): Promise<ProjectStats> {
@@ -288,7 +291,9 @@ export async function getProjectStats(projectId: string): Promise<ProjectStats> 
     checklistsResult,
     completedChecklistsResult,
     rfisResult,
-    openRfisResult
+    openRfisResult,
+    protocolsResult,
+    draftProtocolsResult
   ] = await Promise.all([
     supabase.from('documents').select('id', { count: 'exact', head: true }).eq('project_id', projectId),
     supabase.from('issues').select('id', { count: 'exact', head: true }).eq('project_id', projectId),
@@ -296,8 +301,39 @@ export async function getProjectStats(projectId: string): Promise<ProjectStats> 
     supabase.from('checklists').select('id', { count: 'exact', head: true }).eq('project_id', projectId),
     supabase.from('checklists').select('id', { count: 'exact', head: true }).eq('project_id', projectId).eq('status', 'completed'),
     supabase.from('rfis').select('id', { count: 'exact', head: true }).eq('project_id', projectId),
-    supabase.from('rfis').select('id', { count: 'exact', head: true }).eq('project_id', projectId).in('status', ['open', 'pending'])
+    supabase.from('rfis').select('id', { count: 'exact', head: true }).eq('project_id', projectId).in('status', ['open', 'pending']),
+    supabase.from('protocols').select('id', { count: 'exact', head: true }).eq('project_id', projectId),
+    supabase.from('protocols').select('id', { count: 'exact', head: true }).eq('project_id', projectId).eq('status', 'draft')
   ])
+
+  // Count unseen protocols (protocols user hasn't viewed yet)
+  // Get protocols that are finalized and user hasn't viewed
+  const { data: viewedProtocols } = await supabase
+    .from('protocol_views')
+    .select('protocol_id')
+    .eq('user_id', user.id)
+
+  const viewedIds = viewedProtocols?.map(v => v.protocol_id) || []
+
+  let unseenCount = 0
+  if (viewedIds.length === 0) {
+    // User hasn't viewed any - count all finalized
+    const { count } = await supabase
+      .from('protocols')
+      .select('id', { count: 'exact', head: true })
+      .eq('project_id', projectId)
+      .eq('status', 'finalized')
+    unseenCount = count || 0
+  } else {
+    // Count finalized protocols not in viewed list
+    const { count } = await supabase
+      .from('protocols')
+      .select('id', { count: 'exact', head: true })
+      .eq('project_id', projectId)
+      .eq('status', 'finalized')
+      .not('id', 'in', `(${viewedIds.join(',')})`)
+    unseenCount = count || 0
+  }
 
   return {
     documentsCount: documentsResult.count || 0,
@@ -306,7 +342,10 @@ export async function getProjectStats(projectId: string): Promise<ProjectStats> 
     checklistsCount: checklistsResult.count || 0,
     completedChecklistsCount: completedChecklistsResult.count || 0,
     rfisCount: rfisResult.count || 0,
-    openRfisCount: openRfisResult.count || 0
+    openRfisCount: openRfisResult.count || 0,
+    protocolsCount: protocolsResult.count || 0,
+    draftProtocolsCount: draftProtocolsResult.count || 0,
+    unseenProtocolsCount: unseenCount
   }
 }
 
@@ -319,6 +358,8 @@ export type ActivityType =
   | 'issue_updated'
   | 'checklist_created'
   | 'checklist_completed'
+  | 'protocol_created'
+  | 'protocol_finalized'
 
 export interface ActivityItem {
   id: string
@@ -336,6 +377,7 @@ export interface ActivityItem {
     documentName?: string
     issueId?: string
     checklistId?: string
+    protocolId?: string
     version?: number
     commentId?: string
   }
@@ -581,6 +623,66 @@ export async function getProjectActivity(projectId: string, limit: number = 20):
           },
           metadata: {
             checklistId: checklist.id
+          }
+        })
+      }
+    }
+  }
+
+  // Fetch recent protocols
+  const { data: protocols } = await supabase
+    .from('protocols')
+    .select(`
+      id,
+      title,
+      protocol_number,
+      meeting_type,
+      status,
+      created_at,
+      updated_at,
+      creator:profiles!protocols_created_by_fkey(id, full_name, avatar_url)
+    `)
+    .eq('project_id', projectId)
+    .order('created_at', { ascending: false })
+    .limit(10)
+
+  if (protocols) {
+    for (const protocol of protocols) {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const creatorData = protocol.creator as any
+      const creator = Array.isArray(creatorData) ? creatorData[0] : creatorData
+
+      activities.push({
+        id: `protocol-${protocol.id}-create`,
+        type: 'protocol_created',
+        title: 'Nytt protokoll',
+        description: `${protocol.title} (#${protocol.protocol_number})`,
+        timestamp: protocol.created_at,
+        user: {
+          id: creator?.id || '',
+          name: creator?.full_name || 'Okänd användare',
+          avatar: creator?.avatar_url || undefined
+        },
+        metadata: {
+          protocolId: protocol.id
+        }
+      })
+
+      // If protocol was finalized, add finalized activity
+      if (protocol.status === 'finalized' && protocol.updated_at !== protocol.created_at) {
+        activities.push({
+          id: `protocol-${protocol.id}-finalized`,
+          type: 'protocol_finalized',
+          title: 'Protokoll slutfört',
+          description: `${protocol.title} (#${protocol.protocol_number})`,
+          timestamp: protocol.updated_at,
+          user: {
+            id: creator?.id || '',
+            name: creator?.full_name || 'Okänd användare',
+            avatar: creator?.avatar_url || undefined
+          },
+          metadata: {
+            protocolId: protocol.id
           }
         })
       }

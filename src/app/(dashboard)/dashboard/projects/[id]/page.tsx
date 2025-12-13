@@ -142,7 +142,7 @@ export default function ProjectDetailPage() {
           </div>
 
           {/* Quick actions with real counts */}
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
             <QuickActionCard
               title="Dokument"
               count={stats?.documentsCount.toString() || '0'}
@@ -165,12 +165,20 @@ export default function ProjectDetailPage() {
               href={`/dashboard/projects/${project.id}/checklists`}
             />
             <QuickActionCard
-              title="RFI"
+              title="F/S"
               count={stats?.rfisCount.toString() || '0'}
               subtext={stats?.openRfisCount ? `${stats.openRfisCount} öppna` : undefined}
               icon={<QuestionIcon />}
               href={`/dashboard/projects/${project.id}/rfi`}
               highlight={stats?.openRfisCount ? stats.openRfisCount > 0 : false}
+            />
+            <QuickActionCard
+              title="Protokoll"
+              count={stats?.protocolsCount.toString() || '0'}
+              subtext={stats?.unseenProtocolsCount ? `${stats.unseenProtocolsCount} nya` : stats?.draftProtocolsCount ? `${stats.draftProtocolsCount} utkast` : undefined}
+              icon={<ProtocolIcon />}
+              href={`/dashboard/projects/${project.id}/protocols`}
+              highlight={stats?.unseenProtocolsCount ? stats.unseenProtocolsCount > 0 : false}
             />
           </div>
 
@@ -268,9 +276,15 @@ export default function ProjectDetailPage() {
                   </span>
                 </div>
                 <div className="flex justify-between items-center">
-                  <span className="text-slate-400 text-sm">Öppna RFI</span>
+                  <span className="text-slate-400 text-sm">Öppna F/S</span>
                   <span className={`font-medium ${stats.openRfisCount > 0 ? 'text-amber-400' : 'text-green-400'}`}>
                     {stats.openRfisCount}
+                  </span>
+                </div>
+                <div className="flex justify-between items-center">
+                  <span className="text-slate-400 text-sm">Nya protokoll</span>
+                  <span className={`font-medium ${stats.unseenProtocolsCount > 0 ? 'text-blue-400' : 'text-white'}`}>
+                    {stats.unseenProtocolsCount}
                   </span>
                 </div>
               </div>
@@ -327,6 +341,8 @@ function ActivityCard({ activity, projectId }: { activity: ActivityItem; project
     issue_updated: <ExclamationIcon />,
     checklist_created: <ClipboardIcon />,
     checklist_completed: <CheckCircleIcon />,
+    protocol_created: <ProtocolSmallIcon />,
+    protocol_finalized: <CheckCircleIcon />,
   }
 
   const colorMap: Record<string, string> = {
@@ -338,6 +354,8 @@ function ActivityCard({ activity, projectId }: { activity: ActivityItem; project
     issue_updated: 'text-amber-400 bg-amber-500/10',
     checklist_created: 'text-cyan-400 bg-cyan-500/10',
     checklist_completed: 'text-green-400 bg-green-500/10',
+    protocol_created: 'text-indigo-400 bg-indigo-500/10',
+    protocol_finalized: 'text-green-400 bg-green-500/10',
   }
 
   const getLink = () => {
@@ -349,6 +367,9 @@ function ActivityCard({ activity, projectId }: { activity: ActivityItem; project
     }
     if (activity.metadata?.checklistId) {
       return `/dashboard/projects/${projectId}/checklists`
+    }
+    if (activity.metadata?.protocolId) {
+      return `/dashboard/projects/${projectId}/protocols/${activity.metadata.protocolId}`
     }
     return null
   }
@@ -470,6 +491,22 @@ function CheckCircleIcon() {
   return (
     <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
       <path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75 11.25 15 15 9.75M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" />
+    </svg>
+  )
+}
+
+function ProtocolIcon() {
+  return (
+    <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+      <path strokeLinecap="round" strokeLinejoin="round" d="M9 12h3.75M9 15h3.75M9 18h3.75m3 .75H18a2.25 2.25 0 0 0 2.25-2.25V6.108c0-1.135-.845-2.098-1.976-2.192a48.424 48.424 0 0 0-1.123-.08m-5.801 0c-.065.21-.1.433-.1.664 0 .414.336.75.75.75h4.5a.75.75 0 0 0 .75-.75 2.25 2.25 0 0 0-.1-.664m-5.8 0A2.251 2.251 0 0 1 13.5 2.25H15c1.012 0 1.867.668 2.15 1.586m-5.8 0c-.376.023-.75.05-1.124.08C9.095 4.01 8.25 4.973 8.25 6.108V8.25m0 0H4.875c-.621 0-1.125.504-1.125 1.125v11.25c0 .621.504 1.125 1.125 1.125h9.75c.621 0 1.125-.504 1.125-1.125V9.375c0-.621-.504-1.125-1.125-1.125H8.25ZM6.75 12h.008v.008H6.75V12Zm0 3h.008v.008H6.75V15Zm0 3h.008v.008H6.75V18Z" />
+    </svg>
+  )
+}
+
+function ProtocolSmallIcon() {
+  return (
+    <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+      <path strokeLinecap="round" strokeLinejoin="round" d="M9 12h3.75M9 15h3.75M9 18h3.75m3 .75H18a2.25 2.25 0 0 0 2.25-2.25V6.108c0-1.135-.845-2.098-1.976-2.192a48.424 48.424 0 0 0-1.123-.08m-5.801 0c-.065.21-.1.433-.1.664 0 .414.336.75.75.75h4.5a.75.75 0 0 0 .75-.75 2.25 2.25 0 0 0-.1-.664m-5.8 0A2.251 2.251 0 0 1 13.5 2.25H15c1.012 0 1.867.668 2.15 1.586m-5.8 0c-.376.023-.75.05-1.124.08C9.095 4.01 8.25 4.973 8.25 6.108V8.25m0 0H4.875c-.621 0-1.125.504-1.125 1.125v11.25c0 .621.504 1.125 1.125 1.125h9.75c.621 0 1.125-.504 1.125-1.125V9.375c0-.621-.504-1.125-1.125-1.125H8.25ZM6.75 12h.008v.008H6.75V12Zm0 3h.008v.008H6.75V15Zm0 3h.008v.008H6.75V18Z" />
     </svg>
   )
 }

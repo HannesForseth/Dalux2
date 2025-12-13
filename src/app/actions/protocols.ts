@@ -977,4 +977,76 @@ export async function getProjectProtocolStats(projectId: string): Promise<{
     pendingActions: pendingActions || 0
   }
 }
+
+// ============================================
+// Protocol Views (för att spåra olästa protokoll)
+// ============================================
+
+/**
+ * Markera ett protokoll som sett av användaren
+ * Anropas när användaren öppnar ett protokoll
+ */
+export async function markProtocolAsViewed(protocolId: string): Promise<void> {
+  const supabase = await createClient()
+
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) {
+    return // Tyst fail om ej inloggad
+  }
+
+  // Upsert - insert eller ignorera om redan finns
+  const { error } = await supabase
+    .from('protocol_views')
+    .upsert(
+      {
+        protocol_id: protocolId,
+        user_id: user.id,
+        viewed_at: new Date().toISOString()
+      },
+      {
+        onConflict: 'protocol_id,user_id',
+        ignoreDuplicates: false // Uppdatera viewed_at om redan sett
+      }
+    )
+
+  if (error) {
+    console.error('Error marking protocol as viewed:', error)
+    // Tyst fail - inte kritiskt
+  }
+}
+
+/**
+ * Hämta antal olästa protokoll för en användare i ett projekt
+ */
+export async function getUnseenProtocolCount(projectId: string): Promise<number> {
+  const supabase = await createClient()
+
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) {
+    return 0
+  }
+
+  // Hämta alla protokoll-IDs som användaren har sett
+  const { data: viewedProtocols } = await supabase
+    .from('protocol_views')
+    .select('protocol_id')
+    .eq('user_id', user.id)
+
+  const viewedIds = viewedProtocols?.map(v => v.protocol_id) || []
+
+  // Räkna finalized protokoll som användaren inte har sett
+  let query = supabase
+    .from('protocols')
+    .select('id', { count: 'exact', head: true })
+    .eq('project_id', projectId)
+    .eq('status', 'finalized')
+
+  if (viewedIds.length > 0) {
+    query = query.not('id', 'in', `(${viewedIds.join(',')})`)
+  }
+
+  const { count } = await query
+
+  return count || 0
+}
 // Deployment trigger Sat Dec 13 11:25:15 CET 2025

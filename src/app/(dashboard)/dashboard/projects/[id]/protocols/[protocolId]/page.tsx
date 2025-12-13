@@ -23,7 +23,8 @@ import {
   getProtocolAttachments,
   addProtocolAttachment,
   deleteProtocolAttachment,
-  getProtocolAttachmentUrl
+  getProtocolAttachmentUrl,
+  markProtocolAsViewed
 } from '@/app/actions/protocols'
 import { getProjectMembers } from '@/app/actions/members'
 import { getProjectIssues } from '@/app/actions/issues'
@@ -178,6 +179,9 @@ export default function ProtocolDetailPage() {
       setDeviations(deviationsData)
       setAttachments(attachmentsData)
       setNotesValue(protocolData.notes || '')
+
+      // Markera protokollet som sett (för "olästa protokoll"-räknaren)
+      markProtocolAsViewed(protocolId)
     } catch (error) {
       console.error('Failed to load protocol:', error)
     } finally {
