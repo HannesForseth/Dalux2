@@ -1,7 +1,7 @@
 'use server'
 
 import { createClient } from '@/lib/supabase/server'
-import { revalidatePath } from 'next/cache'
+import { revalidatePath, unstable_noStore as noStore } from 'next/cache'
 import type {
   Protocol,
   ProtocolWithDetails,
@@ -38,6 +38,9 @@ export async function getProjectProtocols(
     meeting_type?: ProtocolMeetingType | 'all'
   }
 ): Promise<ProtocolWithCreator[]> {
+  // Disable caching to ensure fresh data
+  noStore()
+
   try {
     const supabase = await createClient()
 
@@ -78,6 +81,9 @@ export async function getProjectProtocols(
 }
 
 export async function getProtocol(protocolId: string): Promise<ProtocolWithDetails | null> {
+  // Disable caching to ensure fresh data after mutations
+  noStore()
+
   try {
     const supabase = await createClient()
 
