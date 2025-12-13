@@ -4,12 +4,10 @@ import { useEffect, useState } from 'react'
 import { getMyProjects } from '@/app/actions/projects'
 import type { Project } from '@/types/database'
 import ProjectCard from '@/components/projects/ProjectCard'
-import CreateProjectModal from '@/components/projects/CreateProjectModal'
 
 export default function ProjectsPage() {
   const [projects, setProjects] = useState<Project[]>([])
   const [isLoading, setIsLoading] = useState(true)
-  const [isModalOpen, setIsModalOpen] = useState(false)
   const [filter, setFilter] = useState<'all' | 'active' | 'completed' | 'archived'>('all')
 
   useEffect(() => {
@@ -40,18 +38,9 @@ export default function ProjectsPage() {
 
   return (
     <div>
-      <div className="flex items-center justify-between mb-8">
-        <div>
-          <h1 className="text-2xl font-bold text-white">Projekt</h1>
-          <p className="text-slate-400 mt-1">Hantera och översikt av alla dina projekt</p>
-        </div>
-        <button
-          onClick={() => setIsModalOpen(true)}
-          className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700 transition-colors"
-        >
-          <PlusIcon />
-          Nytt projekt
-        </button>
+      <div className="mb-8">
+        <h1 className="text-2xl font-bold text-white">Projekt</h1>
+        <p className="text-slate-400 mt-1">Översikt av alla dina projekt</p>
       </div>
 
       {/* Filter tabs */}
@@ -98,20 +87,11 @@ export default function ProjectsPage() {
           <h3 className="text-lg font-medium text-white mb-2">
             {filter === 'all' ? 'Inga projekt än' : `Inga ${filter === 'active' ? 'aktiva' : filter === 'completed' ? 'avslutade' : 'arkiverade'} projekt`}
           </h3>
-          <p className="text-slate-400 mb-6">
+          <p className="text-slate-400">
             {filter === 'all'
-              ? 'Skapa ditt första projekt för att komma igång.'
+              ? 'Du är inte medlem i något projekt ännu.'
               : 'Det finns inga projekt med denna status.'}
           </p>
-          {filter === 'all' && (
-            <button
-              onClick={() => setIsModalOpen(true)}
-              className="inline-flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700 transition-colors"
-            >
-              <PlusIcon />
-              Skapa projekt
-            </button>
-          )}
         </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -120,21 +100,7 @@ export default function ProjectsPage() {
           ))}
         </div>
       )}
-
-      <CreateProjectModal
-        isOpen={isModalOpen}
-        onClose={() => setIsModalOpen(false)}
-        onSuccess={loadProjects}
-      />
     </div>
-  )
-}
-
-function PlusIcon() {
-  return (
-    <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
-      <path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
-    </svg>
   )
 }
 
