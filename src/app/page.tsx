@@ -1,10 +1,9 @@
 "use client"
 
 import Link from "next/link"
-import { motion } from "framer-motion"
+import { motion, useScroll, useTransform, useSpring } from "framer-motion"
 import { Button } from "@/components/ui/button"
-import { Card } from "@/components/ui/card"
-import { Badge } from "@/components/ui/badge"
+import { useRef } from "react"
 import {
   FileText,
   Layers,
@@ -14,397 +13,409 @@ import {
   ArrowRight,
   Check,
   Building2,
-  Users,
+  Zap,
   Shield,
-  Zap
+  Users,
+  Play
 } from "lucide-react"
 
-const fadeInUp = {
-  initial: { opacity: 0, y: 20 },
-  animate: { opacity: 1, y: 0 },
-  transition: { duration: 0.5 }
-}
-
-const staggerContainer = {
-  animate: {
-    transition: {
-      staggerChildren: 0.1
-    }
-  }
-}
-
 export default function Home() {
+  const heroRef = useRef<HTMLDivElement>(null)
+  const { scrollYProgress } = useScroll({
+    target: heroRef,
+    offset: ["start start", "end start"]
+  })
+
+  const heroY = useTransform(scrollYProgress, [0, 1], [0, 200])
+  const heroOpacity = useTransform(scrollYProgress, [0, 0.5], [1, 0])
+  const heroScale = useTransform(scrollYProgress, [0, 0.5], [1, 0.95])
+
   return (
-    <main className="min-h-screen bg-white">
+    <main className="min-h-screen bg-[#fafafa] overflow-x-hidden">
+      {/* Animated Background Blobs */}
+      <div className="fixed inset-0 overflow-hidden pointer-events-none">
+        <motion.div
+          className="absolute w-[800px] h-[800px] rounded-full"
+          style={{
+            background: "radial-gradient(circle, rgba(99,102,241,0.15) 0%, transparent 70%)",
+            top: "-20%",
+            right: "-10%",
+          }}
+          animate={{
+            x: [0, 50, 0],
+            y: [0, 30, 0],
+            scale: [1, 1.1, 1],
+          }}
+          transition={{
+            duration: 20,
+            repeat: Infinity,
+            ease: "easeInOut"
+          }}
+        />
+        <motion.div
+          className="absolute w-[600px] h-[600px] rounded-full"
+          style={{
+            background: "radial-gradient(circle, rgba(236,72,153,0.12) 0%, transparent 70%)",
+            bottom: "10%",
+            left: "-5%",
+          }}
+          animate={{
+            x: [0, -30, 0],
+            y: [0, 50, 0],
+            scale: [1, 1.15, 1],
+          }}
+          transition={{
+            duration: 25,
+            repeat: Infinity,
+            ease: "easeInOut"
+          }}
+        />
+        <motion.div
+          className="absolute w-[500px] h-[500px] rounded-full"
+          style={{
+            background: "radial-gradient(circle, rgba(59,130,246,0.1) 0%, transparent 70%)",
+            top: "40%",
+            left: "30%",
+          }}
+          animate={{
+            x: [0, 40, 0],
+            y: [0, -40, 0],
+            scale: [1, 1.2, 1],
+          }}
+          transition={{
+            duration: 18,
+            repeat: Infinity,
+            ease: "easeInOut"
+          }}
+        />
+      </div>
+
       {/* Navigation */}
-      <nav className="fixed top-0 left-0 right-0 z-50 bg-white/80 backdrop-blur-lg border-b border-slate-100">
-        <div className="container mx-auto px-6 py-4 flex justify-between items-center">
-          <Link href="/" className="flex items-center gap-2">
-            <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-blue-600 to-indigo-600 flex items-center justify-center">
-              <Building2 className="w-5 h-5 text-white" />
+      <nav className="fixed top-0 left-0 right-0 z-50">
+        <div className="mx-4 mt-4">
+          <div className="max-w-6xl mx-auto px-6 py-3 bg-white/70 backdrop-blur-xl rounded-2xl border border-white/20 shadow-lg shadow-black/[0.03]">
+            <div className="flex justify-between items-center">
+              <Link href="/" className="flex items-center gap-2.5">
+                <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-indigo-500 via-purple-500 to-pink-500 flex items-center justify-center shadow-lg shadow-indigo-500/25">
+                  <Building2 className="w-5 h-5 text-white" />
+                </div>
+                <span className="text-xl font-bold bg-gradient-to-r from-slate-900 to-slate-700 bg-clip-text text-transparent">
+                  Dalux2
+                </span>
+              </Link>
+
+              <div className="hidden md:flex items-center gap-1">
+                {["Funktioner", "Priser", "Om oss"].map((item) => (
+                  <a
+                    key={item}
+                    href={`#${item.toLowerCase()}`}
+                    className="px-4 py-2 text-sm text-slate-600 hover:text-slate-900 hover:bg-slate-100 rounded-lg transition-all"
+                  >
+                    {item}
+                  </a>
+                ))}
+              </div>
+
+              <div className="flex items-center gap-2">
+                <Link href="/login">
+                  <Button variant="ghost" size="sm" className="text-slate-600 hover:text-slate-900">
+                    Logga in
+                  </Button>
+                </Link>
+                <Link href="/register">
+                  <Button size="sm" className="bg-slate-900 hover:bg-slate-800 text-white rounded-xl shadow-lg shadow-slate-900/10">
+                    Kom igång
+                    <ArrowRight className="w-4 h-4 ml-1" />
+                  </Button>
+                </Link>
+              </div>
             </div>
-            <span className="text-xl font-bold text-slate-900">
-              Dalux<span className="text-blue-600">2</span>
-            </span>
-          </Link>
-
-          <div className="hidden md:flex items-center gap-8">
-            <a href="#features" className="text-slate-600 hover:text-slate-900 transition-colors text-sm font-medium">
-              Funktioner
-            </a>
-            <a href="#pricing" className="text-slate-600 hover:text-slate-900 transition-colors text-sm font-medium">
-              Priser
-            </a>
-            <a href="#about" className="text-slate-600 hover:text-slate-900 transition-colors text-sm font-medium">
-              Om oss
-            </a>
-          </div>
-
-          <div className="flex items-center gap-3">
-            <Link href="/login">
-              <Button variant="ghost" className="text-slate-600">
-                Logga in
-              </Button>
-            </Link>
-            <Link href="/register">
-              <Button className="bg-slate-900 hover:bg-slate-800 text-white">
-                Kom igång
-              </Button>
-            </Link>
           </div>
         </div>
       </nav>
 
       {/* Hero Section */}
-      <section className="pt-32 pb-20 px-6 relative overflow-hidden">
-        {/* Background decoration */}
-        <div className="absolute top-0 right-0 w-[600px] h-[600px] bg-gradient-to-br from-blue-100 to-indigo-100 rounded-full blur-3xl opacity-50 -translate-y-1/2 translate-x-1/2" />
-        <div className="absolute bottom-0 left-0 w-[400px] h-[400px] bg-gradient-to-tr from-cyan-100 to-blue-100 rounded-full blur-3xl opacity-50 translate-y-1/2 -translate-x-1/2" />
-
-        <div className="container mx-auto relative">
+      <section ref={heroRef} className="relative min-h-screen flex items-center justify-center pt-24 pb-12 px-6">
+        <motion.div
+          className="max-w-5xl mx-auto text-center relative z-10"
+          style={{ y: heroY, opacity: heroOpacity, scale: heroScale }}
+        >
+          {/* Badge */}
           <motion.div
-            className="max-w-4xl mx-auto text-center"
-            initial="initial"
-            animate="animate"
-            variants={staggerContainer}
-          >
-            <motion.div variants={fadeInUp}>
-              <Badge variant="secondary" className="mb-6 px-4 py-2 text-sm font-medium bg-blue-50 text-blue-700 border-blue-100">
-                <Sparkles className="w-4 h-4 mr-2" />
-                Nu med AI-assisterad dokumenthantering
-              </Badge>
-            </motion.div>
-
-            <motion.h1
-              variants={fadeInUp}
-              className="text-5xl md:text-7xl font-bold text-slate-900 mb-6 leading-tight tracking-tight"
-            >
-              Projekthantering för{" "}
-              <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-600 via-indigo-600 to-violet-600">
-                framtidens byggare
-              </span>
-            </motion.h1>
-
-            <motion.p
-              variants={fadeInUp}
-              className="text-xl text-slate-600 mb-10 max-w-2xl mx-auto leading-relaxed"
-            >
-              Samla dokument, ritningar och avvikelser på ett ställe.
-              Med AI som hjälper dig organisera och hitta det du behöver.
-            </motion.p>
-
-            <motion.div
-              variants={fadeInUp}
-              className="flex flex-col sm:flex-row gap-4 justify-center"
-            >
-              <Link href="/register">
-                <Button size="lg" className="bg-slate-900 hover:bg-slate-800 text-white px-8 py-6 text-lg rounded-xl shadow-lg shadow-slate-900/10 hover:shadow-xl hover:shadow-slate-900/20 transition-all">
-                  Starta gratis
-                  <ArrowRight className="w-5 h-5 ml-2" />
-                </Button>
-              </Link>
-              <a href="#demo">
-                <Button size="lg" variant="outline" className="px-8 py-6 text-lg rounded-xl border-slate-200 hover:bg-slate-50">
-                  Se demo
-                </Button>
-              </a>
-            </motion.div>
-
-            <motion.p
-              variants={fadeInUp}
-              className="mt-6 text-slate-500 text-sm"
-            >
-              Ingen kreditkort krävs • Gratis för små projekt
-            </motion.p>
-          </motion.div>
-
-          {/* Hero Preview */}
-          <motion.div
-            className="mt-20 relative"
-            initial={{ opacity: 0, y: 40 }}
+            initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.8, delay: 0.3 }}
+            transition={{ duration: 0.5 }}
           >
-            <div className="absolute inset-0 bg-gradient-to-t from-white via-transparent to-transparent z-10 pointer-events-none" />
-            <div className="bg-white rounded-2xl border border-slate-200 p-3 shadow-2xl shadow-slate-200/50">
-              <div className="bg-slate-50 rounded-xl p-8">
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                  <PreviewCard
-                    icon={<FileText className="w-6 h-6" />}
-                    label="Dokument"
-                    value="24"
-                    trend="+3 denna vecka"
-                    color="blue"
-                  />
-                  <PreviewCard
-                    icon={<Layers className="w-6 h-6" />}
-                    label="Ritningar"
-                    value="12"
-                    trend="2 väntar granskning"
-                    color="indigo"
-                  />
-                  <PreviewCard
-                    icon={<AlertTriangle className="w-6 h-6" />}
-                    label="Avvikelser"
-                    value="3"
-                    trend="1 åtgärdad idag"
-                    color="amber"
-                  />
-                </div>
-
-                <div className="mt-6 flex items-center justify-between p-4 bg-white rounded-xl border border-slate-100">
-                  <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-full bg-gradient-to-br from-green-400 to-emerald-500 flex items-center justify-center">
-                      <Sparkles className="w-5 h-5 text-white" />
-                    </div>
-                    <div>
-                      <p className="text-sm font-medium text-slate-900">AI-assistent</p>
-                      <p className="text-xs text-slate-500">3 nya förslag för dig</p>
-                    </div>
-                  </div>
-                  <Button size="sm" variant="outline" className="text-sm">
-                    Visa förslag
-                  </Button>
-                </div>
-              </div>
-            </div>
+            <span className="inline-flex items-center gap-2 px-4 py-2 bg-white/80 backdrop-blur-sm border border-slate-200/50 rounded-full text-sm font-medium text-slate-700 shadow-lg shadow-slate-900/5">
+              <span className="flex h-2 w-2 relative">
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
+              </span>
+              Nu med AI-assisterad dokumenthantering
+            </span>
           </motion.div>
-        </div>
-      </section>
 
-      {/* Trusted By */}
-      <section className="py-12 px-6 border-y border-slate-100 bg-slate-50/50">
-        <div className="container mx-auto">
-          <p className="text-center text-sm text-slate-500 mb-8">
-            Pålitlig för byggföretag över hela Sverige
-          </p>
-          <div className="flex flex-wrap justify-center items-center gap-12 opacity-50">
-            <div className="text-2xl font-bold text-slate-400">Skanska</div>
-            <div className="text-2xl font-bold text-slate-400">NCC</div>
-            <div className="text-2xl font-bold text-slate-400">PEAB</div>
-            <div className="text-2xl font-bold text-slate-400">JM</div>
-            <div className="text-2xl font-bold text-slate-400">Veidekke</div>
+          {/* Main Heading */}
+          <motion.h1
+            className="mt-8 text-6xl sm:text-7xl md:text-8xl font-bold tracking-tight"
+            initial={{ opacity: 0, y: 30 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.6, delay: 0.1 }}
+          >
+            <span className="text-slate-900">Bygg </span>
+            <span className="relative">
+              <span className="bg-gradient-to-r from-indigo-600 via-purple-600 to-pink-600 bg-clip-text text-transparent">
+                smartare
+              </span>
+              <motion.svg
+                className="absolute -bottom-2 left-0 w-full"
+                viewBox="0 0 200 12"
+                initial={{ pathLength: 0, opacity: 0 }}
+                animate={{ pathLength: 1, opacity: 1 }}
+                transition={{ duration: 1, delay: 0.8 }}
+              >
+                <motion.path
+                  d="M2 8 Q 50 2, 100 8 T 198 8"
+                  fill="none"
+                  stroke="url(#gradient)"
+                  strokeWidth="4"
+                  strokeLinecap="round"
+                />
+                <defs>
+                  <linearGradient id="gradient" x1="0%" y1="0%" x2="100%" y2="0%">
+                    <stop offset="0%" stopColor="#6366f1" />
+                    <stop offset="50%" stopColor="#a855f7" />
+                    <stop offset="100%" stopColor="#ec4899" />
+                  </linearGradient>
+                </defs>
+              </motion.svg>
+            </span>
+          </motion.h1>
+
+          <motion.p
+            className="mt-8 text-xl md:text-2xl text-slate-600 max-w-2xl mx-auto leading-relaxed"
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.6, delay: 0.2 }}
+          >
+            Samla dokument, ritningar och avvikelser på ett ställe.
+            <span className="text-slate-900 font-medium"> Med AI som gör jobbet åt dig.</span>
+          </motion.p>
+
+          {/* CTA Buttons */}
+          <motion.div
+            className="mt-10 flex flex-col sm:flex-row gap-4 justify-center"
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.6, delay: 0.3 }}
+          >
+            <Link href="/register">
+              <Button size="lg" className="group bg-slate-900 hover:bg-slate-800 text-white px-8 h-14 text-lg rounded-2xl shadow-xl shadow-slate-900/20 hover:shadow-2xl hover:shadow-slate-900/30 transition-all hover:-translate-y-0.5">
+                Starta gratis
+                <ArrowRight className="w-5 h-5 ml-2 group-hover:translate-x-1 transition-transform" />
+              </Button>
+            </Link>
+            <Button size="lg" variant="outline" className="group h-14 px-8 text-lg rounded-2xl border-slate-200 bg-white/50 backdrop-blur-sm hover:bg-white">
+              <Play className="w-5 h-5 mr-2 group-hover:scale-110 transition-transform" />
+              Se demo
+            </Button>
+          </motion.div>
+
+          <motion.p
+            className="mt-6 text-sm text-slate-500"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ delay: 0.5 }}
+          >
+            Gratis för alltid • Ingen kreditkort • Kom igång på 30 sekunder
+          </motion.p>
+        </motion.div>
+
+        {/* Floating Elements */}
+        <FloatingCard
+          className="absolute top-[25%] left-[5%] hidden lg:block"
+          delay={0}
+        >
+          <div className="flex items-center gap-3 px-4 py-3 bg-white rounded-xl shadow-xl shadow-slate-900/5 border border-slate-100">
+            <div className="w-10 h-10 rounded-lg bg-emerald-100 flex items-center justify-center">
+              <Check className="w-5 h-5 text-emerald-600" />
+            </div>
+            <div>
+              <p className="text-sm font-semibold text-slate-900">12 uppgifter klara</p>
+              <p className="text-xs text-slate-500">Idag</p>
+            </div>
           </div>
-        </div>
+        </FloatingCard>
+
+        <FloatingCard
+          className="absolute top-[35%] right-[5%] hidden lg:block"
+          delay={0.5}
+        >
+          <div className="flex items-center gap-3 px-4 py-3 bg-white rounded-xl shadow-xl shadow-slate-900/5 border border-slate-100">
+            <div className="w-10 h-10 rounded-lg bg-blue-100 flex items-center justify-center">
+              <FileText className="w-5 h-5 text-blue-600" />
+            </div>
+            <div>
+              <p className="text-sm font-semibold text-slate-900">Ritning uppladdad</p>
+              <p className="text-xs text-slate-500">Just nu</p>
+            </div>
+          </div>
+        </FloatingCard>
+
+        <FloatingCard
+          className="absolute bottom-[20%] left-[10%] hidden lg:block"
+          delay={1}
+        >
+          <div className="flex items-center gap-3 px-4 py-3 bg-white rounded-xl shadow-xl shadow-slate-900/5 border border-slate-100">
+            <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-indigo-500 to-purple-500 flex items-center justify-center">
+              <Sparkles className="w-5 h-5 text-white" />
+            </div>
+            <div>
+              <p className="text-sm font-semibold text-slate-900">AI sorterade 24 filer</p>
+              <p className="text-xs text-slate-500">Automatiskt</p>
+            </div>
+          </div>
+        </FloatingCard>
       </section>
 
-      {/* Features Section */}
-      <section id="features" className="py-24 px-6">
-        <div className="container mx-auto">
+      {/* Bento Grid Features */}
+      <section id="funktioner" className="py-24 px-6 relative">
+        <div className="max-w-6xl mx-auto">
           <motion.div
             className="text-center mb-16"
             initial={{ opacity: 0, y: 20 }}
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true }}
-            transition={{ duration: 0.5 }}
           >
-            <Badge variant="secondary" className="mb-4 bg-slate-100 text-slate-700">
+            <span className="inline-block px-4 py-1.5 bg-indigo-100 text-indigo-700 rounded-full text-sm font-medium mb-4">
               Funktioner
-            </Badge>
+            </span>
             <h2 className="text-4xl md:text-5xl font-bold text-slate-900 mb-4">
-              Allt du behöver för dina byggprojekt
+              Allt på ett ställe
             </h2>
-            <p className="text-slate-600 max-w-2xl mx-auto text-lg">
-              Kraftfulla verktyg som hjälper dig hålla koll på alla delar av projektet.
+            <p className="text-xl text-slate-600 max-w-2xl mx-auto">
+              Kraftfulla verktyg som förenklar hela byggprocessen
             </p>
           </motion.div>
 
-          <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6">
-            <FeatureCard
+          {/* Bento Grid */}
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {/* Large Card - AI */}
+            <motion.div
+              className="lg:col-span-2 group"
+              initial={{ opacity: 0, y: 20 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true }}
+              transition={{ delay: 0.1 }}
+            >
+              <div className="h-full p-8 bg-gradient-to-br from-indigo-500 via-purple-500 to-pink-500 rounded-3xl overflow-hidden relative">
+                <div className="absolute inset-0 bg-[url('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjAiIGhlaWdodD0iMjAiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+PGNpcmNsZSBjeD0iMSIgY3k9IjEiIHI9IjEiIGZpbGw9InJnYmEoMjU1LDI1NSwyNTUsMC4xKSIvPjwvc3ZnPg==')] opacity-50" />
+                <div className="relative z-10">
+                  <div className="w-14 h-14 rounded-2xl bg-white/20 backdrop-blur-sm flex items-center justify-center mb-6 group-hover:scale-110 transition-transform">
+                    <Sparkles className="w-7 h-7 text-white" />
+                  </div>
+                  <h3 className="text-2xl md:text-3xl font-bold text-white mb-3">
+                    AI som förstår bygg
+                  </h3>
+                  <p className="text-white/80 text-lg max-w-md mb-6">
+                    Automatisk sortering, smart sökning och förslag baserat på ditt projekt.
+                  </p>
+                  <div className="flex flex-wrap gap-2">
+                    {["Auto-taggning", "Smart sökning", "Mappstruktur", "OCR"].map((tag) => (
+                      <span key={tag} className="px-3 py-1 bg-white/20 backdrop-blur-sm rounded-full text-sm text-white">
+                        {tag}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            </motion.div>
+
+            {/* Small Card - Documents */}
+            <BentoCard
               icon={<FileText className="w-6 h-6" />}
               title="Dokumenthantering"
-              description="Ladda upp och organisera dokument med AI-assisterad sortering och taggning."
-              delay={0}
-            />
-            <FeatureCard
-              icon={<Layers className="w-6 h-6" />}
-              title="Ritningsvisare"
-              description="Visa PDF-ritningar med markup-verktyg och kommentarer direkt i webbläsaren."
-              delay={0.1}
-            />
-            <FeatureCard
-              icon={<AlertTriangle className="w-6 h-6" />}
-              title="Avvikelsehantering"
-              description="Rapportera och följ upp avvikelser med foton, statusflöde och notifieringar."
+              description="Ladda upp, organisera och dela dokument enkelt."
+              color="blue"
               delay={0.2}
             />
-            <FeatureCard
+
+            {/* Small Card - Drawings */}
+            <BentoCard
+              icon={<Layers className="w-6 h-6" />}
+              title="Ritningsvisare"
+              description="PDF-ritningar med markup och kommentarer."
+              color="violet"
+              delay={0.3}
+            />
+
+            {/* Small Card - Deviations */}
+            <BentoCard
+              icon={<AlertTriangle className="w-6 h-6" />}
+              title="Avvikelser"
+              description="Rapportera och följ upp med foton och status."
+              color="amber"
+              delay={0.4}
+            />
+
+            {/* Small Card - Checklists */}
+            <BentoCard
               icon={<ClipboardCheck className="w-6 h-6" />}
               title="Checklistor"
-              description="Skapa egenkontroller och besiktningsprotokoll med digital signering."
-              delay={0.3}
+              description="Digitala egenkontroller med signering."
+              color="emerald"
+              delay={0.5}
             />
           </div>
         </div>
       </section>
 
-      {/* AI Section */}
-      <section className="py-24 px-6 bg-gradient-to-b from-slate-50 to-white">
-        <div className="container mx-auto">
-          <motion.div
-            className="grid md:grid-cols-2 gap-16 items-center"
-            initial={{ opacity: 0 }}
-            whileInView={{ opacity: 1 }}
-            viewport={{ once: true }}
-            transition={{ duration: 0.6 }}
-          >
-            <div>
-              <Badge variant="secondary" className="mb-4 bg-violet-100 text-violet-700">
-                <Sparkles className="w-4 h-4 mr-1" />
-                AI-driven
-              </Badge>
-              <h2 className="text-4xl md:text-5xl font-bold text-slate-900 mb-6">
-                Låt AI organisera åt dig
-              </h2>
-              <p className="text-slate-600 mb-8 text-lg leading-relaxed">
-                Vår AI hjälper dig automatiskt med att skapa mappstrukturer,
-                sortera filer och tagga dokument baserat på innehåll.
-                Sök med naturligt språk och hitta det du letar efter direkt.
-              </p>
-              <ul className="space-y-4">
-                {[
-                  "Automatisk mappstruktur baserat på projekttyp",
-                  "Smart filsortering och kategorisering",
-                  "Sök med naturligt språk",
-                  "Ritningsanalys och OCR"
-                ].map((text, i) => (
-                  <motion.li
-                    key={i}
-                    className="flex items-center gap-3"
-                    initial={{ opacity: 0, x: -20 }}
-                    whileInView={{ opacity: 1, x: 0 }}
-                    viewport={{ once: true }}
-                    transition={{ delay: i * 0.1 }}
-                  >
-                    <div className="w-6 h-6 rounded-full bg-green-100 flex items-center justify-center">
-                      <Check className="w-4 h-4 text-green-600" />
-                    </div>
-                    <span className="text-slate-700">{text}</span>
-                  </motion.li>
-                ))}
-              </ul>
-            </div>
-
-            <motion.div
-              className="relative"
-              initial={{ opacity: 0, scale: 0.95 }}
-              whileInView={{ opacity: 1, scale: 1 }}
-              viewport={{ once: true }}
-              transition={{ duration: 0.5 }}
-            >
-              <div className="absolute inset-0 bg-gradient-to-br from-violet-200 to-blue-200 rounded-3xl blur-2xl opacity-40" />
-              <Card className="relative bg-white border-slate-200 p-6 rounded-2xl shadow-xl">
-                <div className="flex items-center gap-2 mb-4 pb-4 border-b border-slate-100">
-                  <div className="w-3 h-3 rounded-full bg-red-400"></div>
-                  <div className="w-3 h-3 rounded-full bg-amber-400"></div>
-                  <div className="w-3 h-3 rounded-full bg-green-400"></div>
-                  <span className="ml-2 text-sm text-slate-500">AI Assistent</span>
-                </div>
-                <div className="space-y-4 font-mono text-sm">
-                  <div className="flex items-start gap-3">
-                    <div className="w-8 h-8 rounded-full bg-gradient-to-br from-violet-500 to-indigo-500 flex items-center justify-center flex-shrink-0">
-                      <Sparkles className="w-4 h-4 text-white" />
-                    </div>
-                    <div className="bg-slate-50 rounded-lg p-3 flex-1">
-                      <p className="text-slate-600">Skapar mappstruktur för <span className="text-violet-600 font-semibold">Bostadshus</span>...</p>
-                    </div>
-                  </div>
-                  <div className="pl-11 space-y-2 text-slate-600">
-                    <p className="flex items-center gap-2"><span className="text-blue-500">📁</span> 01 - Administration</p>
-                    <p className="flex items-center gap-2"><span className="text-blue-500">📁</span> 02 - Ritningar</p>
-                    <p className="flex items-center gap-2"><span className="text-blue-500">📁</span> 03 - Beskrivningar</p>
-                    <p className="flex items-center gap-2"><span className="text-blue-500">📁</span> 04 - Protokoll</p>
-                    <p className="flex items-center gap-2"><span className="text-blue-500">📁</span> 05 - Ekonomi</p>
-                  </div>
-                  <div className="flex items-center gap-2 text-green-600 mt-4">
-                    <Check className="w-5 h-5" />
-                    <span>Mappstruktur skapad!</span>
-                  </div>
-                </div>
-              </Card>
-            </motion.div>
-          </motion.div>
-        </div>
-      </section>
-
-      {/* Stats Section */}
-      <section className="py-20 px-6">
-        <div className="container mx-auto">
+      {/* Stats Section with Scroll Animation */}
+      <section className="py-24 px-6 bg-white relative overflow-hidden">
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_30%_50%,rgba(99,102,241,0.05),transparent_50%)]" />
+        <div className="max-w-6xl mx-auto relative">
           <div className="grid grid-cols-2 md:grid-cols-4 gap-8">
-            <StatCard number="500+" label="Projekt" icon={<Building2 className="w-5 h-5" />} />
-            <StatCard number="10k+" label="Användare" icon={<Users className="w-5 h-5" />} />
-            <StatCard number="99.9%" label="Upptid" icon={<Shield className="w-5 h-5" />} />
-            <StatCard number="2x" label="Snabbare" icon={<Zap className="w-5 h-5" />} />
+            <AnimatedStat number={500} suffix="+" label="Projekt" icon={<Building2 />} />
+            <AnimatedStat number={10000} suffix="+" label="Användare" icon={<Users />} />
+            <AnimatedStat number={99.9} suffix="%" label="Upptid" icon={<Shield />} />
+            <AnimatedStat number={2} suffix="x" label="Snabbare" icon={<Zap />} />
           </div>
         </div>
       </section>
 
       {/* Pricing Section */}
-      <section id="pricing" className="py-24 px-6 bg-slate-50">
-        <div className="container mx-auto">
+      <section id="priser" className="py-24 px-6">
+        <div className="max-w-5xl mx-auto">
           <motion.div
             className="text-center mb-16"
             initial={{ opacity: 0, y: 20 }}
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true }}
           >
-            <Badge variant="secondary" className="mb-4 bg-slate-100 text-slate-700">
+            <span className="inline-block px-4 py-1.5 bg-emerald-100 text-emerald-700 rounded-full text-sm font-medium mb-4">
               Priser
-            </Badge>
+            </span>
             <h2 className="text-4xl md:text-5xl font-bold text-slate-900 mb-4">
-              Enkla, transparenta priser
+              Enkelt och transparent
             </h2>
-            <p className="text-slate-600 max-w-2xl mx-auto text-lg">
-              Betala bara för det du använder. Inga dolda avgifter.
+            <p className="text-xl text-slate-600">
+              Betala bara för det du använder
             </p>
           </motion.div>
 
-          <div className="grid md:grid-cols-3 gap-8 max-w-5xl mx-auto">
+          <div className="grid md:grid-cols-3 gap-6">
             <PricingCard
               name="Gratis"
               price="0"
-              description="För små projekt och tester"
-              features={[
-                "1 projekt",
-                "5 GB lagring",
-                "2 användare",
-                "Grundläggande funktioner"
-              ]}
-              buttonText="Kom igång"
+              description="Perfekt för att komma igång"
+              features={["1 projekt", "5 GB lagring", "2 användare", "Grundfunktioner"]}
               delay={0}
             />
             <PricingCard
               name="Pro"
               price="199"
-              description="För aktiva projekt"
-              features={[
-                "Obegränsat antal projekt",
-                "50 GB lagring",
-                "10 användare",
-                "AI-funktioner",
-                "Prioriterad support"
-              ]}
-              buttonText="Starta provperiod"
+              description="För aktiva team"
+              features={["Obegränsat projekt", "50 GB lagring", "10 användare", "AI-funktioner", "Prioriterad support"]}
               popular
               delay={0.1}
             />
@@ -412,14 +423,7 @@ export default function Home() {
               name="Enterprise"
               price="Kontakta oss"
               description="För stora organisationer"
-              features={[
-                "Allt i Pro",
-                "Obegränsad lagring",
-                "Obegränsat antal användare",
-                "SSO & API-åtkomst",
-                "Dedikerad support"
-              ]}
-              buttonText="Kontakta oss"
+              features={["Allt i Pro", "Obegränsad lagring", "SSO & API", "Dedikerad support"]}
               delay={0.2}
             />
           </div>
@@ -428,83 +432,65 @@ export default function Home() {
 
       {/* CTA Section */}
       <section className="py-24 px-6">
-        <div className="container mx-auto">
-          <motion.div
-            className="relative overflow-hidden bg-slate-900 rounded-3xl p-12 md:p-20"
-            initial={{ opacity: 0, y: 20 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true }}
-          >
-            <div className="absolute top-0 right-0 w-[500px] h-[500px] bg-gradient-to-br from-blue-600/30 to-violet-600/30 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2" />
+        <motion.div
+          className="max-w-4xl mx-auto"
+          initial={{ opacity: 0, y: 20 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true }}
+        >
+          <div className="relative overflow-hidden rounded-[2rem] bg-slate-900 p-12 md:p-20">
+            {/* Animated gradient */}
+            <div className="absolute inset-0">
+              <div className="absolute inset-0 bg-gradient-to-br from-indigo-600/20 via-purple-600/20 to-pink-600/20" />
+              <motion.div
+                className="absolute w-[500px] h-[500px] rounded-full bg-indigo-500/30 blur-3xl"
+                animate={{
+                  x: [0, 100, 0],
+                  y: [0, -50, 0],
+                }}
+                transition={{ duration: 10, repeat: Infinity }}
+                style={{ top: "-50%", right: "-20%" }}
+              />
+            </div>
 
-            <div className="relative text-center max-w-2xl mx-auto">
+            <div className="relative z-10 text-center">
               <h2 className="text-4xl md:text-5xl font-bold text-white mb-6">
-                Redo att komma igång?
+                Redo att bygga smartare?
               </h2>
-              <p className="text-slate-300 mb-10 text-lg">
-                Skapa ditt konto på under en minut och börja organisera dina byggprojekt idag.
+              <p className="text-xl text-slate-300 mb-10 max-w-xl mx-auto">
+                Kom igång gratis på under en minut.
               </p>
               <Link href="/register">
-                <Button size="lg" className="bg-white text-slate-900 hover:bg-slate-100 px-8 py-6 text-lg rounded-xl">
-                  Skapa gratis konto
+                <Button size="lg" className="bg-white text-slate-900 hover:bg-slate-100 h-14 px-10 text-lg rounded-2xl shadow-xl">
+                  Skapa konto gratis
                   <ArrowRight className="w-5 h-5 ml-2" />
                 </Button>
               </Link>
             </div>
-          </motion.div>
-        </div>
+          </div>
+        </motion.div>
       </section>
 
       {/* Footer */}
-      <footer className="py-16 px-6 border-t border-slate-100">
-        <div className="container mx-auto">
-          <div className="grid md:grid-cols-4 gap-12 mb-12">
-            <div className="md:col-span-2">
-              <Link href="/" className="flex items-center gap-2 mb-4">
-                <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-blue-600 to-indigo-600 flex items-center justify-center">
-                  <Building2 className="w-5 h-5 text-white" />
-                </div>
-                <span className="text-xl font-bold text-slate-900">
-                  Dalux<span className="text-blue-600">2</span>
-                </span>
-              </Link>
-              <p className="text-slate-500 max-w-sm">
-                Modern projekthantering för byggbranschen. Enklare, snabbare, smartare.
-              </p>
-            </div>
-            <div>
-              <h4 className="font-semibold text-slate-900 mb-4">Produkt</h4>
-              <ul className="space-y-3 text-slate-600">
-                <li><a href="#features" className="hover:text-slate-900 transition-colors">Funktioner</a></li>
-                <li><a href="#pricing" className="hover:text-slate-900 transition-colors">Priser</a></li>
-                <li><a href="#" className="hover:text-slate-900 transition-colors">Uppdateringar</a></li>
-              </ul>
-            </div>
-            <div>
-              <h4 className="font-semibold text-slate-900 mb-4">Företag</h4>
-              <ul className="space-y-3 text-slate-600">
-                <li><a href="#" className="hover:text-slate-900 transition-colors">Om oss</a></li>
-                <li><a href="#" className="hover:text-slate-900 transition-colors">Kontakt</a></li>
-                <li><a href="#" className="hover:text-slate-900 transition-colors">Integritetspolicy</a></li>
-              </ul>
-            </div>
-          </div>
+      <footer className="py-16 px-6 border-t border-slate-200">
+        <div className="max-w-6xl mx-auto">
+          <div className="flex flex-col md:flex-row justify-between items-center gap-6">
+            <Link href="/" className="flex items-center gap-2.5">
+              <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-indigo-500 via-purple-500 to-pink-500 flex items-center justify-center">
+                <Building2 className="w-5 h-5 text-white" />
+              </div>
+              <span className="text-xl font-bold text-slate-900">Dalux2</span>
+            </Link>
 
-          <div className="pt-8 border-t border-slate-100 flex flex-col md:flex-row justify-between items-center gap-4">
-            <p className="text-slate-500 text-sm">
-              © 2024 Dalux2. Alla rättigheter förbehållna.
-            </p>
-            <div className="flex gap-6">
-              <a href="#" className="text-slate-400 hover:text-slate-600 transition-colors">
-                <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24"><path d="M24 4.557c-.883.392-1.832.656-2.828.775 1.017-.609 1.798-1.574 2.165-2.724-.951.564-2.005.974-3.127 1.195-.897-.957-2.178-1.555-3.594-1.555-3.179 0-5.515 2.966-4.797 6.045-4.091-.205-7.719-2.165-10.148-5.144-1.29 2.213-.669 5.108 1.523 6.574-.806-.026-1.566-.247-2.229-.616-.054 2.281 1.581 4.415 3.949 4.89-.693.188-1.452.232-2.224.084.626 1.956 2.444 3.379 4.6 3.419-2.07 1.623-4.678 2.348-7.29 2.04 2.179 1.397 4.768 2.212 7.548 2.212 9.142 0 14.307-7.721 13.995-14.646.962-.695 1.797-1.562 2.457-2.549z"/></svg>
-              </a>
-              <a href="#" className="text-slate-400 hover:text-slate-600 transition-colors">
-                <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24"><path d="M12 0c-6.626 0-12 5.373-12 12 0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23.957-.266 1.983-.399 3.003-.404 1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576 4.765-1.589 8.199-6.086 8.199-11.386 0-6.627-5.373-12-12-12z"/></svg>
-              </a>
-              <a href="#" className="text-slate-400 hover:text-slate-600 transition-colors">
-                <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24"><path d="M19 0h-14c-2.761 0-5 2.239-5 5v14c0 2.761 2.239 5 5 5h14c2.762 0 5-2.239 5-5v-14c0-2.761-2.238-5-5-5zm-11 19h-3v-11h3v11zm-1.5-12.268c-.966 0-1.75-.79-1.75-1.764s.784-1.764 1.75-1.764 1.75.79 1.75 1.764-.783 1.764-1.75 1.764zm13.5 12.268h-3v-5.604c0-3.368-4-3.113-4 0v5.604h-3v-11h3v1.765c1.396-2.586 7-2.777 7 2.476v6.759z"/></svg>
-              </a>
+            <div className="flex gap-8 text-slate-600">
+              <a href="#" className="hover:text-slate-900 transition-colors">Integritetspolicy</a>
+              <a href="#" className="hover:text-slate-900 transition-colors">Villkor</a>
+              <a href="#" className="hover:text-slate-900 transition-colors">Kontakt</a>
             </div>
+
+            <p className="text-slate-500 text-sm">
+              © 2024 Dalux2
+            </p>
           </div>
         </div>
       </footer>
@@ -512,100 +498,123 @@ export default function Home() {
   )
 }
 
-// Components
-function PreviewCard({
-  icon,
-  label,
-  value,
-  trend,
-  color
+// Floating Card Component
+function FloatingCard({
+  children,
+  className,
+  delay = 0
 }: {
-  icon: React.ReactNode
-  label: string
-  value: string
-  trend: string
-  color: "blue" | "indigo" | "amber"
+  children: React.ReactNode
+  className?: string
+  delay?: number
 }) {
-  const colors = {
-    blue: "bg-blue-50 text-blue-600",
-    indigo: "bg-indigo-50 text-indigo-600",
-    amber: "bg-amber-50 text-amber-600"
-  }
-
   return (
-    <div className="bg-white rounded-xl p-5 border border-slate-100 shadow-sm">
-      <div className={`w-10 h-10 rounded-lg ${colors[color]} flex items-center justify-center mb-3`}>
-        {icon}
-      </div>
-      <p className="text-sm text-slate-500 mb-1">{label}</p>
-      <p className="text-2xl font-bold text-slate-900">{value}</p>
-      <p className="text-xs text-slate-400 mt-1">{trend}</p>
-    </div>
+    <motion.div
+      className={className}
+      initial={{ opacity: 0, y: 20 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ delay: 0.8 + delay, duration: 0.6 }}
+    >
+      <motion.div
+        animate={{
+          y: [0, -10, 0],
+        }}
+        transition={{
+          duration: 4 + delay,
+          repeat: Infinity,
+          ease: "easeInOut"
+        }}
+      >
+        {children}
+      </motion.div>
+    </motion.div>
   )
 }
 
-function FeatureCard({
+// Bento Card Component
+function BentoCard({
   icon,
   title,
   description,
+  color,
   delay
 }: {
   icon: React.ReactNode
   title: string
   description: string
+  color: "blue" | "violet" | "amber" | "emerald"
   delay: number
 }) {
+  const colors = {
+    blue: "bg-blue-100 text-blue-600 group-hover:bg-blue-200",
+    violet: "bg-violet-100 text-violet-600 group-hover:bg-violet-200",
+    amber: "bg-amber-100 text-amber-600 group-hover:bg-amber-200",
+    emerald: "bg-emerald-100 text-emerald-600 group-hover:bg-emerald-200",
+  }
+
   return (
     <motion.div
+      className="group"
       initial={{ opacity: 0, y: 20 }}
       whileInView={{ opacity: 1, y: 0 }}
       viewport={{ once: true }}
-      transition={{ delay, duration: 0.5 }}
+      transition={{ delay }}
     >
-      <Card className="p-6 h-full bg-white border-slate-200 hover:border-slate-300 transition-all hover:shadow-lg hover:shadow-slate-200/50 group">
-        <div className="w-12 h-12 rounded-xl bg-slate-100 flex items-center justify-center text-slate-600 mb-4 group-hover:bg-blue-100 group-hover:text-blue-600 transition-colors">
+      <div className="h-full p-6 bg-white rounded-3xl border border-slate-200 hover:border-slate-300 hover:shadow-xl hover:shadow-slate-900/5 transition-all cursor-pointer group-hover:-translate-y-1">
+        <div className={`w-12 h-12 rounded-2xl ${colors[color]} flex items-center justify-center mb-4 transition-colors`}>
           {icon}
         </div>
         <h3 className="text-lg font-semibold text-slate-900 mb-2">{title}</h3>
-        <p className="text-slate-600 leading-relaxed">{description}</p>
-      </Card>
+        <p className="text-slate-600">{description}</p>
+      </div>
     </motion.div>
   )
 }
 
-function StatCard({
+// Animated Stat Component
+function AnimatedStat({
   number,
+  suffix,
   label,
   icon
 }: {
-  number: string
+  number: number
+  suffix: string
   label: string
   icon: React.ReactNode
 }) {
+  const ref = useRef<HTMLDivElement>(null)
+  const { scrollYProgress } = useScroll({
+    target: ref,
+    offset: ["start end", "end start"]
+  })
+
+  const scale = useTransform(scrollYProgress, [0, 0.5], [0.8, 1])
+  const opacity = useTransform(scrollYProgress, [0, 0.3], [0, 1])
+
   return (
     <motion.div
+      ref={ref}
       className="text-center"
-      initial={{ opacity: 0, y: 20 }}
-      whileInView={{ opacity: 1, y: 0 }}
-      viewport={{ once: true }}
+      style={{ scale, opacity }}
     >
-      <div className="flex justify-center mb-2">
-        <div className="w-10 h-10 rounded-full bg-slate-100 flex items-center justify-center text-slate-600">
-          {icon}
-        </div>
+      <div className="w-14 h-14 rounded-2xl bg-slate-100 flex items-center justify-center mx-auto mb-4 text-slate-600">
+        {icon}
       </div>
-      <p className="text-4xl font-bold text-slate-900">{number}</p>
-      <p className="text-slate-600">{label}</p>
+      <p className="text-4xl md:text-5xl font-bold text-slate-900">
+        {number.toLocaleString()}{suffix}
+      </p>
+      <p className="text-slate-600 mt-1">{label}</p>
     </motion.div>
   )
 }
 
+// Pricing Card Component
 function PricingCard({
   name,
   price,
   description,
   features,
-  buttonText,
   popular,
   delay
 }: {
@@ -613,7 +622,6 @@ function PricingCard({
   price: string
   description: string
   features: string[]
-  buttonText: string
   popular?: boolean
   delay: number
 }) {
@@ -622,44 +630,61 @@ function PricingCard({
       initial={{ opacity: 0, y: 20 }}
       whileInView={{ opacity: 1, y: 0 }}
       viewport={{ once: true }}
-      transition={{ delay, duration: 0.5 }}
+      transition={{ delay }}
+      className={`relative ${popular ? 'md:-mt-4 md:mb-4' : ''}`}
     >
-      <Card className={`relative p-8 h-full ${popular ? 'border-2 border-blue-600 shadow-xl shadow-blue-100' : 'border-slate-200'}`}>
+      <div className={`h-full p-8 rounded-3xl ${popular
+        ? 'bg-slate-900 text-white ring-2 ring-slate-900'
+        : 'bg-white border border-slate-200'
+        }`}>
         {popular && (
-          <div className="absolute -top-4 left-1/2 -translate-x-1/2">
-            <Badge className="bg-blue-600 text-white px-4 py-1">
-              Populärast
-            </Badge>
-          </div>
+          <span className="absolute -top-3 left-1/2 -translate-x-1/2 px-4 py-1 bg-gradient-to-r from-indigo-500 to-purple-500 text-white text-sm font-medium rounded-full">
+            Populärast
+          </span>
         )}
-        <h3 className="text-xl font-semibold text-slate-900 mb-2">{name}</h3>
-        <p className="text-slate-500 text-sm mb-4">{description}</p>
+
+        <h3 className={`text-xl font-semibold mb-1 ${popular ? 'text-white' : 'text-slate-900'}`}>
+          {name}
+        </h3>
+        <p className={`text-sm mb-4 ${popular ? 'text-slate-400' : 'text-slate-500'}`}>
+          {description}
+        </p>
+
         <div className="mb-6">
           {price === "Kontakta oss" ? (
-            <span className="text-2xl font-bold text-slate-900">{price}</span>
+            <span className={`text-2xl font-bold ${popular ? 'text-white' : 'text-slate-900'}`}>
+              {price}
+            </span>
           ) : (
             <>
-              <span className="text-4xl font-bold text-slate-900">{price}</span>
-              <span className="text-slate-500"> kr/mån</span>
+              <span className={`text-4xl font-bold ${popular ? 'text-white' : 'text-slate-900'}`}>
+                {price}
+              </span>
+              <span className={popular ? 'text-slate-400' : 'text-slate-500'}> kr/mån</span>
             </>
           )}
         </div>
+
         <ul className="space-y-3 mb-8">
           {features.map((feature, i) => (
-            <li key={i} className="flex items-center gap-3 text-slate-600 text-sm">
-              <Check className="w-5 h-5 text-green-500 flex-shrink-0" />
-              {feature}
+            <li key={i} className="flex items-center gap-3 text-sm">
+              <Check className={`w-5 h-5 flex-shrink-0 ${popular ? 'text-emerald-400' : 'text-emerald-500'}`} />
+              <span className={popular ? 'text-slate-300' : 'text-slate-600'}>{feature}</span>
             </li>
           ))}
         </ul>
+
         <Link href="/register">
           <Button
-            className={`w-full ${popular ? 'bg-blue-600 hover:bg-blue-700 text-white' : 'bg-slate-100 hover:bg-slate-200 text-slate-900'}`}
+            className={`w-full h-12 rounded-xl ${popular
+              ? 'bg-white text-slate-900 hover:bg-slate-100'
+              : 'bg-slate-900 text-white hover:bg-slate-800'
+              }`}
           >
-            {buttonText}
+            {price === "Kontakta oss" ? "Kontakta oss" : "Kom igång"}
           </Button>
         </Link>
-      </Card>
+      </div>
     </motion.div>
   )
 }
