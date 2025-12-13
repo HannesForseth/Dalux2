@@ -3,8 +3,11 @@
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
+import { motion } from 'framer-motion'
 import { createClient } from '@/lib/supabase/client'
 import { getMyProjects } from '@/app/actions/projects'
+import { Button } from '@/components/ui/button'
+import { Building2, Plus, MapPin, FolderOpen, LogOut } from 'lucide-react'
 import type { User } from '@supabase/supabase-js'
 import type { Project } from '@/types/database'
 
@@ -33,119 +36,239 @@ export default function ProjectSelectorPage() {
     }
   }
 
+  const handleLogout = async () => {
+    const supabase = createClient()
+    await supabase.auth.signOut()
+    router.push('/login')
+  }
+
   const userName = user?.user_metadata?.full_name || user?.email?.split('@')[0] || 'Användare'
 
   return (
-    <div className="min-h-screen bg-slate-950">
-      {/* Header */}
-      <header className="border-b border-slate-800 bg-slate-900/50">
-        <div className="max-w-5xl mx-auto px-4 py-4 flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <div className="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center">
-              <span className="text-white font-bold text-sm">D2</span>
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-indigo-50 overflow-hidden relative">
+      {/* Animated background blobs */}
+      <motion.div
+        className="absolute w-[600px] h-[600px] rounded-full pointer-events-none"
+        style={{
+          background: "radial-gradient(circle, rgba(99,102,241,0.15) 0%, transparent 70%)",
+          top: "-200px",
+          left: "-200px",
+        }}
+        animate={{
+          x: [0, 30, 0],
+          y: [0, 20, 0],
+          scale: [1, 1.1, 1],
+        }}
+        transition={{
+          duration: 20,
+          repeat: Infinity,
+          ease: "easeInOut",
+        }}
+      />
+      <motion.div
+        className="absolute w-[500px] h-[500px] rounded-full pointer-events-none"
+        style={{
+          background: "radial-gradient(circle, rgba(168,85,247,0.12) 0%, transparent 70%)",
+          bottom: "-150px",
+          right: "-150px",
+        }}
+        animate={{
+          x: [0, -20, 0],
+          y: [0, -30, 0],
+          scale: [1, 1.15, 1],
+        }}
+        transition={{
+          duration: 25,
+          repeat: Infinity,
+          ease: "easeInOut",
+        }}
+      />
+      <motion.div
+        className="absolute w-[400px] h-[400px] rounded-full pointer-events-none"
+        style={{
+          background: "radial-gradient(circle, rgba(236,72,153,0.08) 0%, transparent 70%)",
+          top: "40%",
+          right: "-100px",
+        }}
+        animate={{
+          x: [0, 20, 0],
+          y: [0, 40, 0],
+          scale: [1, 1.2, 1],
+        }}
+        transition={{
+          duration: 30,
+          repeat: Infinity,
+          ease: "easeInOut",
+        }}
+      />
+
+      {/* Grid pattern overlay */}
+      <div
+        className="absolute inset-0 opacity-[0.015]"
+        style={{
+          backgroundImage: `url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23000000' fill-opacity='1'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E")`,
+        }}
+      />
+
+      {/* Glassmorphism Header */}
+      <header className="sticky top-0 z-50 bg-white/80 backdrop-blur-md border-b border-slate-200/50">
+        <div className="max-w-6xl mx-auto px-4 py-4 flex items-center justify-between">
+          <Link href="/" className="flex items-center gap-2 group">
+            <div className="w-10 h-10 bg-gradient-to-br from-indigo-600 to-purple-600 rounded-xl flex items-center justify-center shadow-lg shadow-indigo-500/25 group-hover:shadow-xl group-hover:shadow-indigo-500/30 transition-all duration-300 group-hover:scale-105">
+              <Building2 className="w-5 h-5 text-white" />
             </div>
-            <span className="text-white font-semibold">Dalux2</span>
-          </div>
+            <span className="text-xl font-bold text-slate-900">
+              Bygg<span className="bg-gradient-to-r from-indigo-600 to-purple-600 bg-clip-text text-transparent">Smart</span>
+            </span>
+          </Link>
+
           <div className="flex items-center gap-4">
-            <span className="text-slate-400 text-sm">{userName}</span>
-            <button
-              onClick={async () => {
-                const supabase = createClient()
-                await supabase.auth.signOut()
-                router.push('/login')
-              }}
-              className="text-slate-400 hover:text-white text-sm transition-colors"
+            <span className="text-slate-600 text-sm hidden sm:inline">{userName}</span>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={handleLogout}
+              className="text-slate-600 hover:text-slate-900"
             >
+              <LogOut className="w-4 h-4 mr-2" />
               Logga ut
-            </button>
+            </Button>
           </div>
         </div>
       </header>
 
       {/* Main content */}
-      <main className="max-w-5xl mx-auto px-4 py-12">
-        <div className="text-center mb-12">
-          <h1 className="text-3xl font-bold text-white mb-2">Välj projekt</h1>
-          <p className="text-slate-400">
+      <main className="max-w-6xl mx-auto px-4 py-12 relative z-10">
+        {/* Hero Section */}
+        <motion.div
+          className="text-center mb-12"
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.5 }}
+        >
+          <h1 className="text-4xl md:text-5xl font-bold text-slate-900 mb-4">
+            Välj{' '}
+            <span className="bg-gradient-to-r from-indigo-600 to-purple-600 bg-clip-text text-transparent">
+              projekt
+            </span>
+          </h1>
+          <p className="text-xl text-slate-600">
             Välj ett befintligt projekt eller skapa ett nytt
           </p>
-        </div>
+        </motion.div>
 
         {isLoading ? (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {[1, 2, 3].map((i) => (
-              <div key={i} className="animate-pulse">
-                <div className="h-48 bg-slate-800 rounded-xl" />
-              </div>
+              <motion.div
+                key={i}
+                className="animate-pulse"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                transition={{ delay: i * 0.1 }}
+              >
+                <div className="h-52 bg-slate-200/50 rounded-2xl" />
+              </motion.div>
             ))}
           </div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {/* Create new project card */}
-            <Link
-              href="/projects/new"
-              className="group flex flex-col items-center justify-center h-48 bg-slate-900 border-2 border-dashed border-slate-700 rounded-xl hover:border-blue-500 hover:bg-slate-800/50 transition-all"
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.4 }}
+              whileHover={{ scale: 1.02 }}
             >
-              <div className="w-12 h-12 rounded-full bg-blue-500/10 flex items-center justify-center mb-3 group-hover:bg-blue-500/20 transition-colors">
-                <PlusIcon className="text-blue-400" />
-              </div>
-              <span className="text-white font-medium">Skapa nytt projekt</span>
-              <span className="text-slate-500 text-sm mt-1">Välj plan och kom igång</span>
-            </Link>
-
-            {/* Existing projects */}
-            {projects.map((project) => (
               <Link
-                key={project.id}
-                href={`/dashboard/projects/${project.id}`}
-                className="group flex flex-col h-48 bg-slate-900 border border-slate-800 rounded-xl hover:border-slate-700 hover:bg-slate-800/50 transition-all overflow-hidden"
+                href="/projects/new"
+                className="group flex flex-col items-center justify-center h-52 bg-white/60 backdrop-blur-sm border-2 border-dashed border-slate-300 rounded-2xl hover:border-indigo-400 hover:bg-white/80 transition-all shadow-lg shadow-slate-200/50"
               >
-                {/* Project header with color */}
-                <div className={`h-2 ${getStatusColor(project.status)}`} />
+                <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-indigo-500 to-purple-500 flex items-center justify-center mb-4 group-hover:scale-110 transition-transform shadow-lg shadow-indigo-500/25">
+                  <Plus className="w-7 h-7 text-white" />
+                </div>
+                <span className="text-slate-900 font-semibold text-lg">Skapa nytt projekt</span>
+                <span className="text-slate-500 text-sm mt-1">Välj plan och kom igång</span>
+              </Link>
+            </motion.div>
 
-                <div className="flex-1 p-5">
-                  <div className="flex items-start justify-between mb-3">
-                    <div className="flex-1 min-w-0">
-                      <h3 className="text-white font-semibold truncate group-hover:text-blue-400 transition-colors">
-                        {project.name}
-                      </h3>
-                      {project.project_number && (
-                        <p className="text-slate-500 text-sm">{project.project_number}</p>
+            {/* Existing projects - dark cards */}
+            {projects.map((project, index) => (
+              <motion.div
+                key={project.id}
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.4, delay: (index + 1) * 0.1 }}
+                whileHover={{ scale: 1.02, y: -4 }}
+              >
+                <Link
+                  href={`/dashboard/projects/${project.id}`}
+                  className="group flex flex-col h-52 bg-slate-900 border border-slate-800 rounded-2xl hover:border-slate-700 hover:bg-slate-800/80 transition-all overflow-hidden shadow-xl shadow-slate-900/20"
+                >
+                  {/* Status bar at top */}
+                  <div className={`h-1.5 ${getStatusColor(project.status)}`} />
+
+                  <div className="flex-1 p-5">
+                    <div className="flex items-start justify-between mb-3">
+                      <div className="flex-1 min-w-0">
+                        <h3 className="text-white font-semibold text-lg truncate group-hover:text-indigo-400 transition-colors">
+                          {project.name}
+                        </h3>
+                        {project.project_number && (
+                          <p className="text-slate-500 text-sm">#{project.project_number}</p>
+                        )}
+                      </div>
+                      <StatusBadge status={project.status} />
+                    </div>
+
+                    <div className="space-y-1.5 text-slate-400 text-sm">
+                      {project.city && (
+                        <div className="flex items-center gap-2">
+                          <MapPin className="w-4 h-4 flex-shrink-0" />
+                          <span className="truncate">{project.city}</span>
+                        </div>
+                      )}
+                      {project.address && !project.city && (
+                        <div className="flex items-center gap-2">
+                          <MapPin className="w-4 h-4 flex-shrink-0" />
+                          <span className="truncate">{project.address}</span>
+                        </div>
                       )}
                     </div>
-                    <StatusBadge status={project.status} />
                   </div>
 
-                  <div className="space-y-1.5">
-                    {project.city && (
-                      <div className="flex items-center gap-2 text-slate-400 text-sm">
-                        <LocationIcon />
-                        <span className="truncate">{project.city}</span>
-                      </div>
-                    )}
-                    {project.address && (
-                      <div className="flex items-center gap-2 text-slate-500 text-sm">
-                        <span className="truncate">{project.address}</span>
-                      </div>
-                    )}
+                  <div className="px-5 py-3 border-t border-slate-800 bg-slate-800/30">
+                    <span className="text-slate-500 text-xs">
+                      Skapad {new Date(project.created_at).toLocaleDateString('sv-SE')}
+                    </span>
                   </div>
-                </div>
-
-                <div className="px-5 py-3 border-t border-slate-800 bg-slate-800/30">
-                  <span className="text-slate-500 text-xs">
-                    Skapad {new Date(project.created_at).toLocaleDateString('sv-SE')}
-                  </span>
-                </div>
-              </Link>
+                </Link>
+              </motion.div>
             ))}
 
-            {/* Empty state message */}
+            {/* Empty state */}
             {projects.length === 0 && (
-              <div className="col-span-full text-center py-8">
-                <p className="text-slate-500">
-                  Du har inga projekt än. Skapa ditt första projekt för att komma igång!
-                </p>
-              </div>
+              <motion.div
+                className="col-span-full bg-white/60 backdrop-blur-sm rounded-2xl p-12 text-center border border-slate-200"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                transition={{ delay: 0.3 }}
+              >
+                <div className="w-16 h-16 mx-auto bg-slate-100 rounded-2xl flex items-center justify-center mb-4">
+                  <FolderOpen className="w-8 h-8 text-slate-400" />
+                </div>
+                <h3 className="text-xl font-semibold text-slate-900 mb-2">Inga projekt än</h3>
+                <p className="text-slate-600 mb-6">Skapa ditt första projekt för att komma igång!</p>
+                <Button
+                  asChild
+                  className="bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white shadow-lg shadow-indigo-500/25"
+                >
+                  <Link href="/projects/new">
+                    <Plus className="w-4 h-4 mr-2" />
+                    Skapa projekt
+                  </Link>
+                </Button>
+              </motion.div>
             )}
           </div>
         )}
@@ -156,13 +279,13 @@ export default function ProjectSelectorPage() {
 
 function StatusBadge({ status }: { status: 'active' | 'completed' | 'archived' }) {
   const config = {
-    active: { label: 'Aktiv', color: 'bg-green-500/10 text-green-400' },
-    completed: { label: 'Klar', color: 'bg-blue-500/10 text-blue-400' },
-    archived: { label: 'Arkiverad', color: 'bg-slate-500/10 text-slate-400' },
+    active: { label: 'Aktiv', color: 'bg-green-500/10 text-green-400 border-green-500/20' },
+    completed: { label: 'Klar', color: 'bg-blue-500/10 text-blue-400 border-blue-500/20' },
+    archived: { label: 'Arkiverad', color: 'bg-slate-500/10 text-slate-400 border-slate-500/20' },
   }
   const { label, color } = config[status]
   return (
-    <span className={`px-2 py-0.5 text-xs font-medium rounded-full ${color}`}>
+    <span className={`px-2.5 py-1 text-xs font-medium rounded-full border ${color}`}>
       {label}
     </span>
   )
@@ -175,21 +298,4 @@ function getStatusColor(status: 'active' | 'completed' | 'archived'): string {
     archived: 'bg-slate-500',
   }
   return colors[status]
-}
-
-function PlusIcon({ className = '' }: { className?: string }) {
-  return (
-    <svg className={`h-6 w-6 ${className}`} fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
-      <path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
-    </svg>
-  )
-}
-
-function LocationIcon() {
-  return (
-    <svg className="h-4 w-4 flex-shrink-0" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
-      <path strokeLinecap="round" strokeLinejoin="round" d="M15 10.5a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z" />
-      <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 10.5c0 7.142-7.5 11.25-7.5 11.25S4.5 17.642 4.5 10.5a7.5 7.5 0 1 1 15 0Z" />
-    </svg>
-  )
 }

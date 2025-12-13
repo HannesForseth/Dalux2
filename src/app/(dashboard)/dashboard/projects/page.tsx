@@ -1,9 +1,11 @@
 'use client'
 
 import { useEffect, useState } from 'react'
+import { motion } from 'framer-motion'
 import { getMyProjects } from '@/app/actions/projects'
 import type { Project } from '@/types/database'
 import ProjectCard from '@/components/projects/ProjectCard'
+import { FolderOpen } from 'lucide-react'
 
 export default function ProjectsPage() {
   const [projects, setProjects] = useState<Project[]>([])
@@ -36,78 +38,97 @@ export default function ProjectsPage() {
     archived: projects.filter(p => p.status === 'archived').length,
   }
 
+  const labels = {
+    all: 'Alla',
+    active: 'Aktiva',
+    completed: 'Avslutade',
+    archived: 'Arkiverade',
+  }
+
   return (
     <div>
-      <div className="mb-8">
-        <h1 className="text-2xl font-bold text-white">Projekt</h1>
-        <p className="text-slate-400 mt-1">Översikt av alla dina projekt</p>
-      </div>
+      {/* Header with gradient text */}
+      <motion.div
+        className="mb-8"
+        initial={{ opacity: 0, y: -10 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.4 }}
+      >
+        <h1 className="text-3xl font-bold text-white mb-2">
+          Mina{' '}
+          <span className="bg-gradient-to-r from-indigo-400 to-purple-400 bg-clip-text text-transparent">
+            projekt
+          </span>
+        </h1>
+        <p className="text-slate-400">Översikt av alla dina projekt</p>
+      </motion.div>
 
-      {/* Filter tabs */}
-      <div className="flex gap-2 mb-6">
-        {(['all', 'active', 'completed', 'archived'] as const).map((status) => {
-          const labels = {
-            all: 'Alla',
-            active: 'Aktiva',
-            completed: 'Avslutade',
-            archived: 'Arkiverade',
-          }
-          return (
-            <button
-              key={status}
-              onClick={() => setFilter(status)}
-              className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
-                filter === status
-                  ? 'bg-blue-600 text-white'
-                  : 'bg-slate-800 text-slate-400 hover:text-white hover:bg-slate-700'
-              }`}
-            >
-              {labels[status]} ({projectCounts[status]})
-            </button>
-          )
-        })}
-      </div>
+      {/* Modern filter tabs with pill design */}
+      <motion.div
+        className="flex gap-2 mb-6 p-1 bg-slate-800/50 rounded-xl w-fit"
+        initial={{ opacity: 0, y: 10 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.4, delay: 0.1 }}
+      >
+        {(['all', 'active', 'completed', 'archived'] as const).map((status) => (
+          <button
+            key={status}
+            onClick={() => setFilter(status)}
+            className={`px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 ${
+              filter === status
+                ? 'bg-gradient-to-r from-indigo-600 to-purple-600 text-white shadow-lg shadow-indigo-500/25'
+                : 'text-slate-400 hover:text-white hover:bg-slate-700'
+            }`}
+          >
+            {labels[status]} ({projectCounts[status]})
+          </button>
+        ))}
+      </motion.div>
 
       {/* Projects grid */}
       {isLoading ? (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {[1, 2, 3].map((i) => (
-            <div key={i} className="bg-slate-900 border border-slate-800 rounded-xl p-6 animate-pulse">
-              <div className="h-6 bg-slate-800 rounded w-3/4 mb-4" />
-              <div className="h-4 bg-slate-800 rounded w-full mb-2" />
-              <div className="h-4 bg-slate-800 rounded w-2/3" />
-            </div>
+            <motion.div
+              key={i}
+              className="h-52 bg-slate-800/50 rounded-2xl animate-pulse"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={{ delay: i * 0.1 }}
+            />
           ))}
         </div>
       ) : filteredProjects.length === 0 ? (
-        <div className="bg-slate-900 border border-slate-800 rounded-xl p-12 text-center">
-          <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-slate-800 mb-4">
-            <FolderIcon />
+        <motion.div
+          className="bg-slate-900 border border-slate-800 rounded-2xl p-12 text-center"
+          initial={{ opacity: 0, scale: 0.95 }}
+          animate={{ opacity: 1, scale: 1 }}
+          transition={{ duration: 0.3 }}
+        >
+          <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-slate-800 mb-4">
+            <FolderOpen className="w-8 h-8 text-slate-500" />
           </div>
           <h3 className="text-lg font-medium text-white mb-2">
-            {filter === 'all' ? 'Inga projekt än' : `Inga ${filter === 'active' ? 'aktiva' : filter === 'completed' ? 'avslutade' : 'arkiverade'} projekt`}
+            {filter === 'all' ? 'Inga projekt än' : `Inga ${labels[filter].toLowerCase()} projekt`}
           </h3>
           <p className="text-slate-400">
             {filter === 'all'
               ? 'Du är inte medlem i något projekt ännu.'
               : 'Det finns inga projekt med denna status.'}
           </p>
-        </div>
+        </motion.div>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {filteredProjects.map((project) => (
-            <ProjectCard key={project.id} project={project} />
+        <motion.div
+          className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6"
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ duration: 0.3, delay: 0.2 }}
+        >
+          {filteredProjects.map((project, index) => (
+            <ProjectCard key={project.id} project={project} index={index} />
           ))}
-        </div>
+        </motion.div>
       )}
     </div>
-  )
-}
-
-function FolderIcon() {
-  return (
-    <svg className="h-8 w-8 text-slate-500" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
-      <path strokeLinecap="round" strokeLinejoin="round" d="M2.25 12.75V12A2.25 2.25 0 0 1 4.5 9.75h15A2.25 2.25 0 0 1 21.75 12v.75m-8.69-6.44-2.12-2.12a1.5 1.5 0 0 0-1.061-.44H4.5A2.25 2.25 0 0 0 2.25 6v12a2.25 2.25 0 0 0 2.25 2.25h15A2.25 2.25 0 0 0 21.75 18V9a2.25 2.25 0 0 0-2.25-2.25h-5.379a1.5 1.5 0 0 1-1.06-.44Z" />
-    </svg>
   )
 }
