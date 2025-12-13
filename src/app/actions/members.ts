@@ -28,7 +28,8 @@ export async function getProjectMembers(projectId: string): Promise<ProjectMembe
       .select(`
         *,
         profile:profiles!project_members_user_id_fkey(*),
-        role:project_roles(*)
+        role:project_roles(*),
+        group:project_groups(*)
       `)
       .eq('project_id', projectId)
       .eq('status', 'active')

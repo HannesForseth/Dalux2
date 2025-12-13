@@ -15,7 +15,7 @@ import type {
 } from '@/types/database'
 import { uploadFile, deleteFile, getSignedUrl } from './storage'
 import { createDeviationMentionNotification } from './notifications'
-import { parseMentions } from '@/lib/utils/mentions'
+import { parseMentions, parseMentionsWithGroups } from '@/lib/utils/mentions'
 
 export async function getProjectDeviations(
   projectId: string,
@@ -328,6 +328,7 @@ export async function addDeviationComment(
   content: string,
   mentionData?: {
     members: { user_id: string; full_name: string; email?: string }[]
+    groups?: { id: string; name: string }[]
     deviationNumber: number
     deviationTitle: string
     projectId: string
@@ -364,10 +365,36 @@ export async function addDeviationComment(
 
   // Parse mentions and create notifications
   if (mentionData) {
-    const mentionedUserIds = parseMentions(content, mentionData.members)
+    // Collect all user IDs to notify (from individual mentions + group expansion)
+    const allMentionedUserIds = new Set<string>()
+
+    if (mentionData.groups && mentionData.groups.length > 0) {
+      const { userIds, groupIds } = parseMentionsWithGroups(content, mentionData.members, mentionData.groups)
+
+      // Add directly mentioned users
+      userIds.forEach(id => allMentionedUserIds.add(id))
+
+      // Expand group mentions to user IDs
+      if (groupIds.length > 0) {
+        const { data: groupMembers } = await supabase
+          .from('project_members')
+          .select('user_id')
+          .in('group_id', groupIds)
+          .eq('project_id', mentionData.projectId)
+          .eq('status', 'active')
+
+        if (groupMembers) {
+          groupMembers.forEach(m => allMentionedUserIds.add(m.user_id))
+        }
+      }
+    } else {
+      // Fallback to regular parsing
+      const mentionedUserIds = parseMentions(content, mentionData.members)
+      mentionedUserIds.forEach(id => allMentionedUserIds.add(id))
+    }
 
     // Create notification for each mentioned user (except self)
-    for (const mentionedUserId of mentionedUserIds) {
+    for (const mentionedUserId of allMentionedUserIds) {
       if (mentionedUserId !== user.id) {
         await createDeviationMentionNotification(
           mentionedUserId,

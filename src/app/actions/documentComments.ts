@@ -47,6 +47,7 @@ export interface CreateCommentData {
   position_y?: number
   parent_id?: string
   mentioned_user_ids?: string[]
+  mentioned_group_ids?: string[]
 }
 
 export async function getDocumentComments(
@@ -184,9 +185,28 @@ export async function createDocumentComment(
     throw new Error('Kunde inte skapa kommentaren')
   }
 
-  // Create mentions and send notifications if provided
-  if (data.mentioned_user_ids && data.mentioned_user_ids.length > 0) {
-    const mentions = data.mentioned_user_ids.map(userId => ({
+  // Collect all user IDs to mention (from explicit mentions + group expansion)
+  const allMentionedUserIds = new Set<string>(data.mentioned_user_ids || [])
+
+  // Expand group mentions to individual user IDs
+  if (data.mentioned_group_ids && data.mentioned_group_ids.length > 0) {
+    const { data: groupMembers } = await supabase
+      .from('project_members')
+      .select('user_id')
+      .in('group_id', data.mentioned_group_ids)
+      .eq('project_id', projectId)
+      .eq('status', 'active')
+
+    if (groupMembers) {
+      for (const member of groupMembers) {
+        allMentionedUserIds.add(member.user_id)
+      }
+    }
+  }
+
+  // Create mentions and send notifications if we have any users to mention
+  if (allMentionedUserIds.size > 0) {
+    const mentions = Array.from(allMentionedUserIds).map(userId => ({
       comment_id: comment.id,
       mentioned_user_id: userId,
     }))
@@ -225,7 +245,7 @@ export async function createDocumentComment(
     const folderPath = document?.folder_path || '/'
 
     // Send notification to each mentioned user (except self)
-    for (const mentionedUserId of data.mentioned_user_ids) {
+    for (const mentionedUserId of allMentionedUserIds) {
       if (mentionedUserId !== user.id) {
         await createMentionNotification(
           mentionedUserId,

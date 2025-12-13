@@ -9,6 +9,8 @@ import {
   getDocumentComments,
   getProjectMembersForMentions
 } from '@/app/actions/documentComments'
+import { getProjectGroupsWithCounts } from '@/app/actions/groups'
+import type { ProjectGroup } from '@/types/database'
 
 interface CommentPanelProps {
   documentId: string
@@ -30,9 +32,11 @@ export default function CommentPanel({
   const [replyingTo, setReplyingTo] = useState<string | null>(null)
   const [replyContent, setReplyContent] = useState('')
   const [projectMembers, setProjectMembers] = useState<{ id: string; full_name: string | null; email: string }[]>([])
+  const [groups, setGroups] = useState<(ProjectGroup & { member_count: number })[]>([])
   const [showMentionList, setShowMentionList] = useState(false)
   const [mentionSearch, setMentionSearch] = useState('')
   const [selectedMentions, setSelectedMentions] = useState<string[]>([])
+  const [selectedGroupMentions, setSelectedGroupMentions] = useState<string[]>([])
   const [filterByPage, setFilterByPage] = useState(false)
 
   const inputRef = useRef<HTMLTextAreaElement>(null)
@@ -51,8 +55,12 @@ export default function CommentPanel({
   }
 
   const loadProjectMembers = async () => {
-    const members = await getProjectMembersForMentions(projectId)
+    const [members, groupsData] = await Promise.all([
+      getProjectMembersForMentions(projectId),
+      getProjectGroupsWithCounts(projectId)
+    ])
     setProjectMembers(members)
+    setGroups(groupsData)
   }
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -65,9 +73,11 @@ export default function CommentPanel({
         content: newComment,
         page_number: currentPage,
         mentioned_user_ids: selectedMentions,
+        mentioned_group_ids: selectedGroupMentions,
       })
       setNewComment('')
       setSelectedMentions([])
+      setSelectedGroupMentions([])
       await loadComments()
     } catch (error) {
       console.error('Error creating comment:', error)
@@ -85,10 +95,12 @@ export default function CommentPanel({
         content: replyContent,
         parent_id: parentId,
         mentioned_user_ids: selectedMentions,
+        mentioned_group_ids: selectedGroupMentions,
       })
       setReplyContent('')
       setReplyingTo(null)
       setSelectedMentions([])
+      setSelectedGroupMentions([])
       await loadComments()
     } catch (error) {
       console.error('Error creating reply:', error)
@@ -135,6 +147,24 @@ export default function CommentPanel({
     setMentionSearch('')
   }
 
+  const insertGroupMention = (group: ProjectGroup & { member_count: number }, isReply: boolean) => {
+    const mention = `@${group.name} `
+
+    if (isReply) {
+      setReplyContent(prev => prev + mention)
+      replyInputRef.current?.focus()
+    } else {
+      setNewComment(prev => prev + mention)
+      inputRef.current?.focus()
+    }
+
+    if (!selectedGroupMentions.includes(group.id)) {
+      setSelectedGroupMentions(prev => [...prev, group.id])
+    }
+    setShowMentionList(false)
+    setMentionSearch('')
+  }
+
   const filteredMembers = projectMembers.filter(m => {
     const search = mentionSearch.toLowerCase()
     return (
@@ -142,6 +172,10 @@ export default function CommentPanel({
       m.email.toLowerCase().includes(search)
     )
   })
+
+  const filteredGroups = groups.filter(g =>
+    g.name.toLowerCase().includes(mentionSearch.toLowerCase())
+  )
 
   const filteredComments = filterByPage
     ? comments.filter(c => c.page_number === currentPage)
@@ -214,7 +248,9 @@ export default function CommentPanel({
               }}
               replyInputRef={replyInputRef}
               projectMembers={projectMembers}
+              groups={groups}
               insertMention={insertMention}
+              insertGroupMention={insertGroupMention}
               submitting={submitting}
             />
           ))
@@ -242,35 +278,80 @@ export default function CommentPanel({
             />
 
             {/* Mention dropdown */}
-            {showMentionList && (
-              <div className="absolute bottom-full left-0 w-full mb-1 bg-slate-800 border border-slate-700 rounded-lg shadow-lg max-h-40 overflow-y-auto">
+            {showMentionList && (filteredGroups.length > 0 || filteredMembers.length > 0) && (
+              <div className="absolute bottom-full left-0 w-full mb-1 bg-slate-800 border border-slate-700 rounded-lg shadow-lg max-h-64 overflow-y-auto z-20">
                 <div className="p-2">
                   <input
                     type="text"
                     value={mentionSearch}
                     onChange={(e) => setMentionSearch(e.target.value)}
-                    placeholder="Sök..."
+                    placeholder="Sök grupper eller personer..."
                     className="w-full px-2 py-1 bg-slate-700 border border-slate-600 rounded text-sm text-white"
                     autoFocus
                   />
                 </div>
-                {filteredMembers.map((member) => (
-                  <button
-                    key={member.id}
-                    type="button"
-                    onClick={() => insertMention(member, false)}
-                    className="w-full px-3 py-2 text-left text-sm text-white hover:bg-slate-700 flex items-center gap-2"
-                  >
-                    <div className="w-6 h-6 rounded-full bg-blue-500 flex items-center justify-center text-xs">
-                      {(member.full_name || member.email).charAt(0).toUpperCase()}
+
+                {/* Groups section */}
+                {filteredGroups.length > 0 && (
+                  <>
+                    <div className="px-3 py-1.5 text-xs font-medium text-slate-500 border-b border-slate-700">
+                      Grupper
                     </div>
-                    <div>
-                      <div className="font-medium">{member.full_name || 'Ingen namn'}</div>
-                      <div className="text-xs text-slate-400">{member.email}</div>
+                    {filteredGroups.map((group) => (
+                      <button
+                        key={group.id}
+                        type="button"
+                        onClick={() => insertGroupMention(group, false)}
+                        className="w-full px-3 py-2 text-left text-sm text-white hover:bg-slate-700 flex items-center gap-2"
+                      >
+                        <div
+                          className="w-6 h-6 rounded flex items-center justify-center text-xs text-white"
+                          style={{ backgroundColor: group.color }}
+                        >
+                          👥
+                        </div>
+                        <div className="flex-1">
+                          <span className="font-medium">{group.name}</span>
+                        </div>
+                        <span className="text-xs text-slate-400">
+                          {group.member_count} pers
+                        </span>
+                      </button>
+                    ))}
+                  </>
+                )}
+
+                {/* Separator if both groups and members */}
+                {filteredGroups.length > 0 && filteredMembers.length > 0 && (
+                  <div className="border-t border-slate-700 my-1" />
+                )}
+
+                {/* Members section */}
+                {filteredMembers.length > 0 && (
+                  <>
+                    <div className="px-3 py-1.5 text-xs font-medium text-slate-500 border-b border-slate-700">
+                      Personer
                     </div>
-                  </button>
-                ))}
-                {filteredMembers.length === 0 && (
+                    {filteredMembers.map((member) => (
+                      <button
+                        key={member.id}
+                        type="button"
+                        onClick={() => insertMention(member, false)}
+                        className="w-full px-3 py-2 text-left text-sm text-white hover:bg-slate-700 flex items-center gap-2"
+                      >
+                        <div className="w-6 h-6 rounded-full bg-blue-500 flex items-center justify-center text-xs">
+                          {(member.full_name || member.email).charAt(0).toUpperCase()}
+                        </div>
+                        <div>
+                          <div className="font-medium">{member.full_name || 'Inget namn'}</div>
+                          <div className="text-xs text-slate-400">{member.email}</div>
+                        </div>
+                      </button>
+                    ))}
+                  </>
+                )}
+
+                {filteredGroups.length === 0 && filteredMembers.length === 0 && (
                   <p className="px-3 py-2 text-sm text-slate-500">Inga matchningar</p>
                 )}
               </div>
@@ -317,7 +398,9 @@ interface CommentItemProps {
   onCancelReply: () => void
   replyInputRef: React.RefObject<HTMLTextAreaElement | null>
   projectMembers: { id: string; full_name: string | null; email: string }[]
+  groups: (ProjectGroup & { member_count: number })[]
   insertMention: (user: { id: string; full_name: string | null; email: string }, isReply: boolean) => void
+  insertGroupMention: (group: ProjectGroup & { member_count: number }, isReply: boolean) => void
   submitting: boolean
 }
 
@@ -334,10 +417,25 @@ function CommentItem({
   onCancelReply,
   replyInputRef,
   projectMembers,
+  groups,
   insertMention,
+  insertGroupMention,
   submitting
 }: CommentItemProps) {
   const [showReplyMentions, setShowReplyMentions] = useState(false)
+  const [replyMentionSearch, setReplyMentionSearch] = useState('')
+
+  const filteredReplyMembers = projectMembers.filter(m => {
+    const search = replyMentionSearch.toLowerCase()
+    return (
+      (m.full_name?.toLowerCase().includes(search) || false) ||
+      m.email.toLowerCase().includes(search)
+    )
+  })
+
+  const filteredReplyGroups = groups.filter(g =>
+    g.name.toLowerCase().includes(replyMentionSearch.toLowerCase())
+  )
 
   return (
     <div className={`rounded-lg ${comment.is_resolved ? 'bg-green-900/20 border border-green-800/50' : 'bg-slate-800'} p-3`}>
@@ -429,21 +527,76 @@ function CommentItem({
               autoFocus
             />
 
-            {showReplyMentions && (
-              <div className="absolute bottom-full left-0 w-full mb-1 bg-slate-800 border border-slate-700 rounded shadow-lg max-h-32 overflow-y-auto z-10">
-                {projectMembers.map((member) => (
-                  <button
-                    key={member.id}
-                    type="button"
-                    onClick={() => {
-                      insertMention(member, true)
-                      setShowReplyMentions(false)
-                    }}
-                    className="w-full px-2 py-1.5 text-left text-xs text-white hover:bg-slate-700 flex items-center gap-2"
-                  >
-                    <span className="font-medium">{member.full_name || member.email}</span>
-                  </button>
-                ))}
+            {showReplyMentions && (filteredReplyGroups.length > 0 || filteredReplyMembers.length > 0) && (
+              <div className="absolute bottom-full left-0 w-full mb-1 bg-slate-800 border border-slate-700 rounded shadow-lg max-h-48 overflow-y-auto z-10">
+                {/* Search input */}
+                <div className="p-1.5">
+                  <input
+                    type="text"
+                    value={replyMentionSearch}
+                    onChange={(e) => setReplyMentionSearch(e.target.value)}
+                    placeholder="Sök..."
+                    className="w-full px-2 py-1 bg-slate-700 border border-slate-600 rounded text-xs text-white"
+                    autoFocus
+                  />
+                </div>
+
+                {/* Groups */}
+                {filteredReplyGroups.length > 0 && (
+                  <>
+                    <div className="px-2 py-1 text-xs font-medium text-slate-500 border-b border-slate-700">Grupper</div>
+                    {filteredReplyGroups.map((group) => (
+                      <button
+                        key={group.id}
+                        type="button"
+                        onClick={() => {
+                          insertGroupMention(group, true)
+                          setShowReplyMentions(false)
+                          setReplyMentionSearch('')
+                        }}
+                        className="w-full px-2 py-1.5 text-left text-xs text-white hover:bg-slate-700 flex items-center gap-2"
+                      >
+                        <div
+                          className="w-4 h-4 rounded flex items-center justify-center text-[10px]"
+                          style={{ backgroundColor: group.color }}
+                        >
+                          👥
+                        </div>
+                        <span className="font-medium flex-1">{group.name}</span>
+                        <span className="text-slate-400">{group.member_count}</span>
+                      </button>
+                    ))}
+                  </>
+                )}
+
+                {/* Separator */}
+                {filteredReplyGroups.length > 0 && filteredReplyMembers.length > 0 && (
+                  <div className="border-t border-slate-700 my-0.5" />
+                )}
+
+                {/* Members */}
+                {filteredReplyMembers.length > 0 && (
+                  <>
+                    <div className="px-2 py-1 text-xs font-medium text-slate-500 border-b border-slate-700">Personer</div>
+                    {filteredReplyMembers.map((member) => (
+                      <button
+                        key={member.id}
+                        type="button"
+                        onClick={() => {
+                          insertMention(member, true)
+                          setShowReplyMentions(false)
+                          setReplyMentionSearch('')
+                        }}
+                        className="w-full px-2 py-1.5 text-left text-xs text-white hover:bg-slate-700 flex items-center gap-2"
+                      >
+                        <div className="w-4 h-4 rounded-full bg-blue-500 flex items-center justify-center text-[10px]">
+                          {(member.full_name || member.email).charAt(0).toUpperCase()}
+                        </div>
+                        <span className="font-medium">{member.full_name || member.email}</span>
+                      </button>
+                    ))}
+                  </>
+                )}
               </div>
             )}
           </div>

@@ -19,6 +19,7 @@ import {
   getDeviationAttachmentUrl
 } from '@/app/actions/deviations'
 import { getProjectMembers } from '@/app/actions/members'
+import { getProjectGroupsWithCounts } from '@/app/actions/groups'
 import type {
   DeviationWithDetails,
   DeviationStatus,
@@ -27,7 +28,8 @@ import type {
   CreateDeviationData,
   DeviationComment,
   DeviationAttachment,
-  ProjectMemberWithDetails
+  ProjectMemberWithDetails,
+  ProjectGroup
 } from '@/types/database'
 
 const statusConfig: Record<DeviationStatus, { label: string; color: string; bg: string }> = {
@@ -258,9 +260,10 @@ interface DeviationDetailModalProps {
   onClose: () => void
   onUpdate: () => void
   members: ProjectMemberWithDetails[]
+  groups: (ProjectGroup & { member_count: number })[]
 }
 
-function DeviationDetailModal({ deviation, isOpen, onClose, onUpdate, members }: DeviationDetailModalProps) {
+function DeviationDetailModal({ deviation, isOpen, onClose, onUpdate, members, groups }: DeviationDetailModalProps) {
   const params = useParams()
   const projectId = params.id as string
   const [comments, setComments] = useState<DeviationComment[]>([])
@@ -305,6 +308,7 @@ function DeviationDetailModal({ deviation, isOpen, onClose, onUpdate, members }:
           full_name: m.profile.full_name || '',
           email: m.profile.email || undefined
         })),
+        groups: groups.map(g => ({ id: g.id, name: g.name })),
         deviationNumber: deviation.deviation_number,
         deviationTitle: deviation.title,
         projectId
@@ -341,6 +345,11 @@ function DeviationDetailModal({ deviation, isOpen, onClose, onUpdate, members }:
       setShowMentionSuggestions(false)
     }
   }
+
+  // Filter groups for mention suggestions
+  const filteredGroups = groups.filter(g =>
+    g.name.toLowerCase().includes(mentionFilter)
+  )
 
   // Filter members for mention suggestions (include members without name using email)
   const filteredMembers = members.filter(m => {
@@ -611,25 +620,73 @@ function DeviationDetailModal({ deviation, isOpen, onClose, onUpdate, members }:
                     className="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-white placeholder-slate-500 focus:outline-none focus:border-blue-500"
                   />
                   {/* Mention suggestions dropdown */}
-                  {showMentionSuggestions && filteredMembers.length > 0 && (
-                    <div className="absolute bottom-full left-0 right-0 mb-1 bg-slate-800 border border-slate-700 rounded-lg shadow-lg max-h-48 overflow-y-auto z-20">
-                      {filteredMembers.map((member) => {
-                        const displayName = member.profile.full_name || member.profile.email || 'Okänd'
-                        return (
-                          <button
-                            key={member.user_id}
-                            type="button"
-                            onClick={() => insertMention(displayName)}
-                            className="w-full px-3 py-2 text-left text-white hover:bg-slate-700 flex items-center gap-2 transition-colors"
-                          >
-                            <div className="w-6 h-6 rounded-full bg-blue-600 flex items-center justify-center text-xs font-medium">
-                              {displayName.charAt(0).toUpperCase()}
-                            </div>
-                            <span>{displayName}</span>
-                            <span className="text-slate-500 text-xs ml-auto">{String(member.role)}</span>
-                          </button>
-                        )
-                      })}
+                  {showMentionSuggestions && (filteredGroups.length > 0 || filteredMembers.length > 0) && (
+                    <div className="absolute bottom-full left-0 right-0 mb-1 bg-slate-800 border border-slate-700 rounded-lg shadow-lg max-h-64 overflow-y-auto z-20">
+                      {/* Groups section */}
+                      {filteredGroups.length > 0 && (
+                        <>
+                          <div className="px-3 py-1.5 text-xs font-medium text-slate-500 border-b border-slate-700">
+                            Grupper
+                          </div>
+                          {filteredGroups.map((group) => (
+                            <button
+                              key={group.id}
+                              type="button"
+                              onClick={() => insertMention(group.name)}
+                              className="w-full px-3 py-2 text-left text-white hover:bg-slate-700 flex items-center gap-2 transition-colors"
+                            >
+                              <div
+                                className="w-6 h-6 rounded flex items-center justify-center text-xs font-medium text-white"
+                                style={{ backgroundColor: group.color }}
+                              >
+                                👥
+                              </div>
+                              <span className="flex-1">{group.name}</span>
+                              <span className="text-xs text-slate-500">
+                                {group.member_count} pers
+                              </span>
+                            </button>
+                          ))}
+                        </>
+                      )}
+
+                      {/* Separator between groups and members */}
+                      {filteredGroups.length > 0 && filteredMembers.length > 0 && (
+                        <div className="border-t border-slate-700" />
+                      )}
+
+                      {/* Members section */}
+                      {filteredMembers.length > 0 && (
+                        <>
+                          <div className="px-3 py-1.5 text-xs font-medium text-slate-500 border-b border-slate-700">
+                            Personer
+                          </div>
+                          {filteredMembers.map((member) => {
+                            const displayName = member.profile.full_name || member.profile.email || 'Okänd'
+                            return (
+                              <button
+                                key={member.user_id}
+                                type="button"
+                                onClick={() => insertMention(displayName)}
+                                className="w-full px-3 py-2 text-left text-white hover:bg-slate-700 flex items-center gap-2 transition-colors"
+                              >
+                                <div className="w-6 h-6 rounded-full bg-blue-600 flex items-center justify-center text-xs font-medium">
+                                  {displayName.charAt(0).toUpperCase()}
+                                </div>
+                                <span>{displayName}</span>
+                                {member.group && (
+                                  <span
+                                    className="px-1.5 py-0.5 rounded text-xs text-white"
+                                    style={{ backgroundColor: member.group.color }}
+                                  >
+                                    {member.group.name}
+                                  </span>
+                                )}
+                              </button>
+                            )
+                          })}
+                        </>
+                      )}
                     </div>
                   )}
                 </div>
@@ -663,6 +720,7 @@ export default function ProjectDeviationsPage() {
 
   const [deviations, setDeviations] = useState<DeviationWithDetails[]>([])
   const [members, setMembers] = useState<ProjectMemberWithDetails[]>([])
+  const [groups, setGroups] = useState<(ProjectGroup & { member_count: number })[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [showCreateModal, setShowCreateModal] = useState(false)
   const [selectedDeviation, setSelectedDeviation] = useState<DeviationWithDetails | null>(null)
@@ -684,18 +742,20 @@ export default function ProjectDeviationsPage() {
 
   const loadData = useCallback(async () => {
     try {
-      const [deviationData, statsData, membersData] = await Promise.all([
+      const [deviationData, statsData, membersData, groupsData] = await Promise.all([
         getProjectDeviations(projectId, {
           status: statusFilter,
           severity: severityFilter,
           category: categoryFilter,
         }),
         getDeviationStats(projectId),
-        getProjectMembers(projectId)
+        getProjectMembers(projectId),
+        getProjectGroupsWithCounts(projectId)
       ])
       setDeviations(deviationData)
       setStats(statsData)
       setMembers(membersData)
+      setGroups(groupsData)
     } catch (error) {
       console.error('Failed to load data:', error)
     } finally {
@@ -1167,6 +1227,7 @@ export default function ProjectDeviationsPage() {
             if (updated) setSelectedDeviation(updated)
           }}
           members={members}
+          groups={groups}
         />
       )}
     </div>

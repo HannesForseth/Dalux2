@@ -12,7 +12,8 @@ import {
   cancelInvitation,
 } from '@/app/actions/members'
 import { getProject, getUserRoleInProject, deleteProject } from '@/app/actions/projects'
-import type { Project, ProjectMemberWithDetails, InvitationWithDetails, ProjectRole, RoleName } from '@/types/database'
+import { getProjectGroups, assignMemberToGroup } from '@/app/actions/groups'
+import type { Project, ProjectMemberWithDetails, InvitationWithDetails, ProjectRole, RoleName, ProjectGroup } from '@/types/database'
 import { canManageMembers, canChangeRoles, canDeleteProject, isOwner, getRoleDisplayName, getAssignableRoles } from '@/lib/permissions'
 import InviteMemberModal from '@/components/members/InviteMemberModal'
 
@@ -25,6 +26,7 @@ export default function MembersSettingsPage() {
   const [members, setMembers] = useState<ProjectMemberWithDetails[]>([])
   const [invitations, setInvitations] = useState<InvitationWithDetails[]>([])
   const [roles, setRoles] = useState<ProjectRole[]>([])
+  const [groups, setGroups] = useState<ProjectGroup[]>([])
   const [userRole, setUserRole] = useState<RoleName | null>(null)
   const [isLoading, setIsLoading] = useState(true)
   const [isModalOpen, setIsModalOpen] = useState(false)
@@ -39,17 +41,19 @@ export default function MembersSettingsPage() {
 
   async function loadData() {
     try {
-      const [projectData, membersData, invitationsData, rolesData, role] = await Promise.all([
+      const [projectData, membersData, invitationsData, rolesData, groupsData, role] = await Promise.all([
         getProject(projectId),
         getProjectMembers(projectId),
         getProjectInvitations(projectId),
         getProjectRoles(),
+        getProjectGroups(projectId),
         getUserRoleInProject(projectId),
       ])
       setProject(projectData)
       setMembers(membersData)
       setInvitations(invitationsData)
       setRoles(rolesData)
+      setGroups(groupsData)
       setUserRole(role as RoleName)
     } catch (error) {
       console.error('Failed to load data:', error)
@@ -79,6 +83,18 @@ export default function MembersSettingsPage() {
       await loadData()
     } catch (error) {
       alert(error instanceof Error ? error.message : 'Kunde inte ändra roll')
+    } finally {
+      setActionLoading(null)
+    }
+  }
+
+  async function handleGroupChange(userId: string, groupId: string) {
+    setActionLoading(`group-${userId}`)
+    try {
+      await assignMemberToGroup(projectId, userId, groupId || null)
+      await loadData()
+    } catch (error) {
+      alert(error instanceof Error ? error.message : 'Kunde inte ändra grupp')
     } finally {
       setActionLoading(null)
     }
@@ -203,6 +219,30 @@ export default function MembersSettingsPage() {
                     {member.profile?.company || 'Inget företag'}
                   </p>
                 </div>
+
+                {/* Grupp-dropdown */}
+                {canManage ? (
+                  <select
+                    value={member.group_id || ''}
+                    onChange={(e) => handleGroupChange(member.user_id, e.target.value)}
+                    disabled={actionLoading === `group-${member.user_id}`}
+                    className="px-3 py-1.5 bg-slate-800 border border-slate-700 rounded-lg text-sm text-white focus:outline-none focus:ring-2 focus:ring-blue-500 min-w-[140px]"
+                  >
+                    <option value="">Ingen grupp</option>
+                    {groups.map((group) => (
+                      <option key={group.id} value={group.id}>
+                        {group.name}
+                      </option>
+                    ))}
+                  </select>
+                ) : member.group ? (
+                  <span
+                    className="px-3 py-1 rounded-full text-xs text-white"
+                    style={{ backgroundColor: member.group.color }}
+                  >
+                    {member.group.name}
+                  </span>
+                ) : null}
 
                 {canEditThis ? (
                   <select

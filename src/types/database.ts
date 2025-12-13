@@ -61,11 +61,24 @@ export interface ProjectMember {
   project_id: string
   user_id: string
   role_id: string
+  group_id: string | null  // Funktionsgrupp (Projektör, Beställare, etc.)
   invited_by: string | null
   invited_at: string
   joined_at: string | null
   status: MemberStatus
   created_at: string
+}
+
+export interface ProjectGroup {
+  id: string
+  project_id: string
+  name: string
+  description: string | null
+  color: string
+  is_default: boolean
+  created_by: string | null
+  created_at: string
+  updated_at: string
 }
 
 export interface Company {
@@ -107,6 +120,17 @@ export interface Invitation {
 export interface ProjectMemberWithDetails extends ProjectMember {
   profile: Profile
   role: ProjectRole
+  group: ProjectGroup | null  // Funktionsgrupp
+}
+
+// Typ för @mention-system som stöder både användare och grupper
+export interface MentionableItem {
+  type: 'user' | 'group'
+  id: string
+  name: string
+  email?: string       // Endast för users
+  color?: string       // Endast för groups
+  memberCount?: number // Endast för groups
 }
 
 export interface ProjectWithMembers extends Project {
