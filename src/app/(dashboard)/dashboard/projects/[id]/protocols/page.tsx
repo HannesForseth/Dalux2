@@ -12,12 +12,15 @@ import {
   getProjectProtocolStats
 } from '@/app/actions/protocols'
 import { getProjectMembers } from '@/app/actions/members'
+import { getProtocolTemplates, applyTemplate } from '@/app/actions/protocol-templates'
 import type {
   ProtocolWithCreator,
   ProtocolStatus,
   ProtocolMeetingType,
   CreateProtocolData,
-  ProjectMemberWithDetails
+  ProjectMemberWithDetails,
+  ProtocolTemplate,
+  ProtocolAttendeeRole
 } from '@/types/database'
 
 const ITEMS_PER_PAGE = 10
@@ -87,11 +90,12 @@ interface CreateProtocolModalProps {
   onCreate: (data: CreateProtocolData) => Promise<void>
   members: ProjectMemberWithDetails[]
   existingProtocols: ProtocolWithCreator[]
+  templates: ProtocolTemplate[]
   preselectedType?: ProtocolMeetingType
 }
 
-function CreateProtocolModal({ isOpen, onClose, onCreate, members, existingProtocols, preselectedType }: CreateProtocolModalProps) {
-  const [step, setStep] = useState<'type' | 'details'>(preselectedType ? 'details' : 'type')
+function CreateProtocolModal({ isOpen, onClose, onCreate, members, existingProtocols, templates, preselectedType }: CreateProtocolModalProps) {
+  const [step, setStep] = useState<'template' | 'type' | 'details'>(preselectedType ? 'details' : 'template')
   const [title, setTitle] = useState('')
   const [meetingType, setMeetingType] = useState<ProtocolMeetingType>(preselectedType || 'byggmote')
   const [meetingDate, setMeetingDate] = useState(new Date().toISOString().split('T')[0])
@@ -100,6 +104,12 @@ function CreateProtocolModal({ isOpen, onClose, onCreate, members, existingProto
   const [location, setLocation] = useState('')
   const [previousProtocolId, setPreviousProtocolId] = useState('')
   const [isSubmitting, setIsSubmitting] = useState(false)
+  const [isLoadingTemplate, setIsLoadingTemplate] = useState(false)
+  const [selectedTemplate, setSelectedTemplate] = useState<ProtocolTemplate | null>(null)
+
+  // Group templates by system/user
+  const systemTemplates = templates.filter(t => t.is_system)
+  const userTemplates = templates.filter(t => !t.is_system)
 
   useEffect(() => {
     if (preselectedType) {
@@ -107,6 +117,33 @@ function CreateProtocolModal({ isOpen, onClose, onCreate, members, existingProto
       setStep('details')
     }
   }, [preselectedType])
+
+  // Handle template selection
+  const handleSelectTemplate = async (template: ProtocolTemplate) => {
+    setIsLoadingTemplate(true)
+    try {
+      const templateData = await applyTemplate(template.id)
+      setSelectedTemplate(template)
+      setMeetingType(templateData.meeting_type)
+      if (templateData.location) setLocation(templateData.location)
+      if (templateData.start_time) setStartTime(templateData.start_time)
+      if (templateData.end_time) setEndTime(templateData.end_time)
+      // Auto-generate title based on meeting type
+      const typeLabel = meetingTypeConfig[templateData.meeting_type].label
+      const existingOfType = existingProtocols.filter(p => p.meeting_type === templateData.meeting_type).length
+      setTitle(`${typeLabel} #${existingOfType + 1}`)
+      setStep('details')
+    } catch (error) {
+      console.error('Failed to apply template:', error)
+    } finally {
+      setIsLoadingTemplate(false)
+    }
+  }
+
+  const handleSkipTemplate = () => {
+    setSelectedTemplate(null)
+    setStep('type')
+  }
 
   useEffect(() => {
     // Auto-generate title based on type
@@ -147,7 +184,8 @@ function CreateProtocolModal({ isOpen, onClose, onCreate, members, existingProto
       setEndTime('')
       setLocation('')
       setPreviousProtocolId('')
-      setStep('type')
+      setSelectedTemplate(null)
+      setStep('template')
       onClose()
     } finally {
       setIsSubmitting(false)
@@ -155,8 +193,24 @@ function CreateProtocolModal({ isOpen, onClose, onCreate, members, existingProto
   }
 
   const handleClose = () => {
-    setStep('type')
+    setStep('template')
+    setSelectedTemplate(null)
     onClose()
+  }
+
+  const handleBack = () => {
+    if (step === 'details') {
+      if (selectedTemplate) {
+        // Going back from details with a template selected, go to template selection
+        setSelectedTemplate(null)
+        setStep('template')
+      } else {
+        // Going back from details to type selection
+        setStep('type')
+      }
+    } else if (step === 'type') {
+      setStep('template')
+    }
   }
 
   return (
@@ -164,15 +218,15 @@ function CreateProtocolModal({ isOpen, onClose, onCreate, members, existingProto
       <div className="bg-slate-900 border border-slate-700 rounded-xl w-full max-w-2xl max-h-[90vh] overflow-y-auto">
         <div className="flex items-center justify-between px-6 py-4 border-b border-slate-800 sticky top-0 bg-slate-900">
           <div className="flex items-center gap-3">
-            {step === 'details' && !preselectedType && (
-              <button onClick={() => setStep('type')} className="text-slate-400 hover:text-white transition-colors">
+            {((step === 'type') || (step === 'details' && !preselectedType)) && (
+              <button onClick={handleBack} className="text-slate-400 hover:text-white transition-colors">
                 <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" d="M10.5 19.5 3 12m0 0 7.5-7.5M3 12h18" />
                 </svg>
               </button>
             )}
             <h2 className="text-lg font-semibold text-white">
-              {step === 'type' ? 'Välj mötestyp' : 'Skapa protokoll'}
+              {step === 'template' ? 'Välj mall' : step === 'type' ? 'Välj mötestyp' : 'Skapa protokoll'}
             </h2>
           </div>
           <button onClick={handleClose} className="text-slate-400 hover:text-white transition-colors">
@@ -180,7 +234,113 @@ function CreateProtocolModal({ isOpen, onClose, onCreate, members, existingProto
           </button>
         </div>
 
-        {step === 'type' ? (
+        {step === 'template' ? (
+          <div className="p-6">
+            {isLoadingTemplate ? (
+              <div className="flex items-center justify-center py-12">
+                <LoadingSpinner className="h-8 w-8 text-blue-500" />
+              </div>
+            ) : (
+              <>
+                <p className="text-slate-400 mb-6">Använd en mall för att snabbt komma igång med fördefinierade inställningar:</p>
+
+                {/* System Templates */}
+                {systemTemplates.length > 0 && (
+                  <div className="mb-6">
+                    <h3 className="text-sm font-medium text-slate-300 mb-3 flex items-center gap-2">
+                      <svg className="h-4 w-4 text-blue-400" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75 11.25 15 15 9.75m-3-7.036A11.959 11.959 0 0 1 3.598 6 11.99 11.99 0 0 0 3 9.749c0 5.592 3.824 10.29 9 11.623 5.176-1.332 9-6.03 9-11.622 0-1.31-.21-2.571-.598-3.751h-.152c-3.196 0-6.1-1.248-8.25-3.285Z" />
+                      </svg>
+                      Färdiga mallar
+                    </h3>
+                    <div className="grid grid-cols-2 gap-3">
+                      {systemTemplates.map((template) => {
+                        const typeConfig = meetingTypeConfig[template.meeting_type as ProtocolMeetingType]
+                        return (
+                          <button
+                            key={template.id}
+                            onClick={() => handleSelectTemplate(template)}
+                            className={`p-4 rounded-xl border border-slate-700 hover:border-slate-500 transition-all text-left group ${typeConfig?.bg || 'bg-slate-800/50'}`}
+                          >
+                            <div className="flex items-start gap-3">
+                              <span className="text-2xl">{typeConfig?.icon || '📋'}</span>
+                              <div className="flex-1 min-w-0">
+                                <h4 className={`font-medium ${typeConfig?.color || 'text-white'}`}>{template.name}</h4>
+                                {template.description && (
+                                  <p className="text-slate-500 text-sm mt-1 line-clamp-2">{template.description}</p>
+                                )}
+                                <div className="flex items-center gap-2 mt-2 text-xs text-slate-500">
+                                  {template.default_start_time && (
+                                    <span className="flex items-center gap-1">
+                                      <svg className="h-3 w-3" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+                                        <path strokeLinecap="round" strokeLinejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" />
+                                      </svg>
+                                      {formatTime(template.default_start_time)}
+                                    </span>
+                                  )}
+                                </div>
+                              </div>
+                            </div>
+                          </button>
+                        )
+                      })}
+                    </div>
+                  </div>
+                )}
+
+                {/* User Templates */}
+                {userTemplates.length > 0 && (
+                  <div className="mb-6">
+                    <h3 className="text-sm font-medium text-slate-300 mb-3 flex items-center gap-2">
+                      <svg className="h-4 w-4 text-purple-400" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 6a3.75 3.75 0 1 1-7.5 0 3.75 3.75 0 0 1 7.5 0ZM4.501 20.118a7.5 7.5 0 0 1 14.998 0A17.933 17.933 0 0 1 12 21.75c-2.676 0-5.216-.584-7.499-1.632Z" />
+                      </svg>
+                      Mina mallar
+                    </h3>
+                    <div className="grid grid-cols-2 gap-3">
+                      {userTemplates.map((template) => {
+                        const typeConfig = meetingTypeConfig[template.meeting_type as ProtocolMeetingType]
+                        return (
+                          <button
+                            key={template.id}
+                            onClick={() => handleSelectTemplate(template)}
+                            className={`p-4 rounded-xl border border-slate-700 hover:border-slate-500 transition-all text-left group ${typeConfig?.bg || 'bg-slate-800/50'}`}
+                          >
+                            <div className="flex items-start gap-3">
+                              <span className="text-2xl">{typeConfig?.icon || '📋'}</span>
+                              <div className="flex-1 min-w-0">
+                                <h4 className={`font-medium ${typeConfig?.color || 'text-white'}`}>{template.name}</h4>
+                                {template.description && (
+                                  <p className="text-slate-500 text-sm mt-1 line-clamp-2">{template.description}</p>
+                                )}
+                              </div>
+                            </div>
+                          </button>
+                        )
+                      })}
+                    </div>
+                  </div>
+                )}
+
+                {/* Skip button */}
+                <div className="border-t border-slate-800 pt-4">
+                  <button
+                    onClick={handleSkipTemplate}
+                    className="w-full p-4 rounded-xl border border-dashed border-slate-700 hover:border-slate-500 transition-all text-center group"
+                  >
+                    <div className="flex items-center justify-center gap-3">
+                      <span className="text-2xl">✨</span>
+                      <div>
+                        <h4 className="font-medium text-slate-300 group-hover:text-white">Börja från scratch</h4>
+                        <p className="text-slate-500 text-sm">Skapa ett tomt protokoll utan mall</p>
+                      </div>
+                    </div>
+                  </button>
+                </div>
+              </>
+            )}
+          </div>
+        ) : step === 'type' ? (
           <div className="p-6">
             <p className="text-slate-400 mb-6">Välj vilken typ av möte du vill protokollföra:</p>
             <div className="grid grid-cols-2 gap-4">
@@ -368,6 +528,7 @@ export default function ProjectProtocolsPage() {
 
   const [protocols, setProtocols] = useState<ProtocolWithCreator[]>([])
   const [members, setMembers] = useState<ProjectMemberWithDetails[]>([])
+  const [templates, setTemplates] = useState<ProtocolTemplate[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [showCreateModal, setShowCreateModal] = useState(false)
   const [preselectedType, setPreselectedType] = useState<ProtocolMeetingType | undefined>(undefined)
@@ -450,14 +611,16 @@ export default function ProjectProtocolsPage() {
 
   const loadData = useCallback(async () => {
     try {
-      const [protocolData, statsData, membersData] = await Promise.all([
+      const [protocolData, statsData, membersData, templatesData] = await Promise.all([
         getProjectProtocols(projectId),
         getProjectProtocolStats(projectId),
-        getProjectMembers(projectId)
+        getProjectMembers(projectId),
+        getProtocolTemplates()
       ])
       setProtocols(protocolData)
       setStats(statsData)
       setMembers(membersData)
+      setTemplates(templatesData)
     } catch (error) {
       console.error('Failed to load data:', error)
     } finally {
@@ -898,6 +1061,7 @@ export default function ProjectProtocolsPage() {
         onCreate={handleCreate}
         members={members}
         existingProtocols={protocols}
+        templates={templates}
         preselectedType={preselectedType}
       />
     </div>

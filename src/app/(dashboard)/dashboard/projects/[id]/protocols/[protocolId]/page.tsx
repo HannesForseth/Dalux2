@@ -28,6 +28,7 @@ import {
 import { getProjectMembers } from '@/app/actions/members'
 import { getProjectIssues } from '@/app/actions/issues'
 import { getProjectDeviations } from '@/app/actions/deviations'
+import { saveProtocolAsTemplate } from '@/app/actions/protocol-templates'
 import type {
   ProtocolWithDetails,
   ProtocolStatus,
@@ -153,6 +154,8 @@ export default function ProtocolDetailPage() {
   const [showAddLink, setShowAddLink] = useState(false)
   const [isGeneratingSummary, setIsGeneratingSummary] = useState(false)
   const [showQuickAdd, setShowQuickAdd] = useState(false)
+  const [showSaveAsTemplate, setShowSaveAsTemplate] = useState(false)
+  const [isSavingTemplate, setIsSavingTemplate] = useState(false)
 
   const loadData = useCallback(async () => {
     try {
@@ -271,7 +274,7 @@ export default function ProtocolDetailPage() {
       // Update state directly for immediate UI feedback
       setProtocol(prev => prev ? {
         ...prev,
-        attendees: [...(prev.attendees || []), newAttendee]
+        attendees: [...(prev.attendees || []), { ...newAttendee, profile: null }]
       } : null)
       setShowAddAttendee(false)
     } catch (error) {
@@ -316,7 +319,7 @@ export default function ProtocolDetailPage() {
       // Update state directly for immediate UI feedback
       setProtocol(prev => prev ? {
         ...prev,
-        agenda_items: [...(prev.agenda_items || []), newItem]
+        agenda_items: [...(prev.agenda_items || []), { ...newItem, presenter: null }]
       } : null)
       setShowAddAgenda(false)
     } catch (error) {
@@ -376,7 +379,7 @@ export default function ProtocolDetailPage() {
       // Update state directly for immediate UI feedback
       setProtocol(prev => prev ? {
         ...prev,
-        action_items: [...(prev.action_items || []), newAction]
+        action_items: [...(prev.action_items || []), { ...newAction, assignee: null }]
       } : null)
       setShowAddAction(false)
     } catch (error) {
@@ -560,6 +563,18 @@ export default function ProtocolDetailPage() {
                 </span>
               </div>
             </div>
+
+            {/* Save as Template button */}
+            <button
+              onClick={() => setShowSaveAsTemplate(true)}
+              className="px-4 py-2 bg-slate-800 text-slate-300 border border-slate-700 rounded-lg font-medium hover:bg-slate-700 hover:text-white transition-colors flex items-center gap-2"
+              title="Spara som mall"
+            >
+              <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 17.25v3.375c0 .621-.504 1.125-1.125 1.125h-9.75a1.125 1.125 0 0 1-1.125-1.125V7.875c0-.621.504-1.125 1.125-1.125H6.75a9.06 9.06 0 0 1 1.5.124m7.5 10.376h3.375c.621 0 1.125-.504 1.125-1.125V11.25c0-4.46-3.243-8.161-7.5-8.876a9.06 9.06 0 0 0-1.5-.124H9.375c-.621 0-1.125.504-1.125 1.125v3.5m7.5 10.375H9.375a1.125 1.125 0 0 1-1.125-1.125v-9.25m12 6.625v-1.875a3.375 3.375 0 0 0-3.375-3.375h-1.5a1.125 1.125 0 0 1-1.125-1.125v-1.5a3.375 3.375 0 0 0-3.375-3.375H9.75" />
+              </svg>
+              <span className="hidden sm:inline">Spara som mall</span>
+            </button>
 
             {isEditable && (
               <button
@@ -1260,6 +1275,150 @@ export default function ProtocolDetailPage() {
           </div>
         </div>
       )}
+
+      {/* Save as Template Modal */}
+      {showSaveAsTemplate && protocol && (
+        <SaveAsTemplateModal
+          protocol={protocol}
+          onClose={() => setShowSaveAsTemplate(false)}
+          onSave={async (name, description) => {
+            setIsSavingTemplate(true)
+            try {
+              await saveProtocolAsTemplate(protocol.id, name, description)
+              setShowSaveAsTemplate(false)
+              alert('Mall sparad!')
+            } catch (error) {
+              console.error('Failed to save template:', error)
+              alert('Kunde inte spara mallen. Försök igen.')
+            } finally {
+              setIsSavingTemplate(false)
+            }
+          }}
+          isSaving={isSavingTemplate}
+        />
+      )}
+    </div>
+  )
+}
+
+// Save as Template Modal
+function SaveAsTemplateModal({ protocol, onClose, onSave, isSaving }: {
+  protocol: ProtocolWithDetails
+  onClose: () => void
+  onSave: (name: string, description?: string) => Promise<void>
+  isSaving: boolean
+}) {
+  const [name, setName] = useState(`${protocol.title} - Mall`)
+  const [description, setDescription] = useState('')
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!name.trim()) return
+    await onSave(name.trim(), description.trim() || undefined)
+  }
+
+  return (
+    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+      <div className="bg-slate-900 border border-slate-700 rounded-xl w-full max-w-lg">
+        <div className="flex items-center justify-between px-6 py-4 border-b border-slate-800">
+          <h2 className="text-lg font-semibold text-white">Spara som mall</h2>
+          <button onClick={onClose} className="text-slate-400 hover:text-white transition-colors">
+            <XIcon />
+          </button>
+        </div>
+
+        <form onSubmit={handleSubmit} className="p-6 space-y-4">
+          {/* Preview of what will be saved */}
+          <div className="bg-slate-800/50 rounded-lg p-4 space-y-3">
+            <h3 className="text-sm font-medium text-slate-300 mb-3">Mallen kommer att inkludera:</h3>
+            <div className="grid grid-cols-2 gap-3 text-sm">
+              <div className="flex items-center gap-2 text-slate-400">
+                <span>📅</span>
+                <span>Mötestyp: {meetingTypeConfig[protocol.meeting_type].label}</span>
+              </div>
+              {protocol.location && (
+                <div className="flex items-center gap-2 text-slate-400">
+                  <span>📍</span>
+                  <span>Plats: {protocol.location}</span>
+                </div>
+              )}
+              {protocol.start_time && (
+                <div className="flex items-center gap-2 text-slate-400">
+                  <span>🕐</span>
+                  <span>Tid: {formatTime(protocol.start_time)}{protocol.end_time ? ` - ${formatTime(protocol.end_time)}` : ''}</span>
+                </div>
+              )}
+              <div className="flex items-center gap-2 text-slate-400">
+                <span>📝</span>
+                <span>{protocol.agenda_items?.length || 0} dagordningspunkter</span>
+              </div>
+              <div className="flex items-center gap-2 text-slate-400">
+                <span>👥</span>
+                <span>{protocol.attendees?.length || 0} deltagarroller</span>
+              </div>
+            </div>
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-slate-300 mb-1">
+              Mallens namn <span className="text-red-400">*</span>
+            </label>
+            <input
+              type="text"
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              className="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-white placeholder-slate-500 focus:outline-none focus:border-blue-500"
+              placeholder="t.ex. Byggmöte - Våra projekt"
+              required
+            />
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-slate-300 mb-1">
+              Beskrivning (valfritt)
+            </label>
+            <textarea
+              value={description}
+              onChange={(e) => setDescription(e.target.value)}
+              rows={3}
+              className="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-white placeholder-slate-500 focus:outline-none focus:border-blue-500 resize-none"
+              placeholder="Beskriv när denna mall bör användas..."
+            />
+          </div>
+
+          <div className="flex justify-end gap-3 pt-4">
+            <button
+              type="button"
+              onClick={onClose}
+              className="px-4 py-2 text-slate-400 hover:text-white transition-colors"
+            >
+              Avbryt
+            </button>
+            <button
+              type="submit"
+              disabled={!name.trim() || isSaving}
+              className="px-4 py-2 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-500 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+            >
+              {isSaving ? (
+                <>
+                  <svg className="animate-spin h-4 w-4" fill="none" viewBox="0 0 24 24">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+                  </svg>
+                  Sparar...
+                </>
+              ) : (
+                <>
+                  <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75 11.25 15 15 9.75M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" />
+                  </svg>
+                  Spara mall
+                </>
+              )}
+            </button>
+          </div>
+        </form>
+      </div>
     </div>
   )
 }

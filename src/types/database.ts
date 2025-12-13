@@ -946,3 +946,91 @@ export interface AIAgendaSuggestion {
   related_item_id?: string
   related_item_type?: ProtocolLinkType
 }
+
+// ===============================
+// Protocol Template Types
+// ===============================
+
+export interface ProtocolTemplate {
+  id: string
+  user_id: string | null
+  name: string
+  description: string | null
+  meeting_type: ProtocolMeetingType
+  is_system: boolean
+  default_location: string | null
+  default_start_time: string | null
+  default_end_time: string | null
+  default_notes: string | null
+  created_at: string
+  updated_at: string
+  // Relations
+  agenda_items?: ProtocolTemplateAgendaItem[]
+  attendee_roles?: ProtocolTemplateAttendeeRole[]
+  decisions?: ProtocolTemplateDecision[]
+  actions?: ProtocolTemplateAction[]
+}
+
+export interface ProtocolTemplateAgendaItem {
+  id: string
+  template_id: string
+  order_index: number
+  title: string
+  description: string | null
+  duration_minutes: number | null
+  created_at: string
+}
+
+export interface ProtocolTemplateAttendeeRole {
+  id: string
+  template_id: string
+  role_name: string
+  company_placeholder: string | null
+  role: ProtocolAttendeeRole
+  created_at: string
+}
+
+export interface ProtocolTemplateDecision {
+  id: string
+  template_id: string
+  description: string
+  created_at: string
+}
+
+export interface ProtocolTemplateAction {
+  id: string
+  template_id: string
+  description: string
+  default_role: string | null
+  default_days_until_deadline: number | null
+  priority: ProtocolActionItemPriority
+  created_at: string
+}
+
+export interface ProtocolTemplateWithDetails extends ProtocolTemplate {
+  agenda_items: ProtocolTemplateAgendaItem[]
+  attendee_roles: ProtocolTemplateAttendeeRole[]
+  decisions: ProtocolTemplateDecision[]
+  actions: ProtocolTemplateAction[]
+}
+
+// Form types for templates
+export interface CreateProtocolTemplateData {
+  name: string
+  description?: string
+  meeting_type: ProtocolMeetingType
+  default_location?: string
+  default_start_time?: string
+  default_end_time?: string
+  default_notes?: string
+}
+
+export interface UpdateProtocolTemplateData {
+  name?: string
+  description?: string | null
+  meeting_type?: ProtocolMeetingType
+  default_location?: string | null
+  default_start_time?: string | null
+  default_end_time?: string | null
+  default_notes?: string | null
+}
