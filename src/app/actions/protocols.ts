@@ -946,3 +946,4 @@ export async function getProjectProtocolStats(projectId: string): Promise<{
     pendingActions: pendingActions || 0
   }
 }
+// Deployment trigger Sat Dec 13 11:25:15 CET 2025
