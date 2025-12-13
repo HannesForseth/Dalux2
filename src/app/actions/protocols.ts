@@ -51,7 +51,7 @@ export async function getProjectProtocols(
       .from('protocols')
       .select(`
         *,
-        creator:profiles!protocols_created_by_fkey(*)
+        creator:profiles!protocols_created_by_profiles_fkey(*)
       `)
       .eq('project_id', projectId)
       .order('meeting_date', { ascending: false })
@@ -92,7 +92,7 @@ export async function getProtocol(protocolId: string): Promise<ProtocolWithDetai
       .from('protocols')
       .select(`
         *,
-        creator:profiles!protocols_created_by_fkey(*),
+        creator:profiles!protocols_created_by_profiles_fkey(*),
         previous_protocol:protocols!protocols_previous_protocol_id_fkey(id, protocol_number, title)
       `)
       .eq('id', protocolId)
