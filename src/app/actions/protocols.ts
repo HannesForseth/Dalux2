@@ -87,14 +87,10 @@ export async function getProtocol(protocolId: string): Promise<ProtocolWithDetai
       return null
     }
 
-    // Get protocol with basic relations
+    // Get protocol first
     const { data: protocol, error: protocolError } = await supabase
       .from('protocols')
-      .select(`
-        *,
-        creator:profiles!protocols_created_by_profiles_fkey(*),
-        previous_protocol:protocols!protocols_previous_protocol_id_fkey(id, protocol_number, title)
-      `)
+      .select('*')
       .eq('id', protocolId)
       .single()
 
@@ -102,6 +98,35 @@ export async function getProtocol(protocolId: string): Promise<ProtocolWithDetai
       if (protocolError.code === 'PGRST116') return null
       console.error('Error fetching protocol:', protocolError)
       return null
+    }
+
+    // Get creator separately
+    let creator = null
+    if (protocol.created_by) {
+      const { data: creatorData } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('id', protocol.created_by)
+        .single()
+      creator = creatorData
+    }
+
+    // Get previous protocol if exists
+    let previous_protocol = null
+    if (protocol.previous_protocol_id) {
+      const { data: prevData } = await supabase
+        .from('protocols')
+        .select('id, protocol_number, title')
+        .eq('id', protocol.previous_protocol_id)
+        .single()
+      previous_protocol = prevData
+    }
+
+    // Attach creator and previous_protocol to protocol object
+    const protocolWithRelations = {
+      ...protocol,
+      creator,
+      previous_protocol
     }
 
     // Get attendees
@@ -159,7 +184,7 @@ export async function getProtocol(protocolId: string): Promise<ProtocolWithDetai
       .order('created_at', { ascending: false })
 
     return {
-      ...protocol,
+      ...protocolWithRelations,
       attendees: attendees || [],
       agenda_items: agendaItems || [],
       decisions: decisions || [],
