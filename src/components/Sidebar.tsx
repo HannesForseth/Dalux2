@@ -6,7 +6,7 @@ import { usePathname, useParams } from 'next/navigation'
 // Default navigation (when not in project context)
 const defaultNavigation = [
   { name: 'Översikt', href: '/dashboard', icon: HomeIcon },
-  { name: 'Projekt', href: '/dashboard/projects', icon: FolderIcon },
+  { name: 'Projekt', href: '/projects', icon: FolderIcon },
 ]
 
 // Project-specific navigation
@@ -115,7 +115,7 @@ export default function Sidebar() {
   return (
     <aside className="fixed inset-y-0 left-0 w-64 bg-slate-900 border-r border-slate-800">
       <div className="flex h-16 items-center px-6 border-b border-slate-800">
-        <Link href="/dashboard/projects" className="text-xl font-bold text-white">
+        <Link href="/projects" className="text-xl font-bold text-white">
           Dalux<span className="text-blue-500">2</span>
         </Link>
       </div>
@@ -154,7 +154,7 @@ export default function Sidebar() {
 
             {/* Back to Projects */}
             <Link
-              href="/dashboard/projects"
+              href="/projects"
               className="flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium text-slate-400 hover:bg-slate-800 hover:text-white transition-colors"
             >
               <ArrowLeftIcon className="h-5 w-5" />
