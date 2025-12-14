@@ -3,10 +3,24 @@
 import { useEffect, useState } from 'react'
 import { useParams } from 'next/navigation'
 import Link from 'next/link'
+import { motion } from 'framer-motion'
 import { getProjectWithMembers, getUserRoleInProject, getProjectStats, getProjectActivity } from '@/app/actions/projects'
 import type { ProjectStats, ActivityItem } from '@/app/actions/projects'
 import type { ProjectWithMembers, RoleName } from '@/types/database'
 import { canUpdateProject, canManageMembers, getRoleDisplayName } from '@/lib/permissions'
+
+const containerVariants = {
+  hidden: { opacity: 0 },
+  visible: {
+    opacity: 1,
+    transition: { staggerChildren: 0.1 }
+  }
+}
+
+const itemVariants = {
+  hidden: { opacity: 0, y: 20 },
+  visible: { opacity: 1, y: 0, transition: { duration: 0.4 } }
+}
 
 export default function ProjectDetailPage() {
   const params = useParams()
@@ -44,11 +58,11 @@ export default function ProjectDetailPage() {
   if (isLoading) {
     return (
       <div className="animate-pulse">
-        <div className="h-8 bg-slate-800 rounded w-1/3 mb-4" />
-        <div className="h-4 bg-slate-800 rounded w-2/3 mb-8" />
+        <div className="h-8 bg-slate-200 rounded-xl w-1/3 mb-4" />
+        <div className="h-4 bg-slate-200 rounded-lg w-2/3 mb-8" />
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          <div className="lg:col-span-2 bg-slate-900 border border-slate-800 rounded-xl p-6 h-64" />
-          <div className="bg-slate-900 border border-slate-800 rounded-xl p-6 h-64" />
+          <div className="lg:col-span-2 bg-white/60 border border-slate-200 rounded-2xl p-6 h-64" />
+          <div className="bg-white/60 border border-slate-200 rounded-2xl p-6 h-64" />
         </div>
       </div>
     )
@@ -57,11 +71,14 @@ export default function ProjectDetailPage() {
   if (!project) {
     return (
       <div className="text-center py-12">
-        <h2 className="text-xl font-semibold text-white mb-2">Projektet hittades inte</h2>
-        <p className="text-slate-400 mb-6">Det här projektet finns inte eller så har du inte tillgång till det.</p>
+        <div className="w-16 h-16 mx-auto mb-4 bg-slate-100 rounded-2xl flex items-center justify-center">
+          <ExclamationIcon className="w-8 h-8 text-slate-400" />
+        </div>
+        <h2 className="text-xl font-semibold text-slate-900 mb-2">Projektet hittades inte</h2>
+        <p className="text-slate-600 mb-6">Det här projektet finns inte eller så har du inte tillgång till det.</p>
         <Link
-          href="/dashboard/projects"
-          className="text-blue-400 hover:text-blue-300"
+          href="/projects"
+          className="text-indigo-600 hover:text-indigo-700 font-medium"
         >
           Tillbaka till projekt
         </Link>
@@ -70,60 +87,63 @@ export default function ProjectDetailPage() {
   }
 
   const statusConfig = {
-    active: { label: 'Aktiv', color: 'bg-green-500/10 text-green-400 border-green-500/20' },
-    completed: { label: 'Avslutad', color: 'bg-blue-500/10 text-blue-400 border-blue-500/20' },
-    archived: { label: 'Arkiverad', color: 'bg-slate-500/10 text-slate-400 border-slate-500/20' },
+    active: { label: 'Aktiv', color: 'bg-green-100 text-green-700 border-green-200' },
+    completed: { label: 'Avslutad', color: 'bg-blue-100 text-blue-700 border-blue-200' },
+    archived: { label: 'Arkiverad', color: 'bg-slate-100 text-slate-600 border-slate-200' },
   }
   const status = statusConfig[project.status]
 
   return (
-    <div>
+    <motion.div
+      variants={containerVariants}
+      initial="hidden"
+      animate="visible"
+    >
       {/* Header */}
-      <div className="flex items-start justify-between mb-8">
+      <motion.div variants={itemVariants} className="flex items-start justify-between mb-8">
         <div>
           <div className="flex items-center gap-3 mb-2">
-            <Link
-              href="/dashboard/projects"
-              className="text-slate-400 hover:text-white transition-colors"
-            >
-              <ArrowLeftIcon />
-            </Link>
-            <h1 className="text-2xl font-bold text-white">{project.name}</h1>
-            <span className={`px-2 py-1 text-xs font-medium rounded-full border ${status.color}`}>
+            <h1 className="text-3xl font-bold bg-gradient-to-r from-slate-900 to-slate-700 bg-clip-text text-transparent">
+              {project.name}
+            </h1>
+            <span className={`px-3 py-1 text-xs font-medium rounded-full border ${status.color}`}>
               {status.label}
             </span>
           </div>
           {project.project_number && (
-            <p className="text-slate-400">#{project.project_number}</p>
+            <p className="text-slate-500">#{project.project_number}</p>
           )}
         </div>
 
         {userRole && canUpdateProject(userRole) && (
           <Link
             href={`/dashboard/projects/${project.id}/settings/members`}
-            className="px-4 py-2 bg-slate-800 text-slate-300 rounded-lg font-medium hover:bg-slate-700 transition-colors"
+            className="px-4 py-2 bg-white/80 text-slate-700 rounded-xl font-medium hover:bg-white hover:shadow-md border border-slate-200 transition-all"
           >
             Inställningar
           </Link>
         )}
-      </div>
+      </motion.div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Main content */}
         <div className="lg:col-span-2 space-y-6">
           {/* Project info */}
-          <div className="bg-slate-900 border border-slate-800 rounded-xl p-6">
-            <h2 className="text-lg font-semibold text-white mb-4">Projektinformation</h2>
+          <motion.div
+            variants={itemVariants}
+            className="bg-white/80 backdrop-blur-sm border border-slate-200 rounded-2xl p-6 shadow-sm"
+          >
+            <h2 className="text-lg font-semibold text-slate-900 mb-4">Projektinformation</h2>
 
             {project.description && (
-              <p className="text-slate-300 mb-6">{project.description}</p>
+              <p className="text-slate-600 mb-6">{project.description}</p>
             )}
 
             <div className="grid grid-cols-2 gap-4">
               {(project.address || project.city) && (
                 <div>
                   <p className="text-sm text-slate-500 mb-1">Plats</p>
-                  <p className="text-white">
+                  <p className="text-slate-900 font-medium">
                     {[project.address, project.city].filter(Boolean).join(', ')}
                   </p>
                 </div>
@@ -132,30 +152,32 @@ export default function ProjectDetailPage() {
               {project.start_date && (
                 <div>
                   <p className="text-sm text-slate-500 mb-1">Projektperiod</p>
-                  <p className="text-white">
+                  <p className="text-slate-900 font-medium">
                     {formatDate(project.start_date)}
                     {project.end_date && ` - ${formatDate(project.end_date)}`}
                   </p>
                 </div>
               )}
             </div>
-          </div>
+          </motion.div>
 
           {/* Quick actions with real counts */}
-          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
+          <motion.div variants={itemVariants} className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
             <QuickActionCard
               title="Dokument"
               count={stats?.documentsCount.toString() || '0'}
               icon={<DocumentIcon />}
               href={`/dashboard/projects/${project.id}/documents`}
+              index={0}
             />
             <QuickActionCard
-              title="Avvikelser"
+              title="Ärenden"
               count={stats?.issuesCount.toString() || '0'}
               subtext={stats?.openIssuesCount ? `${stats.openIssuesCount} öppna` : undefined}
               icon={<ExclamationIcon />}
               href={`/dashboard/projects/${project.id}/issues`}
               highlight={stats?.openIssuesCount ? stats.openIssuesCount > 0 : false}
+              index={1}
             />
             <QuickActionCard
               title="Checklistor"
@@ -163,6 +185,7 @@ export default function ProjectDetailPage() {
               subtext={stats?.completedChecklistsCount ? `${stats.completedChecklistsCount} klara` : undefined}
               icon={<ClipboardIcon />}
               href={`/dashboard/projects/${project.id}/checklists`}
+              index={2}
             />
             <QuickActionCard
               title="F/S"
@@ -171,6 +194,7 @@ export default function ProjectDetailPage() {
               icon={<QuestionIcon />}
               href={`/dashboard/projects/${project.id}/rfi`}
               highlight={stats?.openRfisCount ? stats.openRfisCount > 0 : false}
+              index={3}
             />
             <QuickActionCard
               title="Protokoll"
@@ -179,35 +203,42 @@ export default function ProjectDetailPage() {
               icon={<ProtocolIcon />}
               href={`/dashboard/projects/${project.id}/protocols`}
               highlight={stats?.unseenProtocolsCount ? stats.unseenProtocolsCount > 0 : false}
+              index={4}
             />
-          </div>
+          </motion.div>
 
           {/* Activity Feed */}
-          <div className="bg-slate-900 border border-slate-800 rounded-xl p-6">
-            <h2 className="text-lg font-semibold text-white mb-4">Senaste aktivitet</h2>
+          <motion.div
+            variants={itemVariants}
+            className="bg-white/80 backdrop-blur-sm border border-slate-200 rounded-2xl p-6 shadow-sm"
+          >
+            <h2 className="text-lg font-semibold text-slate-900 mb-4">Senaste aktivitet</h2>
 
             {activities.length === 0 ? (
               <p className="text-slate-500 text-sm">Ingen aktivitet än</p>
             ) : (
-              <div className="space-y-4">
-                {activities.map((activity) => (
-                  <ActivityCard key={activity.id} activity={activity} projectId={project.id} />
+              <div className="space-y-3">
+                {activities.map((activity, index) => (
+                  <ActivityCard key={activity.id} activity={activity} projectId={project.id} index={index} />
                 ))}
               </div>
             )}
-          </div>
+          </motion.div>
         </div>
 
         {/* Sidebar */}
         <div className="space-y-6">
           {/* Team members */}
-          <div className="bg-slate-900 border border-slate-800 rounded-xl p-6">
+          <motion.div
+            variants={itemVariants}
+            className="bg-white/80 backdrop-blur-sm border border-slate-200 rounded-2xl p-6 shadow-sm"
+          >
             <div className="flex items-center justify-between mb-4">
-              <h2 className="text-lg font-semibold text-white">Projektteam</h2>
+              <h2 className="text-lg font-semibold text-slate-900">Projektteam</h2>
               {userRole && canManageMembers(userRole) && (
                 <Link
                   href={`/dashboard/projects/${project.id}/settings/members`}
-                  className="text-sm text-blue-400 hover:text-blue-300"
+                  className="text-sm text-indigo-600 hover:text-indigo-700 font-medium"
                 >
                   Hantera
                 </Link>
@@ -217,11 +248,11 @@ export default function ProjectDetailPage() {
             <div className="space-y-3">
               {project.members.slice(0, 5).map((member) => (
                 <div key={member.id} className="flex items-center gap-3">
-                  <div className="w-8 h-8 rounded-full bg-slate-700 flex items-center justify-center text-white text-sm font-medium">
+                  <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-indigo-500 to-purple-500 flex items-center justify-center text-white text-sm font-medium shadow-sm">
                     {member.profile?.full_name?.charAt(0) || '?'}
                   </div>
                   <div className="flex-1 min-w-0">
-                    <p className="text-white text-sm truncate">
+                    <p className="text-slate-900 text-sm font-medium truncate">
                       {member.profile?.full_name || 'Okänd användare'}
                     </p>
                     <p className="text-slate-500 text-xs">
@@ -234,7 +265,7 @@ export default function ProjectDetailPage() {
               {project.members.length > 5 && (
                 <Link
                   href={`/dashboard/projects/${project.id}/settings/members`}
-                  className="block text-sm text-slate-400 hover:text-white"
+                  className="block text-sm text-slate-500 hover:text-indigo-600 transition-colors"
                 >
                   +{project.members.length - 5} fler medlemmar
                 </Link>
@@ -244,55 +275,61 @@ export default function ProjectDetailPage() {
                 <p className="text-slate-500 text-sm">Inga medlemmar än</p>
               )}
             </div>
-          </div>
+          </motion.div>
 
           {/* Your role */}
           {userRole && (
-            <div className="bg-slate-900 border border-slate-800 rounded-xl p-6">
-              <h2 className="text-lg font-semibold text-white mb-2">Din roll</h2>
-              <p className="text-slate-300">{getRoleDisplayName(userRole)}</p>
-            </div>
+            <motion.div
+              variants={itemVariants}
+              className="bg-white/80 backdrop-blur-sm border border-slate-200 rounded-2xl p-6 shadow-sm"
+            >
+              <h2 className="text-lg font-semibold text-slate-900 mb-2">Din roll</h2>
+              <p className="text-slate-600">{getRoleDisplayName(userRole)}</p>
+            </motion.div>
           )}
 
           {/* Quick Stats Summary */}
           {stats && (
-            <div className="bg-slate-900 border border-slate-800 rounded-xl p-6">
-              <h2 className="text-lg font-semibold text-white mb-4">Snabbstatistik</h2>
+            <motion.div
+              variants={itemVariants}
+              className="bg-white/80 backdrop-blur-sm border border-slate-200 rounded-2xl p-6 shadow-sm"
+            >
+              <h2 className="text-lg font-semibold text-slate-900 mb-4">Snabbstatistik</h2>
               <div className="space-y-3">
                 <div className="flex justify-between items-center">
-                  <span className="text-slate-400 text-sm">Totalt dokument</span>
-                  <span className="text-white font-medium">{stats.documentsCount}</span>
+                  <span className="text-slate-500 text-sm">Totalt dokument</span>
+                  <span className="text-slate-900 font-medium">{stats.documentsCount}</span>
                 </div>
                 <div className="flex justify-between items-center">
-                  <span className="text-slate-400 text-sm">Öppna avvikelser</span>
-                  <span className={`font-medium ${stats.openIssuesCount > 0 ? 'text-amber-400' : 'text-green-400'}`}>
+                  <span className="text-slate-500 text-sm">Öppna ärenden</span>
+                  <span className={`font-medium ${stats.openIssuesCount > 0 ? 'text-amber-600' : 'text-green-600'}`}>
                     {stats.openIssuesCount}
                   </span>
                 </div>
                 <div className="flex justify-between items-center">
-                  <span className="text-slate-400 text-sm">Checklistor klara</span>
-                  <span className="text-white font-medium">
+                  <span className="text-slate-500 text-sm">Checklistor klara</span>
+                  <span className="text-slate-900 font-medium">
                     {stats.completedChecklistsCount}/{stats.checklistsCount}
                   </span>
                 </div>
                 <div className="flex justify-between items-center">
-                  <span className="text-slate-400 text-sm">Öppna F/S</span>
-                  <span className={`font-medium ${stats.openRfisCount > 0 ? 'text-amber-400' : 'text-green-400'}`}>
+                  <span className="text-slate-500 text-sm">Öppna F/S</span>
+                  <span className={`font-medium ${stats.openRfisCount > 0 ? 'text-amber-600' : 'text-green-600'}`}>
                     {stats.openRfisCount}
                   </span>
                 </div>
                 <div className="flex justify-between items-center">
-                  <span className="text-slate-400 text-sm">Nya protokoll</span>
-                  <span className={`font-medium ${stats.unseenProtocolsCount > 0 ? 'text-blue-400' : 'text-white'}`}>
+                  <span className="text-slate-500 text-sm">Nya protokoll</span>
+                  <span className={`font-medium ${stats.unseenProtocolsCount > 0 ? 'text-indigo-600' : 'text-slate-900'}`}>
                     {stats.unseenProtocolsCount}
                   </span>
                 </div>
               </div>
-            </div>
+            </motion.div>
           )}
         </div>
       </div>
-    </div>
+    </motion.div>
   )
 }
 
@@ -303,6 +340,7 @@ function QuickActionCard({
   icon,
   href,
   highlight = false,
+  index = 0,
 }: {
   title: string
   count: string
@@ -310,52 +348,75 @@ function QuickActionCard({
   icon: React.ReactNode
   href: string
   highlight?: boolean
+  index?: number
 }) {
   return (
     <Link href={href}>
-      <div className={`bg-slate-900 border rounded-xl p-4 hover:border-slate-700 transition-colors ${
-        highlight ? 'border-amber-500/30' : 'border-slate-800'
-      }`}>
+      <motion.div
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: index * 0.05, duration: 0.3 }}
+        whileHover={{ y: -4, scale: 1.02 }}
+        whileTap={{ scale: 0.98 }}
+        className={`bg-white/80 backdrop-blur-sm border rounded-2xl p-4 transition-all cursor-pointer group shadow-sm ${
+          highlight
+            ? 'border-amber-200 bg-amber-50/50 hover:border-amber-300 hover:shadow-amber-100/50'
+            : 'border-slate-200 hover:border-indigo-200 hover:shadow-lg hover:shadow-indigo-100/50'
+        }`}
+      >
         <div className="flex items-center gap-3">
-          <div className={highlight ? 'text-amber-400' : 'text-slate-400'}>{icon}</div>
+          <div className={`w-10 h-10 rounded-xl flex items-center justify-center transition-all ${
+            highlight
+              ? 'bg-amber-100 text-amber-600 group-hover:bg-amber-200'
+              : 'bg-slate-100 text-slate-500 group-hover:bg-gradient-to-br group-hover:from-indigo-500 group-hover:to-purple-500 group-hover:text-white'
+          }`}>
+            {icon}
+          </div>
           <div>
-            <p className="text-white font-medium">{count}</p>
+            <motion.p
+              initial={{ opacity: 0, y: 5 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: index * 0.05 + 0.1 }}
+              className="text-slate-900 font-semibold text-lg"
+            >
+              {count}
+            </motion.p>
             <p className="text-slate-500 text-sm">{title}</p>
             {subtext && (
-              <p className={`text-xs ${highlight ? 'text-amber-400' : 'text-slate-500'}`}>{subtext}</p>
+              <p className={`text-xs ${highlight ? 'text-amber-600' : 'text-slate-400'}`}>{subtext}</p>
             )}
           </div>
         </div>
-      </div>
+      </motion.div>
     </Link>
   )
 }
 
-function ActivityCard({ activity, projectId }: { activity: ActivityItem; projectId: string }) {
+function ActivityCard({ activity, projectId, index }: { activity: ActivityItem; projectId: string; index: number }) {
   const iconMap: Record<string, React.ReactNode> = {
     document_uploaded: <DocumentPlusIcon />,
-    document_updated: <DocumentIcon />,
+    document_updated: <DocumentIcon className="w-4 h-4" />,
     document_version: <ArrowPathIcon />,
     document_comment: <ChatBubbleIcon />,
-    issue_created: <ExclamationIcon />,
-    issue_updated: <ExclamationIcon />,
-    checklist_created: <ClipboardIcon />,
+    issue_created: <ExclamationIcon className="w-4 h-4" />,
+    issue_updated: <ExclamationIcon className="w-4 h-4" />,
+    checklist_created: <ClipboardIcon className="w-4 h-4" />,
     checklist_completed: <CheckCircleIcon />,
     protocol_created: <ProtocolSmallIcon />,
     protocol_finalized: <CheckCircleIcon />,
   }
 
   const colorMap: Record<string, string> = {
-    document_uploaded: 'text-blue-400 bg-blue-500/10',
-    document_updated: 'text-slate-400 bg-slate-500/10',
-    document_version: 'text-purple-400 bg-purple-500/10',
-    document_comment: 'text-green-400 bg-green-500/10',
-    issue_created: 'text-amber-400 bg-amber-500/10',
-    issue_updated: 'text-amber-400 bg-amber-500/10',
-    checklist_created: 'text-cyan-400 bg-cyan-500/10',
-    checklist_completed: 'text-green-400 bg-green-500/10',
-    protocol_created: 'text-indigo-400 bg-indigo-500/10',
-    protocol_finalized: 'text-green-400 bg-green-500/10',
+    document_uploaded: 'bg-blue-100 text-blue-600',
+    document_updated: 'bg-slate-100 text-slate-600',
+    document_version: 'bg-purple-100 text-purple-600',
+    document_comment: 'bg-green-100 text-green-600',
+    issue_created: 'bg-amber-100 text-amber-600',
+    issue_updated: 'bg-amber-100 text-amber-600',
+    checklist_created: 'bg-cyan-100 text-cyan-600',
+    checklist_completed: 'bg-green-100 text-green-600',
+    protocol_created: 'bg-indigo-100 text-indigo-600',
+    protocol_finalized: 'bg-green-100 text-green-600',
   }
 
   const getLink = () => {
@@ -376,24 +437,29 @@ function ActivityCard({ activity, projectId }: { activity: ActivityItem; project
 
   const link = getLink()
   const content = (
-    <div className="flex gap-3">
-      <div className={`w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 ${colorMap[activity.type]}`}>
+    <motion.div
+      initial={{ opacity: 0, x: -20 }}
+      animate={{ opacity: 1, x: 0 }}
+      transition={{ delay: index * 0.05, duration: 0.3 }}
+      className="flex gap-3"
+    >
+      <div className={`w-8 h-8 rounded-xl flex items-center justify-center flex-shrink-0 ${colorMap[activity.type] || 'bg-slate-100 text-slate-600'}`}>
         {iconMap[activity.type]}
       </div>
       <div className="flex-1 min-w-0">
         <div className="flex items-center gap-2">
-          <span className="text-white text-sm font-medium">{activity.title}</span>
-          <span className="text-slate-500 text-xs">{formatRelativeTime(activity.timestamp)}</span>
+          <span className="text-slate-900 text-sm font-medium">{activity.title}</span>
+          <span className="text-slate-400 text-xs">{formatRelativeTime(activity.timestamp)}</span>
         </div>
-        <p className="text-slate-400 text-sm truncate">{activity.description}</p>
-        <p className="text-slate-500 text-xs">{activity.user.name}</p>
+        <p className="text-slate-500 text-sm truncate">{activity.description}</p>
+        <p className="text-slate-400 text-xs">{activity.user.name}</p>
       </div>
-    </div>
+    </motion.div>
   )
 
   if (link) {
     return (
-      <Link href={link} className="block hover:bg-slate-800/50 -mx-2 px-2 py-2 rounded-lg transition-colors">
+      <Link href={link} className="block hover:bg-slate-50 -mx-2 px-2 py-2 rounded-xl transition-colors">
         {content}
       </Link>
     )
@@ -423,17 +489,9 @@ function formatRelativeTime(dateString: string): string {
   return date.toLocaleDateString('sv-SE', { day: 'numeric', month: 'short' })
 }
 
-function ArrowLeftIcon() {
+function DocumentIcon({ className = "h-5 w-5" }: { className?: string }) {
   return (
-    <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
-      <path strokeLinecap="round" strokeLinejoin="round" d="M10.5 19.5 3 12m0 0 7.5-7.5M3 12h18" />
-    </svg>
-  )
-}
-
-function DocumentIcon() {
-  return (
-    <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+    <svg className={className} fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
       <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 0 0-3.375-3.375h-1.5A1.125 1.125 0 0 1 13.5 7.125v-1.5a3.375 3.375 0 0 0-3.375-3.375H8.25m0 12.75h7.5m-7.5 3H12M10.5 2.25H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 0 0-9-9Z" />
     </svg>
   )
@@ -447,17 +505,17 @@ function DocumentPlusIcon() {
   )
 }
 
-function ExclamationIcon() {
+function ExclamationIcon({ className = "h-5 w-5" }: { className?: string }) {
   return (
-    <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+    <svg className={className} fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
       <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126ZM12 15.75h.007v.008H12v-.008Z" />
     </svg>
   )
 }
 
-function ClipboardIcon() {
+function ClipboardIcon({ className = "h-5 w-5" }: { className?: string }) {
   return (
-    <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+    <svg className={className} fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
       <path strokeLinecap="round" strokeLinejoin="round" d="M9 12h3.75M9 15h3.75M9 18h3.75m3 .75H18a2.25 2.25 0 0 0 2.25-2.25V6.108c0-1.135-.845-2.098-1.976-2.192a48.424 48.424 0 0 0-1.123-.08m-5.801 0c-.065.21-.1.433-.1.664 0 .414.336.75.75.75h4.5a.75.75 0 0 0 .75-.75 2.25 2.25 0 0 0-.1-.664m-5.8 0A2.251 2.251 0 0 1 13.5 2.25H15c1.012 0 1.867.668 2.15 1.586m-5.8 0c-.376.023-.75.05-1.124.08C9.095 4.01 8.25 4.973 8.25 6.108V8.25m0 0H4.875c-.621 0-1.125.504-1.125 1.125v11.25c0 .621.504 1.125 1.125 1.125h9.75c.621 0 1.125-.504 1.125-1.125V9.375c0-.621-.504-1.125-1.125-1.125H8.25ZM6.75 12h.008v.008H6.75V12Zm0 3h.008v.008H6.75V15Zm0 3h.008v.008H6.75V18Z" />
     </svg>
   )

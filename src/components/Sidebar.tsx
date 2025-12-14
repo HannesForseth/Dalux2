@@ -2,6 +2,8 @@
 
 import Link from 'next/link'
 import { usePathname, useParams } from 'next/navigation'
+import { motion } from 'framer-motion'
+import { Building2 } from 'lucide-react'
 
 // Default navigation (when not in project context)
 const defaultNavigation = [
@@ -113,10 +115,22 @@ export default function Sidebar() {
   const projectBasePath = projectId ? `/dashboard/projects/${projectId}` : ''
 
   return (
-    <aside className="fixed inset-y-0 left-0 w-64 bg-slate-900 border-r border-slate-800">
-      <div className="flex h-16 items-center px-6 border-b border-slate-800">
-        <Link href="/projects" className="text-xl font-bold text-white">
-          Dalux<span className="text-blue-500">2</span>
+    <motion.aside
+      className="fixed inset-y-0 left-0 w-64 bg-white/70 backdrop-blur-xl border-r border-slate-200/50 shadow-xl"
+      initial={{ x: -20, opacity: 0 }}
+      animate={{ x: 0, opacity: 1 }}
+      transition={{ duration: 0.3 }}
+    >
+      {/* Logo Header */}
+      <div className="flex h-16 items-center px-6 border-b border-slate-200/50">
+        <Link href="/projects" className="flex items-center gap-3 group">
+          <div className="w-9 h-9 bg-gradient-to-br from-indigo-600 via-purple-600 to-pink-500 rounded-xl flex items-center justify-center shadow-lg shadow-indigo-500/25 group-hover:shadow-xl group-hover:shadow-indigo-500/30 transition-all duration-300 group-hover:scale-105">
+            <Building2 className="w-5 h-5 text-white" />
+          </div>
+          <span className="text-xl font-bold">
+            <span className="text-slate-900">Bygg</span>
+            <span className="bg-gradient-to-r from-indigo-600 to-purple-600 bg-clip-text text-transparent">Smart</span>
+          </span>
         </Link>
       </div>
 
@@ -125,37 +139,42 @@ export default function Sidebar() {
           <>
             {/* Project Navigation */}
             <ul className="space-y-1">
-              {projectNavigation.map((item) => {
+              {projectNavigation.map((item, index) => {
                 const href = `${projectBasePath}${item.href}`
                 const isActive = item.href === ''
                   ? pathname === projectBasePath
                   : pathname === href || pathname?.startsWith(href + '/')
 
                 return (
-                  <li key={item.name}>
+                  <motion.li
+                    key={item.name}
+                    initial={{ opacity: 0, x: -10 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    transition={{ delay: index * 0.05 }}
+                  >
                     <Link
                       href={href}
-                      className={`flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
+                      className={`flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all duration-200 ${
                         isActive
-                          ? 'bg-blue-600 text-white'
-                          : 'text-slate-400 hover:bg-slate-800 hover:text-white'
+                          ? 'bg-gradient-to-r from-indigo-500/10 to-purple-500/10 text-indigo-700 border-l-2 border-indigo-500 shadow-sm'
+                          : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'
                       }`}
                     >
-                      <item.icon className="h-5 w-5" />
+                      <item.icon className={`h-5 w-5 ${isActive ? 'text-indigo-600' : ''}`} />
                       {item.name}
                     </Link>
-                  </li>
+                  </motion.li>
                 )
               })}
             </ul>
 
             {/* Divider */}
-            <div className="my-4 border-t border-slate-800" />
+            <div className="my-4 border-t border-slate-200/50" />
 
             {/* Back to Projects */}
             <Link
               href="/projects"
-              className="flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium text-slate-400 hover:bg-slate-800 hover:text-white transition-colors"
+              className="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium text-slate-600 hover:bg-slate-100 hover:text-slate-900 transition-all duration-200"
             >
               <ArrowLeftIcon className="h-5 w-5" />
               Byt projekt
@@ -165,24 +184,29 @@ export default function Sidebar() {
           <>
             {/* Default Navigation */}
             <ul className="space-y-1">
-              {defaultNavigation.map((item) => {
+              {defaultNavigation.map((item, index) => {
                 const isActive = pathname === item.href ||
                   (item.href !== '/dashboard' && pathname?.startsWith(item.href))
 
                 return (
-                  <li key={item.name}>
+                  <motion.li
+                    key={item.name}
+                    initial={{ opacity: 0, x: -10 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    transition={{ delay: index * 0.05 }}
+                  >
                     <Link
                       href={item.href}
-                      className={`flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
+                      className={`flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all duration-200 ${
                         isActive
-                          ? 'bg-blue-600 text-white'
-                          : 'text-slate-400 hover:bg-slate-800 hover:text-white'
+                          ? 'bg-gradient-to-r from-indigo-500/10 to-purple-500/10 text-indigo-700 border-l-2 border-indigo-500 shadow-sm'
+                          : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'
                       }`}
                     >
-                      <item.icon className="h-5 w-5" />
+                      <item.icon className={`h-5 w-5 ${isActive ? 'text-indigo-600' : ''}`} />
                       {item.name}
                     </Link>
-                  </li>
+                  </motion.li>
                 )
               })}
             </ul>
@@ -193,16 +217,16 @@ export default function Sidebar() {
         <div className="flex-1" />
 
         {/* Bottom section - Settings */}
-        <div className="pb-4 border-t border-slate-800 pt-4 space-y-1">
+        <div className="pb-4 border-t border-slate-200/50 pt-4 space-y-1">
           <Link
             href="/dashboard/settings"
-            className="flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium text-slate-400 hover:bg-slate-800 hover:text-white transition-colors"
+            className="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium text-slate-600 hover:bg-slate-100 hover:text-slate-900 transition-all duration-200"
           >
             <SettingsIcon className="h-5 w-5" />
             Inställningar
           </Link>
         </div>
       </nav>
-    </aside>
+    </motion.aside>
   )
 }
