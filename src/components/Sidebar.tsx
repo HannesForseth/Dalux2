@@ -116,7 +116,7 @@ export default function Sidebar() {
 
   return (
     <motion.aside
-      className="fixed inset-y-0 left-0 w-64 bg-white/70 backdrop-blur-xl border-r border-slate-200/50 shadow-xl"
+      className="fixed inset-y-0 left-0 w-64 z-40 bg-white/70 backdrop-blur-xl border-r border-slate-200/50 shadow-xl"
       initial={{ x: -20, opacity: 0 }}
       animate={{ x: 0, opacity: 1 }}
       transition={{ duration: 0.3 }}

@@ -82,7 +82,7 @@ export default function DashboardLayout({
       <Sidebar />
 
       {/* Main Content Area */}
-      <div className="pl-64 relative z-10 min-h-screen flex flex-col">
+      <div className="pl-64 relative min-h-screen flex flex-col">
         <Header />
         <main className="flex-1 p-6">
           {children}
