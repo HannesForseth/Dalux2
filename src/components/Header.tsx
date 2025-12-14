@@ -2,9 +2,9 @@
 
 import { useState, useEffect, useRef } from 'react'
 import { createClient } from '@/lib/supabase/client'
-import { useRouter, useParams } from 'next/navigation'
+import { useRouter } from 'next/navigation'
 import { motion, AnimatePresence } from 'framer-motion'
-import { Search, Bell, Plus, Upload, ChevronDown, User, Settings, LogOut, X } from 'lucide-react'
+import { Search, Bell, ChevronDown, User, Settings, LogOut, X } from 'lucide-react'
 import type { User as SupabaseUser } from '@supabase/supabase-js'
 import {
   Notification,
@@ -27,8 +27,6 @@ export default function Header() {
   const notificationRef = useRef<HTMLDivElement>(null)
   const userDropdownRef = useRef<HTMLDivElement>(null)
   const router = useRouter()
-  const params = useParams()
-  const projectId = params?.id as string | undefined
 
   useEffect(() => {
     const supabase = createClient()
@@ -185,26 +183,8 @@ export default function Header() {
           />
         </div>
 
-        {/* Right: Actions & User */}
+        {/* Right: User Actions */}
         <div className="flex items-center gap-2">
-          {/* Quick Action Buttons */}
-          {projectId && (
-            <>
-              <button className="hidden sm:flex items-center gap-2 px-3 py-1.5 text-sm text-slate-600 hover:text-slate-900 hover:bg-slate-100 rounded-lg transition-colors">
-                <Upload className="w-4 h-4" />
-                <span className="hidden md:inline">Ladda upp</span>
-              </button>
-              <button
-                onClick={() => router.push(`/dashboard/projects/${projectId}/deviations?new=true`)}
-                className="flex items-center gap-2 px-3 py-1.5 text-sm font-medium text-white bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 rounded-lg shadow-md shadow-indigo-500/20 transition-all"
-              >
-                <Plus className="w-4 h-4" />
-                <span className="hidden md:inline">Ny avvikelse</span>
-              </button>
-              <div className="h-5 w-px bg-slate-200 mx-1" />
-            </>
-          )}
-
           {/* Notification Bell with Dropdown */}
           <div className="relative" ref={notificationRef}>
             <button

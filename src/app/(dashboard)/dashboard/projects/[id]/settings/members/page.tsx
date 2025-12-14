@@ -3,6 +3,8 @@
 import { useEffect, useState } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import Link from 'next/link'
+import { motion } from 'framer-motion'
+import { ArrowLeft, Plus, Trash2, X, Mail, Users, Shield, AlertTriangle } from 'lucide-react'
 import {
   getProjectMembers,
   getProjectInvitations,
@@ -16,6 +18,16 @@ import { getProjectGroups, assignMemberToGroup } from '@/app/actions/groups'
 import type { Project, ProjectMemberWithDetails, InvitationWithDetails, ProjectRole, RoleName, ProjectGroup } from '@/types/database'
 import { canManageMembers, canChangeRoles, canDeleteProject, isOwner, getRoleDisplayName, getAssignableRoles } from '@/lib/permissions'
 import InviteMemberModal from '@/components/members/InviteMemberModal'
+
+const containerVariants = {
+  hidden: { opacity: 0 },
+  visible: { opacity: 1, transition: { staggerChildren: 0.1 } }
+}
+
+const itemVariants = {
+  hidden: { opacity: 0, y: 20 },
+  visible: { opacity: 1, y: 0, transition: { duration: 0.4 } }
+}
 
 export default function MembersSettingsPage() {
   const params = useParams()
@@ -131,15 +143,15 @@ export default function MembersSettingsPage() {
   if (isLoading) {
     return (
       <div className="animate-pulse">
-        <div className="h-8 bg-slate-800 rounded w-1/4 mb-8" />
-        <div className="bg-slate-900 border border-slate-800 rounded-xl p-6">
+        <div className="h-8 bg-slate-200 rounded w-1/4 mb-8" />
+        <div className="bg-white/80 border border-slate-200 rounded-2xl p-6">
           <div className="space-y-4">
             {[1, 2, 3].map((i) => (
               <div key={i} className="flex items-center gap-4">
-                <div className="w-10 h-10 rounded-full bg-slate-800" />
+                <div className="w-10 h-10 rounded-full bg-slate-200" />
                 <div className="flex-1">
-                  <div className="h-4 bg-slate-800 rounded w-1/3 mb-2" />
-                  <div className="h-3 bg-slate-800 rounded w-1/4" />
+                  <div className="h-4 bg-slate-200 rounded w-1/3 mb-2" />
+                  <div className="h-3 bg-slate-200 rounded w-1/4" />
                 </div>
               </div>
             ))}
@@ -152,8 +164,8 @@ export default function MembersSettingsPage() {
   if (!project || !userRole) {
     return (
       <div className="text-center py-12">
-        <h2 className="text-xl font-semibold text-white mb-2">Projektet hittades inte</h2>
-        <Link href="/dashboard/projects" className="text-blue-400 hover:text-blue-300">
+        <h2 className="text-xl font-semibold text-slate-900 mb-2">Projektet hittades inte</h2>
+        <Link href="/dashboard/projects" className="text-indigo-600 hover:text-indigo-700">
           Tillbaka till projekt
         </Link>
       </div>
@@ -166,53 +178,67 @@ export default function MembersSettingsPage() {
   const assignableRoles = roles.filter((r) => assignableRoleNames.includes(r.name as RoleName))
 
   return (
-    <div>
+    <motion.div
+      variants={containerVariants}
+      initial="hidden"
+      animate="visible"
+    >
       {/* Header */}
-      <div className="flex items-center gap-3 mb-8">
-        <Link
-          href={`/dashboard/projects/${projectId}`}
-          className="text-slate-400 hover:text-white transition-colors"
-        >
-          <ArrowLeftIcon />
-        </Link>
-        <div>
-          <h1 className="text-2xl font-bold text-white">Medlemmar</h1>
-          <p className="text-slate-400">{project.name}</p>
+      <motion.div variants={itemVariants} className="flex items-center justify-between mb-8">
+        <div className="flex items-center gap-4">
+          <Link
+            href={`/dashboard/projects/${projectId}`}
+            className="p-2 text-slate-500 hover:text-slate-900 hover:bg-slate-100 rounded-xl transition-colors"
+          >
+            <ArrowLeft className="w-5 h-5" />
+          </Link>
+          <div>
+            <h1 className="text-2xl font-bold text-slate-900">Medlemmar</h1>
+            <p className="text-slate-500">{project.name}</p>
+          </div>
         </div>
-      </div>
 
-      {/* Invite button */}
-      {canManage && (
-        <div className="mb-6">
+        {canManage && (
           <button
             onClick={() => setIsModalOpen(true)}
-            className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700 transition-colors"
+            className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-indigo-600 to-purple-600 text-white rounded-xl font-medium hover:from-indigo-700 hover:to-purple-700 shadow-md shadow-indigo-500/20 transition-all"
           >
-            <PlusIcon />
+            <Plus className="w-4 h-4" />
             Bjud in medlem
           </button>
-        </div>
-      )}
+        )}
+      </motion.div>
 
       {/* Members list */}
-      <div className="bg-slate-900 border border-slate-800 rounded-xl overflow-hidden mb-6">
-        <div className="p-4 border-b border-slate-800">
-          <h2 className="font-semibold text-white">Aktiva medlemmar ({members.length})</h2>
+      <motion.div
+        variants={itemVariants}
+        className="bg-white/80 backdrop-blur-sm border border-slate-200 rounded-2xl overflow-hidden shadow-sm mb-6"
+      >
+        <div className="p-4 border-b border-slate-100 flex items-center gap-3">
+          <div className="w-8 h-8 rounded-lg bg-indigo-100 flex items-center justify-center">
+            <Users className="w-4 h-4 text-indigo-600" />
+          </div>
+          <h2 className="font-semibold text-slate-900">Aktiva medlemmar ({members.length})</h2>
         </div>
-        <div className="divide-y divide-slate-800">
-          {members.map((member) => {
+        <div className="divide-y divide-slate-100">
+          {members.map((member, index) => {
             const memberRoleName = member.role?.name as RoleName
-            const isCurrentUserOwner = isOwner(userRole)
             const isMemberOwner = isOwner(memberRoleName)
             const canEditThis = canChange && !isMemberOwner && member.user_id !== params.id
 
             return (
-              <div key={member.id} className="p-4 flex items-center gap-4">
-                <div className="w-10 h-10 rounded-full bg-slate-700 flex items-center justify-center text-white font-medium">
+              <motion.div
+                key={member.id}
+                initial={{ opacity: 0, x: -20 }}
+                animate={{ opacity: 1, x: 0 }}
+                transition={{ delay: index * 0.05 }}
+                className="p-4 flex items-center gap-4 hover:bg-slate-50/50 transition-colors"
+              >
+                <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-indigo-500 to-purple-500 flex items-center justify-center text-white font-medium shadow-sm">
                   {member.profile?.full_name?.charAt(0) || '?'}
                 </div>
                 <div className="flex-1 min-w-0">
-                  <p className="text-white font-medium truncate">
+                  <p className="text-slate-900 font-medium truncate">
                     {member.profile?.full_name || 'Okänd användare'}
                   </p>
                   <p className="text-slate-500 text-sm truncate">
@@ -226,7 +252,7 @@ export default function MembersSettingsPage() {
                     value={member.group_id || ''}
                     onChange={(e) => handleGroupChange(member.user_id, e.target.value)}
                     disabled={actionLoading === `group-${member.user_id}`}
-                    className="px-3 py-1.5 bg-slate-800 border border-slate-700 rounded-lg text-sm text-white focus:outline-none focus:ring-2 focus:ring-blue-500 min-w-[140px]"
+                    className="px-3 py-1.5 bg-slate-50 border border-slate-200 rounded-lg text-sm text-slate-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 min-w-[140px]"
                   >
                     <option value="">Ingen grupp</option>
                     {groups.map((group) => (
@@ -237,7 +263,7 @@ export default function MembersSettingsPage() {
                   </select>
                 ) : member.group ? (
                   <span
-                    className="px-3 py-1 rounded-full text-xs text-white"
+                    className="px-3 py-1 rounded-full text-xs text-white font-medium"
                     style={{ backgroundColor: member.group.color }}
                   >
                     {member.group.name}
@@ -249,7 +275,7 @@ export default function MembersSettingsPage() {
                     value={member.role_id}
                     onChange={(e) => handleRoleChange(member.user_id, e.target.value)}
                     disabled={actionLoading === member.user_id}
-                    className="px-3 py-1.5 bg-slate-800 border border-slate-700 rounded-lg text-sm text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    className="px-3 py-1.5 bg-slate-50 border border-slate-200 rounded-lg text-sm text-slate-700 focus:outline-none focus:ring-2 focus:ring-indigo-500"
                   >
                     <option value={member.role_id}>
                       {getRoleDisplayName(memberRoleName)}
@@ -263,7 +289,8 @@ export default function MembersSettingsPage() {
                       ))}
                   </select>
                 ) : (
-                  <span className="px-3 py-1.5 bg-slate-800 rounded-lg text-sm text-slate-300">
+                  <span className="px-3 py-1.5 bg-slate-100 rounded-lg text-sm text-slate-600 flex items-center gap-1.5">
+                    <Shield className="w-3.5 h-3.5" />
                     {getRoleDisplayName(memberRoleName)}
                   </span>
                 )}
@@ -272,59 +299,72 @@ export default function MembersSettingsPage() {
                   <button
                     onClick={() => handleRemoveMember(member.user_id)}
                     disabled={actionLoading === member.user_id}
-                    className="p-2 text-slate-400 hover:text-red-400 transition-colors disabled:opacity-50"
+                    className="p-2 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors disabled:opacity-50"
                     title="Ta bort medlem"
                   >
-                    <TrashIcon />
+                    <Trash2 className="w-4 h-4" />
                   </button>
                 )}
-              </div>
+              </motion.div>
             )
           })}
 
           {members.length === 0 && (
             <div className="p-8 text-center text-slate-500">
-              Inga medlemmar än
+              <Users className="w-12 h-12 mx-auto mb-3 text-slate-300" />
+              <p>Inga medlemmar än</p>
             </div>
           )}
         </div>
-      </div>
+      </motion.div>
 
       {/* Pending invitations */}
       {invitations.length > 0 && (
-        <div className="bg-slate-900 border border-slate-800 rounded-xl overflow-hidden">
-          <div className="p-4 border-b border-slate-800">
-            <h2 className="font-semibold text-white">Väntande inbjudningar ({invitations.length})</h2>
+        <motion.div
+          variants={itemVariants}
+          className="bg-white/80 backdrop-blur-sm border border-slate-200 rounded-2xl overflow-hidden shadow-sm mb-6"
+        >
+          <div className="p-4 border-b border-slate-100 flex items-center gap-3">
+            <div className="w-8 h-8 rounded-lg bg-amber-100 flex items-center justify-center">
+              <Mail className="w-4 h-4 text-amber-600" />
+            </div>
+            <h2 className="font-semibold text-slate-900">Väntande inbjudningar ({invitations.length})</h2>
           </div>
-          <div className="divide-y divide-slate-800">
-            {invitations.map((invitation) => (
-              <div key={invitation.id} className="p-4 flex items-center gap-4">
-                <div className="w-10 h-10 rounded-full bg-slate-700 flex items-center justify-center text-slate-400">
-                  <EnvelopeIcon />
+          <div className="divide-y divide-slate-100">
+            {invitations.map((invitation, index) => (
+              <motion.div
+                key={invitation.id}
+                initial={{ opacity: 0, x: -20 }}
+                animate={{ opacity: 1, x: 0 }}
+                transition={{ delay: index * 0.05 }}
+                className="p-4 flex items-center gap-4 hover:bg-slate-50/50 transition-colors"
+              >
+                <div className="w-10 h-10 rounded-xl bg-amber-100 flex items-center justify-center text-amber-600">
+                  <Mail className="w-5 h-5" />
                 </div>
                 <div className="flex-1 min-w-0">
-                  <p className="text-white font-medium truncate">{invitation.email}</p>
+                  <p className="text-slate-900 font-medium truncate">{invitation.email}</p>
                   <p className="text-slate-500 text-sm">
                     Inbjuden {new Date(invitation.created_at).toLocaleDateString('sv-SE')}
                   </p>
                 </div>
-                <span className="px-3 py-1.5 bg-slate-800 rounded-lg text-sm text-slate-300">
+                <span className="px-3 py-1.5 bg-slate-100 rounded-lg text-sm text-slate-600">
                   {getRoleDisplayName(invitation.role?.name as RoleName)}
                 </span>
                 {canManage && (
                   <button
                     onClick={() => handleCancelInvitation(invitation.id)}
                     disabled={actionLoading === invitation.id}
-                    className="p-2 text-slate-400 hover:text-red-400 transition-colors disabled:opacity-50"
+                    className="p-2 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors disabled:opacity-50"
                     title="Avbryt inbjudan"
                   >
-                    <XIcon />
+                    <X className="w-4 h-4" />
                   </button>
                 )}
-              </div>
+              </motion.div>
             ))}
           </div>
-        </div>
+        </motion.div>
       )}
 
       <InviteMemberModal
@@ -337,40 +377,55 @@ export default function MembersSettingsPage() {
 
       {/* Danger Zone - Delete Project */}
       {canDeleteProject(userRole) && (
-        <div className="mt-12 bg-slate-900 border border-red-900/50 rounded-xl overflow-hidden">
-          <div className="p-4 border-b border-red-900/50 bg-red-950/20">
-            <h2 className="font-semibold text-red-400">Farozon</h2>
+        <motion.div
+          variants={itemVariants}
+          className="mt-12 bg-white/80 backdrop-blur-sm border border-red-200 rounded-2xl overflow-hidden shadow-sm"
+        >
+          <div className="p-4 border-b border-red-100 bg-red-50/50 flex items-center gap-3">
+            <div className="w-8 h-8 rounded-lg bg-red-100 flex items-center justify-center">
+              <AlertTriangle className="w-4 h-4 text-red-600" />
+            </div>
+            <h2 className="font-semibold text-red-700">Farozon</h2>
           </div>
           <div className="p-6">
             <div className="flex items-start justify-between gap-4">
               <div>
-                <h3 className="text-white font-medium mb-1">Radera projekt</h3>
-                <p className="text-slate-400 text-sm">
+                <h3 className="text-slate-900 font-medium mb-1">Radera projekt</h3>
+                <p className="text-slate-500 text-sm">
                   När du raderar ett projekt tas alla dokument, ärenden, checklistor och annan data bort permanent.
                   Denna åtgärd kan inte ångras.
                 </p>
               </div>
               <button
                 onClick={() => setShowDeleteConfirm(true)}
-                className="px-4 py-2 bg-red-600/10 text-red-400 rounded-lg font-medium hover:bg-red-600/20 transition-colors whitespace-nowrap"
+                className="px-4 py-2 bg-red-50 text-red-600 rounded-xl font-medium hover:bg-red-100 transition-colors whitespace-nowrap border border-red-200"
               >
                 Radera projekt
               </button>
             </div>
           </div>
-        </div>
+        </motion.div>
       )}
 
       {/* Delete Confirmation Modal */}
       {showDeleteConfirm && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-          <div className="bg-slate-900 border border-slate-800 rounded-xl max-w-md w-full p-6">
-            <h2 className="text-xl font-bold text-white mb-2">Radera projekt</h2>
-            <p className="text-slate-400 mb-4">
-              Är du säker på att du vill radera <span className="text-white font-medium">{project.name}</span>?
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-[100] p-4">
+          <motion.div
+            initial={{ opacity: 0, scale: 0.95 }}
+            animate={{ opacity: 1, scale: 1 }}
+            className="bg-white border border-slate-200 rounded-2xl max-w-md w-full p-6 shadow-2xl"
+          >
+            <div className="flex items-center gap-3 mb-4">
+              <div className="w-10 h-10 rounded-xl bg-red-100 flex items-center justify-center">
+                <AlertTriangle className="w-5 h-5 text-red-600" />
+              </div>
+              <h2 className="text-xl font-bold text-slate-900">Radera projekt</h2>
+            </div>
+            <p className="text-slate-600 mb-4">
+              Är du säker på att du vill radera <span className="text-slate-900 font-medium">{project.name}</span>?
               All data kommer att tas bort permanent.
             </p>
-            <p className="text-slate-400 mb-2 text-sm">
+            <p className="text-slate-500 mb-2 text-sm">
               Skriv projektnamnet för att bekräfta:
             </p>
             <input
@@ -378,7 +433,7 @@ export default function MembersSettingsPage() {
               value={deleteConfirmText}
               onChange={(e) => setDeleteConfirmText(e.target.value)}
               placeholder={project.name}
-              className="w-full px-4 py-2 bg-slate-800 border border-slate-700 rounded-lg text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-red-500 mb-4"
+              className="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-red-500 mb-4"
             />
             <div className="flex gap-3 justify-end">
               <button
@@ -386,61 +441,21 @@ export default function MembersSettingsPage() {
                   setShowDeleteConfirm(false)
                   setDeleteConfirmText('')
                 }}
-                className="px-4 py-2 text-slate-400 hover:text-white transition-colors"
+                className="px-4 py-2 text-slate-600 hover:text-slate-900 hover:bg-slate-100 rounded-xl transition-colors"
               >
                 Avbryt
               </button>
               <button
                 onClick={handleDeleteProject}
                 disabled={deleteConfirmText !== project.name || isDeleting}
-                className="px-4 py-2 bg-red-600 text-white rounded-lg font-medium hover:bg-red-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                className="px-4 py-2 bg-red-600 text-white rounded-xl font-medium hover:bg-red-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 {isDeleting ? 'Raderar...' : 'Radera permanent'}
               </button>
             </div>
-          </div>
+          </motion.div>
         </div>
       )}
-    </div>
-  )
-}
-
-function ArrowLeftIcon() {
-  return (
-    <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
-      <path strokeLinecap="round" strokeLinejoin="round" d="M10.5 19.5 3 12m0 0 7.5-7.5M3 12h18" />
-    </svg>
-  )
-}
-
-function PlusIcon() {
-  return (
-    <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
-      <path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
-    </svg>
-  )
-}
-
-function TrashIcon() {
-  return (
-    <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
-      <path strokeLinecap="round" strokeLinejoin="round" d="m14.74 9-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 0 1-2.244 2.077H8.084a2.25 2.25 0 0 1-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 0 0-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 0 1 3.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 0 0-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 0 0-7.5 0" />
-    </svg>
-  )
-}
-
-function XIcon() {
-  return (
-    <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
-      <path strokeLinecap="round" strokeLinejoin="round" d="M6 18 18 6M6 6l12 12" />
-    </svg>
-  )
-}
-
-function EnvelopeIcon() {
-  return (
-    <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
-      <path strokeLinecap="round" strokeLinejoin="round" d="M21.75 6.75v10.5a2.25 2.25 0 0 1-2.25 2.25h-15a2.25 2.25 0 0 1-2.25-2.25V6.75m19.5 0A2.25 2.25 0 0 0 19.5 4.5h-15a2.25 2.25 0 0 0-2.25 2.25m19.5 0v.243a2.25 2.25 0 0 1-1.07 1.916l-7.5 4.615a2.25 2.25 0 0 1-2.36 0L3.32 8.91a2.25 2.25 0 0 1-1.07-1.916V6.75" />
-    </svg>
+    </motion.div>
   )
 }
