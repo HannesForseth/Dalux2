@@ -192,7 +192,7 @@ export default function ProjectSelectorPage() {
               </Link>
             </motion.div>
 
-            {/* Existing projects - dark cards */}
+            {/* Existing projects - light cards with same design */}
             {projects.map((project, index) => (
               <motion.div
                 key={project.id}
@@ -203,7 +203,7 @@ export default function ProjectSelectorPage() {
               >
                 <Link
                   href={`/dashboard/projects/${project.id}`}
-                  className="group flex flex-col h-52 bg-slate-900 border border-slate-800 rounded-2xl hover:border-slate-700 hover:bg-slate-800/80 transition-all overflow-hidden shadow-xl shadow-slate-900/20"
+                  className="group flex flex-col h-52 bg-white/80 backdrop-blur-sm border border-slate-200 rounded-2xl hover:border-indigo-300 hover:bg-white transition-all overflow-hidden shadow-lg shadow-slate-200/50"
                 >
                   {/* Status bar at top */}
                   <div className={`h-1.5 ${getStatusColor(project.status)}`} />
@@ -211,7 +211,7 @@ export default function ProjectSelectorPage() {
                   <div className="flex-1 p-5">
                     <div className="flex items-start justify-between mb-3">
                       <div className="flex-1 min-w-0">
-                        <h3 className="text-white font-semibold text-lg truncate group-hover:text-indigo-400 transition-colors">
+                        <h3 className="text-slate-900 font-semibold text-lg truncate group-hover:text-indigo-600 transition-colors">
                           {project.name}
                         </h3>
                         {project.project_number && (
@@ -221,7 +221,7 @@ export default function ProjectSelectorPage() {
                       <StatusBadge status={project.status} />
                     </div>
 
-                    <div className="space-y-1.5 text-slate-400 text-sm">
+                    <div className="space-y-1.5 text-slate-500 text-sm">
                       {project.city && (
                         <div className="flex items-center gap-2">
                           <MapPin className="w-4 h-4 flex-shrink-0" />
@@ -237,7 +237,7 @@ export default function ProjectSelectorPage() {
                     </div>
                   </div>
 
-                  <div className="px-5 py-3 border-t border-slate-800 bg-slate-800/30">
+                  <div className="px-5 py-3 border-t border-slate-100 bg-slate-50/50">
                     <span className="text-slate-500 text-xs">
                       Skapad {new Date(project.created_at).toLocaleDateString('sv-SE')}
                     </span>
@@ -279,9 +279,9 @@ export default function ProjectSelectorPage() {
 
 function StatusBadge({ status }: { status: 'active' | 'completed' | 'archived' }) {
   const config = {
-    active: { label: 'Aktiv', color: 'bg-green-500/10 text-green-400 border-green-500/20' },
-    completed: { label: 'Klar', color: 'bg-blue-500/10 text-blue-400 border-blue-500/20' },
-    archived: { label: 'Arkiverad', color: 'bg-slate-500/10 text-slate-400 border-slate-500/20' },
+    active: { label: 'Aktiv', color: 'bg-green-100 text-green-700 border-green-200' },
+    completed: { label: 'Klar', color: 'bg-blue-100 text-blue-700 border-blue-200' },
+    archived: { label: 'Arkiverad', color: 'bg-slate-100 text-slate-600 border-slate-200' },
   }
   const { label, color } = config[status]
   return (
