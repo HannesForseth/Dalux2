@@ -3,6 +3,7 @@
 import { useParams, useSearchParams } from 'next/navigation'
 import { useState, useEffect, useCallback, useRef, useMemo } from 'react'
 import Link from 'next/link'
+import { motion, AnimatePresence } from 'framer-motion'
 import jsPDF from 'jspdf'
 import autoTable from 'jspdf-autotable'
 import {
@@ -34,17 +35,17 @@ import type {
 const ITEMS_PER_PAGE = 10
 
 const statusConfig: Record<IssueStatus, { label: string; color: string; bg: string }> = {
-  open: { label: 'Öppen', color: 'text-yellow-400', bg: 'bg-yellow-400/10' },
-  in_progress: { label: 'Pågående', color: 'text-blue-400', bg: 'bg-blue-400/10' },
-  resolved: { label: 'Löst', color: 'text-green-400', bg: 'bg-green-400/10' },
-  closed: { label: 'Stängd', color: 'text-slate-400', bg: 'bg-slate-400/10' },
+  open: { label: 'Öppen', color: 'text-amber-600', bg: 'bg-amber-100' },
+  in_progress: { label: 'Pågående', color: 'text-blue-600', bg: 'bg-blue-100' },
+  resolved: { label: 'Löst', color: 'text-green-600', bg: 'bg-green-100' },
+  closed: { label: 'Stängd', color: 'text-slate-600', bg: 'bg-slate-100' },
 }
 
 const priorityConfig: Record<IssuePriority, { label: string; color: string; icon: string }> = {
-  low: { label: 'Låg', color: 'text-slate-400', icon: '↓' },
-  medium: { label: 'Medium', color: 'text-yellow-400', icon: '→' },
-  high: { label: 'Hög', color: 'text-orange-400', icon: '↑' },
-  critical: { label: 'Kritisk', color: 'text-red-400', icon: '!' },
+  low: { label: 'Låg', color: 'text-slate-500', icon: '↓' },
+  medium: { label: 'Medium', color: 'text-amber-500', icon: '→' },
+  high: { label: 'Hög', color: 'text-orange-500', icon: '↑' },
+  critical: { label: 'Kritisk', color: 'text-red-500', icon: '!' },
 }
 
 function formatDate(dateString: string): string {
@@ -71,8 +72,6 @@ function CreateIssueModal({ isOpen, onClose, onCreate, members }: CreateIssueMod
   const [assignedTo, setAssignedTo] = useState('')
   const [dueDate, setDueDate] = useState('')
   const [isSubmitting, setIsSubmitting] = useState(false)
-
-  if (!isOpen) return null
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -101,124 +100,138 @@ function CreateIssueModal({ isOpen, onClose, onCreate, members }: CreateIssueMod
   }
 
   return (
-    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-      <div className="bg-slate-900 border border-slate-700 rounded-xl w-full max-w-lg max-h-[90vh] overflow-y-auto">
-        <div className="flex items-center justify-between px-6 py-4 border-b border-slate-800 sticky top-0 bg-slate-900">
-          <h2 className="text-lg font-semibold text-white">Nytt ärende</h2>
-          <button onClick={onClose} className="text-slate-400 hover:text-white transition-colors">
-            <XIcon />
-          </button>
-        </div>
-
-        <form onSubmit={handleSubmit} className="p-6 space-y-4">
-          <div>
-            <label className="block text-sm font-medium text-slate-300 mb-1">
-              Titel *
-            </label>
-            <input
-              type="text"
-              value={title}
-              onChange={(e) => setTitle(e.target.value)}
-              className="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-white placeholder-slate-500 focus:outline-none focus:border-blue-500"
-              placeholder="Beskriv ärendet kort"
-              required
-            />
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium text-slate-300 mb-1">
-              Beskrivning
-            </label>
-            <textarea
-              value={description}
-              onChange={(e) => setDescription(e.target.value)}
-              rows={3}
-              className="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-white placeholder-slate-500 focus:outline-none focus:border-blue-500"
-              placeholder="Detaljerad beskrivning av problemet..."
-            />
-          </div>
-
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <label className="block text-sm font-medium text-slate-300 mb-1">
-                Prioritet
-              </label>
-              <select
-                value={priority}
-                onChange={(e) => setPriority(e.target.value as IssuePriority)}
-                className="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-white focus:outline-none focus:border-blue-500"
-              >
-                {Object.entries(priorityConfig).map(([key, { label }]) => (
-                  <option key={key} value={key}>{label}</option>
-                ))}
-              </select>
+    <AnimatePresence>
+      {isOpen && (
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-[100] p-4"
+        >
+          <motion.div
+            initial={{ opacity: 0, scale: 0.95, y: 20 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            exit={{ opacity: 0, scale: 0.95, y: 20 }}
+            className="bg-white border border-slate-200 rounded-2xl w-full max-w-lg max-h-[90vh] overflow-y-auto shadow-2xl"
+          >
+            <div className="flex items-center justify-between px-6 py-4 border-b border-slate-200 sticky top-0 bg-white rounded-t-2xl">
+              <h2 className="text-lg font-semibold text-slate-900">Nytt ärende</h2>
+              <button onClick={onClose} className="text-slate-400 hover:text-slate-600 transition-colors">
+                <XIcon />
+              </button>
             </div>
 
-            <div>
-              <label className="block text-sm font-medium text-slate-300 mb-1">
-                Plats
-              </label>
-              <input
-                type="text"
-                value={location}
-                onChange={(e) => setLocation(e.target.value)}
-                className="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-white placeholder-slate-500 focus:outline-none focus:border-blue-500"
-                placeholder="t.ex. Våning 2, Rum 204"
-              />
-            </div>
-          </div>
+            <form onSubmit={handleSubmit} className="p-6 space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-1">
+                  Titel *
+                </label>
+                <input
+                  type="text"
+                  value={title}
+                  onChange={(e) => setTitle(e.target.value)}
+                  className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all"
+                  placeholder="Beskriv ärendet kort"
+                  required
+                />
+              </div>
 
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <label className="block text-sm font-medium text-slate-300 mb-1">
-                Ansvarig
-              </label>
-              <select
-                value={assignedTo}
-                onChange={(e) => setAssignedTo(e.target.value)}
-                className="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-white focus:outline-none focus:border-blue-500"
-              >
-                <option value="">Ingen tilldelad</option>
-                {members.map((member) => (
-                  <option key={member.user_id} value={member.user_id}>
-                    {member.profile.full_name || member.profile.email || 'Okänd'}
-                  </option>
-                ))}
-              </select>
-            </div>
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-1">
+                  Beskrivning
+                </label>
+                <textarea
+                  value={description}
+                  onChange={(e) => setDescription(e.target.value)}
+                  rows={3}
+                  className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all"
+                  placeholder="Detaljerad beskrivning av problemet..."
+                />
+              </div>
 
-            <div>
-              <label className="block text-sm font-medium text-slate-300 mb-1">
-                Förfaller
-              </label>
-              <input
-                type="date"
-                value={dueDate}
-                onChange={(e) => setDueDate(e.target.value)}
-                className="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-white focus:outline-none focus:border-blue-500"
-              />
-            </div>
-          </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 mb-1">
+                    Prioritet
+                  </label>
+                  <select
+                    value={priority}
+                    onChange={(e) => setPriority(e.target.value as IssuePriority)}
+                    className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl text-slate-900 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                  >
+                    {Object.entries(priorityConfig).map(([key, { label }]) => (
+                      <option key={key} value={key}>{label}</option>
+                    ))}
+                  </select>
+                </div>
 
-          <div className="flex justify-end gap-3 pt-4">
-            <button
-              type="button"
-              onClick={onClose}
-              className="px-4 py-2 text-slate-400 hover:text-white transition-colors"
-            >
-              Avbryt
-            </button>
-            <button
-              type="submit"
-              disabled={!title.trim() || isSubmitting}
-              className="px-4 py-2 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-500 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              {isSubmitting ? 'Skapar...' : 'Skapa ärende'}
-            </button>
-          </div>
-        </form>
-      </div>
-    </div>
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 mb-1">
+                    Plats
+                  </label>
+                  <input
+                    type="text"
+                    value={location}
+                    onChange={(e) => setLocation(e.target.value)}
+                    className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                    placeholder="t.ex. Våning 2, Rum 204"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 mb-1">
+                    Ansvarig
+                  </label>
+                  <select
+                    value={assignedTo}
+                    onChange={(e) => setAssignedTo(e.target.value)}
+                    className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl text-slate-900 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                  >
+                    <option value="">Ingen tilldelad</option>
+                    {members.map((member) => (
+                      <option key={member.user_id} value={member.user_id}>
+                        {member.profile.full_name || member.profile.email || 'Okänd'}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 mb-1">
+                    Förfaller
+                  </label>
+                  <input
+                    type="date"
+                    value={dueDate}
+                    onChange={(e) => setDueDate(e.target.value)}
+                    className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl text-slate-900 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                  />
+                </div>
+              </div>
+
+              <div className="flex justify-end gap-3 pt-4">
+                <button
+                  type="button"
+                  onClick={onClose}
+                  className="px-4 py-2 text-slate-600 hover:text-slate-900 transition-colors"
+                >
+                  Avbryt
+                </button>
+                <button
+                  type="submit"
+                  disabled={!title.trim() || isSubmitting}
+                  className="px-4 py-2 bg-gradient-to-r from-indigo-600 to-purple-600 text-white rounded-xl font-medium hover:from-indigo-500 hover:to-purple-500 transition-all shadow-md shadow-indigo-500/20 disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {isSubmitting ? 'Skapar...' : 'Skapa ärende'}
+                </button>
+              </div>
+            </form>
+          </motion.div>
+        </motion.div>
+      )}
+    </AnimatePresence>
   )
 }
 
@@ -389,255 +402,267 @@ function IssueDetailModal({ issue, isOpen, onClose, onUpdate, members, groups }:
     }
   }
 
-  if (!isOpen) return null
-
   return (
-    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-      <div className="bg-slate-900 border border-slate-700 rounded-xl w-full max-w-2xl max-h-[90vh] overflow-y-auto">
-        <div className="flex items-center justify-between px-6 py-4 border-b border-slate-800 sticky top-0 bg-slate-900 z-10">
-          <div className="flex items-center gap-3">
-            <span className={`text-lg ${priorityConfig[issue.priority].color}`}>
-              {priorityConfig[issue.priority].icon}
-            </span>
-            <h2 className="text-lg font-semibold text-white">Ärende</h2>
-          </div>
-          <button onClick={onClose} className="text-slate-400 hover:text-white transition-colors">
-            <XIcon />
-          </button>
-        </div>
-
-        <div className="p-6 space-y-6">
-          {/* Header Info */}
-          <div>
-            <h3 className="text-xl font-semibold text-white mb-2">{issue.title}</h3>
-            {issue.description && (
-              <p className="text-slate-400">{issue.description}</p>
-            )}
-          </div>
-
-          {/* Status & Priority */}
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <label className="block text-xs font-medium text-slate-500 mb-1">Status</label>
-              <select
-                value={issue.status}
-                onChange={(e) => handleStatusChange(e.target.value as IssueStatus)}
-                className="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-white focus:outline-none focus:border-blue-500"
-              >
-                {Object.entries(statusConfig).map(([key, { label }]) => (
-                  <option key={key} value={key}>{label}</option>
-                ))}
-              </select>
-            </div>
-            <div>
-              <label className="block text-xs font-medium text-slate-500 mb-1">Prioritet</label>
-              <select
-                value={issue.priority}
-                onChange={(e) => handlePriorityChange(e.target.value as IssuePriority)}
-                className="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-white focus:outline-none focus:border-blue-500"
-              >
-                {Object.entries(priorityConfig).map(([key, { label }]) => (
-                  <option key={key} value={key}>{label}</option>
-                ))}
-              </select>
-            </div>
-          </div>
-
-          {/* Details */}
-          <div className="grid grid-cols-2 gap-4 text-sm">
-            {issue.location && (
-              <div>
-                <span className="text-slate-500">Plats:</span>
-                <span className="text-white ml-2">{issue.location}</span>
+    <AnimatePresence>
+      {isOpen && (
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-[100] p-4"
+        >
+          <motion.div
+            initial={{ opacity: 0, scale: 0.95, y: 20 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            exit={{ opacity: 0, scale: 0.95, y: 20 }}
+            className="bg-white border border-slate-200 rounded-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto shadow-2xl"
+          >
+            <div className="flex items-center justify-between px-6 py-4 border-b border-slate-200 sticky top-0 bg-white z-10 rounded-t-2xl">
+              <div className="flex items-center gap-3">
+                <span className={`text-lg ${priorityConfig[issue.priority].color}`}>
+                  {priorityConfig[issue.priority].icon}
+                </span>
+                <h2 className="text-lg font-semibold text-slate-900">Ärende</h2>
               </div>
-            )}
-            {issue.due_date && (
-              <div>
-                <span className="text-slate-500">Förfaller:</span>
-                <span className="text-white ml-2">{formatDate(issue.due_date)}</span>
-              </div>
-            )}
-            <div>
-              <span className="text-slate-500">Skapad:</span>
-              <span className="text-white ml-2">{formatDate(issue.created_at)}</span>
+              <button onClick={onClose} className="text-slate-400 hover:text-slate-600 transition-colors">
+                <XIcon />
+              </button>
             </div>
-            {issue.resolved_at && (
-              <div>
-                <span className="text-slate-500">Löst:</span>
-                <span className="text-white ml-2">{formatDate(issue.resolved_at)}</span>
-              </div>
-            )}
-          </div>
 
-          {/* People */}
-          <div className="grid grid-cols-2 gap-4 text-sm">
-            <div>
-              <span className="text-slate-500">Rapporterad av:</span>
-              <span className="text-white ml-2">{issue.reporter?.full_name || 'Okänd'}</span>
-            </div>
-            {issue.assignee && (
+            <div className="p-6 space-y-6">
+              {/* Header Info */}
               <div>
-                <span className="text-slate-500">Ansvarig:</span>
-                <span className="text-white ml-2">{issue.assignee.full_name}</span>
+                <h3 className="text-xl font-semibold text-slate-900 mb-2">{issue.title}</h3>
+                {issue.description && (
+                  <p className="text-slate-600">{issue.description}</p>
+                )}
               </div>
-            )}
-          </div>
 
-          {/* Attachments */}
-          <div>
-            <label className="block text-sm font-medium text-slate-300 mb-2">Bilagor</label>
-            <div className="flex flex-wrap gap-2 mb-2">
-              {attachments.map((att) => (
-                <div
-                  key={att.id}
-                  className="flex items-center gap-2 px-3 py-1.5 bg-slate-800 rounded-lg text-sm"
-                >
-                  <button
-                    onClick={() => handleViewAttachment(att.id)}
-                    className="text-blue-400 hover:text-blue-300"
+              {/* Status & Priority */}
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-xs font-medium text-slate-500 mb-1">Status</label>
+                  <select
+                    value={issue.status}
+                    onChange={(e) => handleStatusChange(e.target.value as IssueStatus)}
+                    className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl text-slate-900 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
                   >
-                    {att.file_name}
-                  </button>
-                  <button
-                    onClick={() => handleDeleteAttachment(att.id)}
-                    className="text-slate-500 hover:text-red-400"
-                  >
-                    <XIcon />
-                  </button>
+                    {Object.entries(statusConfig).map(([key, { label }]) => (
+                      <option key={key} value={key}>{label}</option>
+                    ))}
+                  </select>
                 </div>
-              ))}
-              {attachments.length === 0 && (
-                <span className="text-slate-500 text-sm">Inga bilagor</span>
-              )}
-            </div>
-            <label className="inline-flex items-center gap-2 px-3 py-1.5 bg-slate-800 hover:bg-slate-700 rounded-lg text-sm text-slate-400 cursor-pointer transition-colors">
-              <input
-                type="file"
-                className="hidden"
-                onChange={handleFileUpload}
-                disabled={isUploading}
-              />
-              {isUploading ? 'Laddar upp...' : '+ Lägg till bilaga'}
-            </label>
-          </div>
+                <div>
+                  <label className="block text-xs font-medium text-slate-500 mb-1">Prioritet</label>
+                  <select
+                    value={issue.priority}
+                    onChange={(e) => handlePriorityChange(e.target.value as IssuePriority)}
+                    className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl text-slate-900 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                  >
+                    {Object.entries(priorityConfig).map(([key, { label }]) => (
+                      <option key={key} value={key}>{label}</option>
+                    ))}
+                  </select>
+                </div>
+              </div>
 
-          {/* Comments */}
-          <div>
-            <label className="block text-sm font-medium text-slate-300 mb-2">Kommentarer</label>
-            <div className="space-y-3 mb-4">
-              {comments.length === 0 ? (
-                <p className="text-slate-500 text-sm">Inga kommentarer än.</p>
-              ) : (
-                comments.map((comment) => (
-                  <div key={comment.id} className="bg-slate-800 rounded-lg p-3">
-                    <div className="flex items-center gap-2 mb-1">
-                      <span className="text-white text-sm font-medium">
-                        {(comment as IssueComment & { author?: { full_name: string } }).author?.full_name || 'Okänd'}
-                      </span>
-                      <span className="text-slate-500 text-xs">
-                        {formatDate(comment.created_at)}
-                      </span>
-                    </div>
-                    <p className="text-slate-300 text-sm">{comment.content}</p>
+              {/* Details */}
+              <div className="grid grid-cols-2 gap-4 text-sm">
+                {issue.location && (
+                  <div>
+                    <span className="text-slate-500">Plats:</span>
+                    <span className="text-slate-900 ml-2">{issue.location}</span>
                   </div>
-                ))
-              )}
-            </div>
-            <form onSubmit={handleAddComment} className="relative">
-              <div className="flex gap-2">
-                <div className="relative flex-1">
-                  <input
-                    ref={commentInputRef}
-                    type="text"
-                    value={newComment}
-                    onChange={handleCommentChange}
-                    placeholder="Skriv en kommentar... (använd @ för att nämna någon)"
-                    className="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-white placeholder-slate-500 focus:outline-none focus:border-blue-500"
-                  />
-                  {/* Mention suggestions dropdown */}
-                  {showMentionSuggestions && (filteredGroups.length > 0 || filteredMembers.length > 0) && (
-                    <div className="absolute bottom-full left-0 right-0 mb-1 bg-slate-800 border border-slate-700 rounded-lg shadow-lg max-h-64 overflow-y-auto z-20">
-                      {/* Groups section */}
-                      {filteredGroups.length > 0 && (
-                        <>
-                          <div className="px-3 py-1.5 text-xs font-medium text-slate-500 border-b border-slate-700">
-                            Grupper
-                          </div>
-                          {filteredGroups.map((group) => (
-                            <button
-                              key={group.id}
-                              type="button"
-                              onClick={() => insertMention(group.name)}
-                              className="w-full px-3 py-2 text-left text-white hover:bg-slate-700 flex items-center gap-2 transition-colors"
-                            >
-                              <div
-                                className="w-6 h-6 rounded flex items-center justify-center text-xs font-medium text-white"
-                                style={{ backgroundColor: group.color }}
-                              >
-                                👥
-                              </div>
-                              <span className="flex-1">{group.name}</span>
-                              <span className="text-xs text-slate-500">
-                                {group.member_count} pers
-                              </span>
-                            </button>
-                          ))}
-                        </>
-                      )}
+                )}
+                {issue.due_date && (
+                  <div>
+                    <span className="text-slate-500">Förfaller:</span>
+                    <span className="text-slate-900 ml-2">{formatDate(issue.due_date)}</span>
+                  </div>
+                )}
+                <div>
+                  <span className="text-slate-500">Skapad:</span>
+                  <span className="text-slate-900 ml-2">{formatDate(issue.created_at)}</span>
+                </div>
+                {issue.resolved_at && (
+                  <div>
+                    <span className="text-slate-500">Löst:</span>
+                    <span className="text-slate-900 ml-2">{formatDate(issue.resolved_at)}</span>
+                  </div>
+                )}
+              </div>
 
-                      {/* Separator between groups and members */}
-                      {filteredGroups.length > 0 && filteredMembers.length > 0 && (
-                        <div className="border-t border-slate-700" />
-                      )}
+              {/* People */}
+              <div className="grid grid-cols-2 gap-4 text-sm">
+                <div>
+                  <span className="text-slate-500">Rapporterad av:</span>
+                  <span className="text-slate-900 ml-2">{issue.reporter?.full_name || 'Okänd'}</span>
+                </div>
+                {issue.assignee && (
+                  <div>
+                    <span className="text-slate-500">Ansvarig:</span>
+                    <span className="text-slate-900 ml-2">{issue.assignee.full_name}</span>
+                  </div>
+                )}
+              </div>
 
-                      {/* Members section */}
-                      {filteredMembers.length > 0 && (
-                        <>
-                          <div className="px-3 py-1.5 text-xs font-medium text-slate-500 border-b border-slate-700">
-                            Personer
-                          </div>
-                          {filteredMembers.map((member) => {
-                            const displayName = member.profile.full_name || member.profile.email || 'Okänd'
-                            return (
-                              <button
-                                key={member.user_id}
-                                type="button"
-                                onClick={() => insertMention(displayName)}
-                                className="w-full px-3 py-2 text-left text-white hover:bg-slate-700 flex items-center gap-2 transition-colors"
-                              >
-                                <div className="w-6 h-6 rounded-full bg-blue-600 flex items-center justify-center text-xs font-medium">
-                                  {displayName.charAt(0).toUpperCase()}
-                                </div>
-                                <span>{displayName}</span>
-                                {member.group && (
-                                  <span
-                                    className="px-1.5 py-0.5 rounded text-xs text-white"
-                                    style={{ backgroundColor: member.group.color }}
-                                  >
-                                    {member.group.name}
-                                  </span>
-                                )}
-                              </button>
-                            )
-                          })}
-                        </>
-                      )}
+              {/* Attachments */}
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-2">Bilagor</label>
+                <div className="flex flex-wrap gap-2 mb-2">
+                  {attachments.map((att) => (
+                    <div
+                      key={att.id}
+                      className="flex items-center gap-2 px-3 py-1.5 bg-slate-50 border border-slate-200 rounded-lg text-sm"
+                    >
+                      <button
+                        onClick={() => handleViewAttachment(att.id)}
+                        className="text-indigo-600 hover:text-indigo-500"
+                      >
+                        {att.file_name}
+                      </button>
+                      <button
+                        onClick={() => handleDeleteAttachment(att.id)}
+                        className="text-slate-400 hover:text-red-500"
+                      >
+                        <XIcon />
+                      </button>
                     </div>
+                  ))}
+                  {attachments.length === 0 && (
+                    <span className="text-slate-500 text-sm">Inga bilagor</span>
                   )}
                 </div>
-                <button
-                  type="submit"
-                  disabled={!newComment.trim() || isSubmittingComment}
-                  className="px-4 py-2 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-500 transition-colors disabled:opacity-50"
-                >
-                  Skicka
-                </button>
+                <label className="inline-flex items-center gap-2 px-3 py-1.5 bg-slate-50 hover:bg-slate-100 border border-slate-200 rounded-lg text-sm text-slate-600 cursor-pointer transition-colors">
+                  <input
+                    type="file"
+                    className="hidden"
+                    onChange={handleFileUpload}
+                    disabled={isUploading}
+                  />
+                  {isUploading ? 'Laddar upp...' : '+ Lägg till bilaga'}
+                </label>
               </div>
-            </form>
-          </div>
-        </div>
-      </div>
-    </div>
+
+              {/* Comments */}
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-2">Kommentarer</label>
+                <div className="space-y-3 mb-4">
+                  {comments.length === 0 ? (
+                    <p className="text-slate-500 text-sm">Inga kommentarer än.</p>
+                  ) : (
+                    comments.map((comment) => (
+                      <div key={comment.id} className="bg-slate-50 border border-slate-200 rounded-xl p-3">
+                        <div className="flex items-center gap-2 mb-1">
+                          <span className="text-slate-900 text-sm font-medium">
+                            {(comment as IssueComment & { author?: { full_name: string } }).author?.full_name || 'Okänd'}
+                          </span>
+                          <span className="text-slate-500 text-xs">
+                            {formatDate(comment.created_at)}
+                          </span>
+                        </div>
+                        <p className="text-slate-700 text-sm">{comment.content}</p>
+                      </div>
+                    ))
+                  )}
+                </div>
+                <form onSubmit={handleAddComment} className="relative">
+                  <div className="flex gap-2">
+                    <div className="relative flex-1">
+                      <input
+                        ref={commentInputRef}
+                        type="text"
+                        value={newComment}
+                        onChange={handleCommentChange}
+                        placeholder="Skriv en kommentar... (använd @ för att nämna någon)"
+                        className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                      />
+                      {/* Mention suggestions dropdown */}
+                      {showMentionSuggestions && (filteredGroups.length > 0 || filteredMembers.length > 0) && (
+                        <div className="absolute bottom-full left-0 right-0 mb-1 bg-white border border-slate-200 rounded-xl shadow-xl max-h-64 overflow-y-auto z-20">
+                          {/* Groups section */}
+                          {filteredGroups.length > 0 && (
+                            <>
+                              <div className="px-3 py-1.5 text-xs font-medium text-slate-500 border-b border-slate-200 bg-slate-50">
+                                Grupper
+                              </div>
+                              {filteredGroups.map((group) => (
+                                <button
+                                  key={group.id}
+                                  type="button"
+                                  onClick={() => insertMention(group.name)}
+                                  className="w-full px-3 py-2 text-left text-slate-900 hover:bg-slate-50 flex items-center gap-2 transition-colors"
+                                >
+                                  <div
+                                    className="w-6 h-6 rounded flex items-center justify-center text-xs font-medium text-white"
+                                    style={{ backgroundColor: group.color }}
+                                  >
+                                    👥
+                                  </div>
+                                  <span className="flex-1">{group.name}</span>
+                                  <span className="text-xs text-slate-500">
+                                    {group.member_count} pers
+                                  </span>
+                                </button>
+                              ))}
+                            </>
+                          )}
+
+                          {/* Separator between groups and members */}
+                          {filteredGroups.length > 0 && filteredMembers.length > 0 && (
+                            <div className="border-t border-slate-200" />
+                          )}
+
+                          {/* Members section */}
+                          {filteredMembers.length > 0 && (
+                            <>
+                              <div className="px-3 py-1.5 text-xs font-medium text-slate-500 border-b border-slate-200 bg-slate-50">
+                                Personer
+                              </div>
+                              {filteredMembers.map((member) => {
+                                const displayName = member.profile.full_name || member.profile.email || 'Okänd'
+                                return (
+                                  <button
+                                    key={member.user_id}
+                                    type="button"
+                                    onClick={() => insertMention(displayName)}
+                                    className="w-full px-3 py-2 text-left text-slate-900 hover:bg-slate-50 flex items-center gap-2 transition-colors"
+                                  >
+                                    <div className="w-6 h-6 rounded-full bg-gradient-to-br from-indigo-500 to-purple-500 flex items-center justify-center text-xs font-medium text-white">
+                                      {displayName.charAt(0).toUpperCase()}
+                                    </div>
+                                    <span>{displayName}</span>
+                                    {member.group && (
+                                      <span
+                                        className="px-1.5 py-0.5 rounded text-xs text-white"
+                                        style={{ backgroundColor: member.group.color }}
+                                      >
+                                        {member.group.name}
+                                      </span>
+                                    )}
+                                  </button>
+                                )
+                              })}
+                            </>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                    <button
+                      type="submit"
+                      disabled={!newComment.trim() || isSubmittingComment}
+                      className="px-4 py-2 bg-gradient-to-r from-indigo-600 to-purple-600 text-white rounded-xl font-medium hover:from-indigo-500 hover:to-purple-500 transition-all disabled:opacity-50"
+                    >
+                      Skicka
+                    </button>
+                  </div>
+                </form>
+              </div>
+            </div>
+          </motion.div>
+        </motion.div>
+      )}
+    </AnimatePresence>
   )
 }
 
@@ -718,7 +743,7 @@ export default function ProjectIssuesPage() {
       body: tableData,
       startY: 42,
       styles: { fontSize: 8 },
-      headStyles: { fillColor: [59, 130, 246] },
+      headStyles: { fillColor: [99, 102, 241] },
     })
 
     doc.save(`arenden-${new Date().toISOString().split('T')[0]}.pdf`)
@@ -787,7 +812,11 @@ export default function ProjectIssuesPage() {
   if (isLoading) {
     return (
       <div className="flex items-center justify-center h-64">
-        <div className="animate-spin h-8 w-8 border-2 border-blue-500 border-t-transparent rounded-full" />
+        <motion.div
+          className="h-8 w-8 border-2 border-indigo-200 border-t-indigo-600 rounded-full"
+          animate={{ rotate: 360 }}
+          transition={{ duration: 1, repeat: Infinity, ease: 'linear' }}
+        />
       </div>
     )
   }
@@ -798,17 +827,17 @@ export default function ProjectIssuesPage() {
         <div className="flex items-center gap-3">
           <Link
             href={`/dashboard/projects/${projectId}`}
-            className="text-slate-400 hover:text-white transition-colors"
+            className="text-slate-400 hover:text-slate-600 transition-colors"
           >
             <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" d="M10.5 19.5 3 12m0 0 7.5-7.5M3 12h18" />
             </svg>
           </Link>
-          <h1 className="text-2xl font-bold text-white">Ärenden</h1>
+          <h1 className="text-2xl font-bold text-slate-900">Ärenden</h1>
         </div>
         <button
           onClick={() => setShowCreateModal(true)}
-          className="px-4 py-2 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-500 transition-colors flex items-center gap-2"
+          className="px-4 py-2 bg-gradient-to-r from-indigo-600 to-purple-600 text-white rounded-xl font-medium hover:from-indigo-500 hover:to-purple-500 transition-all shadow-md shadow-indigo-500/20 flex items-center gap-2"
         >
           <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
             <path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
@@ -819,33 +848,57 @@ export default function ProjectIssuesPage() {
 
       {/* Stats Cards */}
       <div className="grid grid-cols-2 md:grid-cols-5 gap-4 mb-6">
-        <div className="bg-slate-900 border border-slate-800 rounded-xl p-4">
-          <p className="text-slate-400 text-sm">Totalt</p>
-          <p className="text-2xl font-bold text-white">{stats.total}</p>
-        </div>
-        <div className="bg-slate-900 border border-slate-800 rounded-xl p-4">
-          <p className="text-yellow-400 text-sm">Öppna</p>
-          <p className="text-2xl font-bold text-white">{stats.open}</p>
-        </div>
-        <div className="bg-slate-900 border border-slate-800 rounded-xl p-4">
-          <p className="text-blue-400 text-sm">Pågående</p>
-          <p className="text-2xl font-bold text-white">{stats.inProgress}</p>
-        </div>
-        <div className="bg-slate-900 border border-slate-800 rounded-xl p-4">
-          <p className="text-green-400 text-sm">Lösta</p>
-          <p className="text-2xl font-bold text-white">{stats.resolved}</p>
-        </div>
-        <div className="bg-slate-900 border border-slate-800 rounded-xl p-4">
-          <p className="text-slate-400 text-sm">Stängda</p>
-          <p className="text-2xl font-bold text-white">{stats.closed}</p>
-        </div>
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="bg-white/80 backdrop-blur-sm border border-slate-200 rounded-xl p-4 shadow-sm"
+        >
+          <p className="text-slate-500 text-sm">Totalt</p>
+          <p className="text-2xl font-bold text-slate-900">{stats.total}</p>
+        </motion.div>
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.05 }}
+          className="bg-white/80 backdrop-blur-sm border border-slate-200 rounded-xl p-4 shadow-sm"
+        >
+          <p className="text-amber-600 text-sm">Öppna</p>
+          <p className="text-2xl font-bold text-slate-900">{stats.open}</p>
+        </motion.div>
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.1 }}
+          className="bg-white/80 backdrop-blur-sm border border-slate-200 rounded-xl p-4 shadow-sm"
+        >
+          <p className="text-blue-600 text-sm">Pågående</p>
+          <p className="text-2xl font-bold text-slate-900">{stats.inProgress}</p>
+        </motion.div>
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.15 }}
+          className="bg-white/80 backdrop-blur-sm border border-slate-200 rounded-xl p-4 shadow-sm"
+        >
+          <p className="text-green-600 text-sm">Lösta</p>
+          <p className="text-2xl font-bold text-slate-900">{stats.resolved}</p>
+        </motion.div>
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.2 }}
+          className="bg-white/80 backdrop-blur-sm border border-slate-200 rounded-xl p-4 shadow-sm"
+        >
+          <p className="text-slate-500 text-sm">Stängda</p>
+          <p className="text-2xl font-bold text-slate-900">{stats.closed}</p>
+        </motion.div>
       </div>
 
       {/* Search, Filters & Export */}
       <div className="flex flex-wrap items-center gap-4 mb-6">
         {/* Search */}
         <div className="relative flex-1 min-w-[200px] max-w-md">
-          <svg className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-500" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+          <svg className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
             <path strokeLinecap="round" strokeLinejoin="round" d="m21 21-5.197-5.197m0 0A7.5 7.5 0 1 0 5.196 5.196a7.5 7.5 0 0 0 10.607 10.607Z" />
           </svg>
           <input
@@ -853,12 +906,12 @@ export default function ProjectIssuesPage() {
             placeholder="Sök ärenden..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full pl-10 pr-4 py-2 bg-slate-800 border border-slate-700 rounded-lg text-white placeholder-slate-500 focus:outline-none focus:border-blue-500"
+            className="w-full pl-10 pr-4 py-2 bg-white border border-slate-200 rounded-xl text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
           />
           {searchQuery && (
             <button
               onClick={() => setSearchQuery('')}
-              className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 hover:text-white"
+              className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
             >
               <XIcon />
             </button>
@@ -868,7 +921,7 @@ export default function ProjectIssuesPage() {
         <select
           value={statusFilter}
           onChange={(e) => setStatusFilter(e.target.value as IssueStatus | 'all')}
-          className="px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-white focus:outline-none focus:border-blue-500"
+          className="px-3 py-2 bg-white border border-slate-200 rounded-xl text-slate-900 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
         >
           <option value="all">Alla statusar</option>
           {Object.entries(statusConfig).map(([key, { label }]) => (
@@ -879,7 +932,7 @@ export default function ProjectIssuesPage() {
         <select
           value={priorityFilter}
           onChange={(e) => setPriorityFilter(e.target.value as IssuePriority | 'all')}
-          className="px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-white focus:outline-none focus:border-blue-500"
+          className="px-3 py-2 bg-white border border-slate-200 rounded-xl text-slate-900 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
         >
           <option value="all">Alla prioriteter</option>
           {Object.entries(priorityConfig).map(([key, { label }]) => (
@@ -891,7 +944,7 @@ export default function ProjectIssuesPage() {
         <button
           onClick={exportToPDF}
           disabled={filteredIssues.length === 0}
-          className="px-4 py-2 bg-slate-800 border border-slate-700 text-white rounded-lg hover:bg-slate-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+          className="px-4 py-2 bg-white border border-slate-200 text-slate-700 rounded-xl hover:bg-slate-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
         >
           <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
             <path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5v2.25A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75V16.5m-13.5-9L12 3m0 0 4.5 4.5M12 3v13.5" />
@@ -902,24 +955,28 @@ export default function ProjectIssuesPage() {
 
       {/* Search results info */}
       {searchQuery && (
-        <div className="mb-4 text-sm text-slate-400">
+        <div className="mb-4 text-sm text-slate-600">
           Visar {filteredIssues.length} av {issues.length} ärenden för "{searchQuery}"
         </div>
       )}
 
       {filteredIssues.length === 0 ? (
-        <div className="bg-slate-900 border border-slate-800 rounded-xl p-12 text-center">
-          <div className="w-16 h-16 bg-slate-800 rounded-full flex items-center justify-center mx-auto mb-4">
-            <svg className="h-8 w-8 text-slate-500" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          className="bg-white/80 backdrop-blur-sm border border-slate-200 rounded-2xl p-12 text-center shadow-sm"
+        >
+          <div className="w-16 h-16 bg-slate-100 rounded-full flex items-center justify-center mx-auto mb-4">
+            <svg className="h-8 w-8 text-slate-400" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126ZM12 15.75h.007v.008H12v-.008Z" />
             </svg>
           </div>
-          <h2 className="text-lg font-semibold text-white mb-2">
+          <h2 className="text-lg font-semibold text-slate-900 mb-2">
             {searchQuery || statusFilter !== 'all' || priorityFilter !== 'all'
               ? 'Inga ärenden matchar sökningen'
               : 'Inga ärenden än'}
           </h2>
-          <p className="text-slate-400 mb-6 max-w-md mx-auto">
+          <p className="text-slate-600 mb-6 max-w-md mx-auto">
             {searchQuery || statusFilter !== 'all' || priorityFilter !== 'all'
               ? 'Prova att ändra sök eller filter för att se fler ärenden.'
               : 'Skapa ärenden för att spåra problem, frågor och observationer i projektet.'}
@@ -927,18 +984,21 @@ export default function ProjectIssuesPage() {
           {!searchQuery && statusFilter === 'all' && priorityFilter === 'all' && (
             <button
               onClick={() => setShowCreateModal(true)}
-              className="px-4 py-2 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-500 transition-colors"
+              className="px-4 py-2 bg-gradient-to-r from-indigo-600 to-purple-600 text-white rounded-xl font-medium hover:from-indigo-500 hover:to-purple-500 transition-all shadow-md shadow-indigo-500/20"
             >
               Skapa ärende
             </button>
           )}
-        </div>
+        </motion.div>
       ) : (
         <div className="space-y-4">
-          {paginatedIssues.map((issue) => (
-            <div
+          {paginatedIssues.map((issue, index) => (
+            <motion.div
               key={issue.id}
-              className="bg-slate-900 border border-slate-800 rounded-xl p-5 hover:border-slate-700 transition-colors cursor-pointer"
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: index * 0.05 }}
+              className="bg-white/80 backdrop-blur-sm border border-slate-200 rounded-xl p-5 hover:border-indigo-200 hover:shadow-md transition-all cursor-pointer"
               onClick={() => setSelectedIssue(issue)}
             >
               <div className="flex items-start justify-between gap-4">
@@ -947,17 +1007,17 @@ export default function ProjectIssuesPage() {
                     <span className={`text-lg ${priorityConfig[issue.priority].color}`}>
                       {priorityConfig[issue.priority].icon}
                     </span>
-                    <h3 className="text-white font-medium truncate">{issue.title}</h3>
+                    <h3 className="text-slate-900 font-medium truncate">{issue.title}</h3>
                   </div>
 
                   {issue.description && (
-                    <p className="text-slate-400 text-sm mb-3 line-clamp-2">
+                    <p className="text-slate-600 text-sm mb-3 line-clamp-2">
                       {issue.description}
                     </p>
                   )}
 
                   <div className="flex flex-wrap items-center gap-4 text-sm">
-                    <span className={`px-2 py-0.5 rounded-full ${statusConfig[issue.status].bg} ${statusConfig[issue.status].color}`}>
+                    <span className={`px-2 py-0.5 rounded-full ${statusConfig[issue.status].bg} ${statusConfig[issue.status].color} font-medium`}>
                       {statusConfig[issue.status].label}
                     </span>
 
@@ -981,7 +1041,7 @@ export default function ProjectIssuesPage() {
 
                     {issue.reporter && (
                       <span className="text-slate-500 flex items-center gap-1">
-                        <div className="w-5 h-5 rounded-full bg-blue-600 flex items-center justify-center text-xs font-medium text-white">
+                        <div className="w-5 h-5 rounded-full bg-gradient-to-br from-indigo-500 to-purple-500 flex items-center justify-center text-xs font-medium text-white">
                           {issue.reporter.full_name?.charAt(0) || '?'}
                         </div>
                         {issue.reporter.full_name}
@@ -995,7 +1055,7 @@ export default function ProjectIssuesPage() {
                   <select
                     value={issue.status}
                     onChange={(e) => handleStatusChange(issue.id, e.target.value as IssueStatus)}
-                    className="px-2 py-1 bg-slate-800 border border-slate-700 rounded text-sm text-white focus:outline-none focus:border-blue-500"
+                    className="px-2 py-1 bg-white border border-slate-200 rounded-lg text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
                   >
                     {Object.entries(statusConfig).map(([key, { label }]) => (
                       <option key={key} value={key}>{label}</option>
@@ -1004,7 +1064,7 @@ export default function ProjectIssuesPage() {
 
                   <button
                     onClick={() => handleDelete(issue.id)}
-                    className="p-2 text-slate-400 hover:text-red-400 hover:bg-slate-800 rounded-lg transition-colors"
+                    className="p-2 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors"
                     title="Ta bort"
                   >
                     <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
@@ -1013,20 +1073,20 @@ export default function ProjectIssuesPage() {
                   </button>
                 </div>
               </div>
-            </div>
+            </motion.div>
           ))}
 
           {/* Pagination */}
           {totalPages > 1 && (
-            <div className="flex items-center justify-between pt-4 border-t border-slate-800">
-              <p className="text-sm text-slate-400">
+            <div className="flex items-center justify-between pt-4 border-t border-slate-200">
+              <p className="text-sm text-slate-600">
                 Visar {((currentPage - 1) * ITEMS_PER_PAGE) + 1}-{Math.min(currentPage * ITEMS_PER_PAGE, filteredIssues.length)} av {filteredIssues.length}
               </p>
               <div className="flex items-center gap-2">
                 <button
                   onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
                   disabled={currentPage === 1}
-                  className="px-3 py-1.5 bg-slate-800 border border-slate-700 rounded-lg text-white hover:bg-slate-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                  className="px-3 py-1.5 bg-white border border-slate-200 rounded-lg text-slate-700 hover:bg-slate-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                 >
                   <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
                     <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 19.5 8.25 12l7.5-7.5" />
@@ -1039,8 +1099,8 @@ export default function ProjectIssuesPage() {
                       onClick={() => setCurrentPage(page)}
                       className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${
                         currentPage === page
-                          ? 'bg-blue-600 text-white'
-                          : 'bg-slate-800 text-slate-400 hover:bg-slate-700 hover:text-white'
+                          ? 'bg-gradient-to-r from-indigo-600 to-purple-600 text-white shadow-md shadow-indigo-500/20'
+                          : 'bg-white border border-slate-200 text-slate-600 hover:bg-slate-50'
                       }`}
                     >
                       {page}
@@ -1050,7 +1110,7 @@ export default function ProjectIssuesPage() {
                 <button
                   onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
                   disabled={currentPage === totalPages}
-                  className="px-3 py-1.5 bg-slate-800 border border-slate-700 rounded-lg text-white hover:bg-slate-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                  className="px-3 py-1.5 bg-white border border-slate-200 rounded-lg text-slate-700 hover:bg-slate-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                 >
                   <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
                     <path strokeLinecap="round" strokeLinejoin="round" d="m8.25 4.5 7.5 7.5-7.5 7.5" />

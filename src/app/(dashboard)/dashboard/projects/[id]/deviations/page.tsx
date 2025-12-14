@@ -2,6 +2,7 @@
 
 import { useParams } from 'next/navigation'
 import { useState, useEffect, useCallback, useRef, useMemo } from 'react'
+import { motion, AnimatePresence } from 'framer-motion'
 import jsPDF from 'jspdf'
 import autoTable from 'jspdf-autotable'
 import Link from 'next/link'
@@ -33,18 +34,18 @@ import type {
 } from '@/types/database'
 
 const statusConfig: Record<DeviationStatus, { label: string; color: string; bg: string }> = {
-  open: { label: 'Öppen', color: 'text-yellow-400', bg: 'bg-yellow-400/10' },
-  investigating: { label: 'Under utredning', color: 'text-blue-400', bg: 'bg-blue-400/10' },
-  action_required: { label: 'Kräver åtgärd', color: 'text-orange-400', bg: 'bg-orange-400/10' },
-  corrected: { label: 'Åtgärdad', color: 'text-cyan-400', bg: 'bg-cyan-400/10' },
-  verified: { label: 'Verifierad', color: 'text-green-400', bg: 'bg-green-400/10' },
-  closed: { label: 'Stängd', color: 'text-slate-400', bg: 'bg-slate-400/10' },
+  open: { label: 'Öppen', color: 'text-amber-600', bg: 'bg-amber-100' },
+  investigating: { label: 'Under utredning', color: 'text-blue-600', bg: 'bg-blue-100' },
+  action_required: { label: 'Kräver åtgärd', color: 'text-orange-600', bg: 'bg-orange-100' },
+  corrected: { label: 'Åtgärdad', color: 'text-cyan-600', bg: 'bg-cyan-100' },
+  verified: { label: 'Verifierad', color: 'text-green-600', bg: 'bg-green-100' },
+  closed: { label: 'Stängd', color: 'text-slate-600', bg: 'bg-slate-100' },
 }
 
 const severityConfig: Record<DeviationSeverity, { label: string; color: string; icon: string }> = {
-  minor: { label: 'Mindre', color: 'text-yellow-400', icon: '○' },
-  major: { label: 'Allvarlig', color: 'text-orange-400', icon: '●' },
-  critical: { label: 'Kritisk', color: 'text-red-400', icon: '◉' },
+  minor: { label: 'Mindre', color: 'text-amber-500', icon: '○' },
+  major: { label: 'Allvarlig', color: 'text-orange-500', icon: '●' },
+  critical: { label: 'Kritisk', color: 'text-red-500', icon: '◉' },
 }
 
 const categoryConfig: Record<DeviationCategory, { label: string }> = {
@@ -85,8 +86,6 @@ function CreateDeviationModal({ isOpen, onClose, onCreate, members }: CreateDevi
   const [dueDate, setDueDate] = useState('')
   const [isSubmitting, setIsSubmitting] = useState(false)
 
-  if (!isOpen) return null
-
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     if (!title.trim()) return
@@ -119,138 +118,152 @@ function CreateDeviationModal({ isOpen, onClose, onCreate, members }: CreateDevi
   }
 
   return (
-    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-      <div className="bg-slate-900 border border-slate-700 rounded-xl w-full max-w-lg max-h-[90vh] overflow-y-auto">
-        <div className="flex items-center justify-between px-6 py-4 border-b border-slate-800 sticky top-0 bg-slate-900">
-          <h2 className="text-lg font-semibold text-white">Ny avvikelse</h2>
-          <button onClick={onClose} className="text-slate-400 hover:text-white transition-colors">
-            <XIcon />
-          </button>
-        </div>
-
-        <form onSubmit={handleSubmit} className="p-6 space-y-4">
-          <div>
-            <label className="block text-sm font-medium text-slate-300 mb-1">Titel *</label>
-            <input
-              type="text"
-              value={title}
-              onChange={(e) => setTitle(e.target.value)}
-              className="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-white placeholder-slate-500 focus:outline-none focus:border-blue-500"
-              placeholder="Kort beskrivning av avvikelsen"
-              required
-            />
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium text-slate-300 mb-1">Beskrivning</label>
-            <textarea
-              value={description}
-              onChange={(e) => setDescription(e.target.value)}
-              rows={3}
-              className="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-white placeholder-slate-500 focus:outline-none focus:border-blue-500"
-              placeholder="Detaljerad beskrivning av avvikelsen..."
-            />
-          </div>
-
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <label className="block text-sm font-medium text-slate-300 mb-1">Kategori *</label>
-              <select
-                value={category}
-                onChange={(e) => setCategory(e.target.value as DeviationCategory)}
-                className="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-white focus:outline-none focus:border-blue-500"
-              >
-                {Object.entries(categoryConfig).map(([key, { label }]) => (
-                  <option key={key} value={key}>{label}</option>
-                ))}
-              </select>
+    <AnimatePresence>
+      {isOpen && (
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-[100] p-4"
+        >
+          <motion.div
+            initial={{ opacity: 0, scale: 0.95, y: 20 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            exit={{ opacity: 0, scale: 0.95, y: 20 }}
+            className="bg-white border border-slate-200 rounded-2xl w-full max-w-lg max-h-[90vh] overflow-y-auto shadow-2xl"
+          >
+            <div className="flex items-center justify-between px-6 py-4 border-b border-slate-200 sticky top-0 bg-white rounded-t-2xl">
+              <h2 className="text-lg font-semibold text-slate-900">Ny avvikelse</h2>
+              <button onClick={onClose} className="text-slate-400 hover:text-slate-600 transition-colors">
+                <XIcon />
+              </button>
             </div>
 
-            <div>
-              <label className="block text-sm font-medium text-slate-300 mb-1">Allvarlighet</label>
-              <select
-                value={severity}
-                onChange={(e) => setSeverity(e.target.value as DeviationSeverity)}
-                className="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-white focus:outline-none focus:border-blue-500"
-              >
-                {Object.entries(severityConfig).map(([key, { label }]) => (
-                  <option key={key} value={key}>{label}</option>
-                ))}
-              </select>
-            </div>
-          </div>
+            <form onSubmit={handleSubmit} className="p-6 space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-1">Titel *</label>
+                <input
+                  type="text"
+                  value={title}
+                  onChange={(e) => setTitle(e.target.value)}
+                  className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all"
+                  placeholder="Kort beskrivning av avvikelsen"
+                  required
+                />
+              </div>
 
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <label className="block text-sm font-medium text-slate-300 mb-1">Plats</label>
-              <input
-                type="text"
-                value={location}
-                onChange={(e) => setLocation(e.target.value)}
-                className="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-white placeholder-slate-500 focus:outline-none focus:border-blue-500"
-                placeholder="t.ex. Plan 2, Rum 205"
-              />
-            </div>
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-1">Beskrivning</label>
+                <textarea
+                  value={description}
+                  onChange={(e) => setDescription(e.target.value)}
+                  rows={3}
+                  className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all"
+                  placeholder="Detaljerad beskrivning av avvikelsen..."
+                />
+              </div>
 
-            <div>
-              <label className="block text-sm font-medium text-slate-300 mb-1">Ritningsref.</label>
-              <input
-                type="text"
-                value={drawingReference}
-                onChange={(e) => setDrawingReference(e.target.value)}
-                className="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-white placeholder-slate-500 focus:outline-none focus:border-blue-500"
-                placeholder="t.ex. K-101"
-              />
-            </div>
-          </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 mb-1">Kategori *</label>
+                  <select
+                    value={category}
+                    onChange={(e) => setCategory(e.target.value as DeviationCategory)}
+                    className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl text-slate-900 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all"
+                  >
+                    {Object.entries(categoryConfig).map(([key, { label }]) => (
+                      <option key={key} value={key}>{label}</option>
+                    ))}
+                  </select>
+                </div>
 
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <label className="block text-sm font-medium text-slate-300 mb-1">Ansvarig</label>
-              <select
-                value={assignedTo}
-                onChange={(e) => setAssignedTo(e.target.value)}
-                className="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-white focus:outline-none focus:border-blue-500"
-              >
-                <option value="">Ingen tilldelad</option>
-                {members.map((member) => (
-                  <option key={member.user_id} value={member.user_id}>
-                    {member.profile.full_name || 'Okänd'}
-                  </option>
-                ))}
-              </select>
-            </div>
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 mb-1">Allvarlighet</label>
+                  <select
+                    value={severity}
+                    onChange={(e) => setSeverity(e.target.value as DeviationSeverity)}
+                    className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl text-slate-900 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all"
+                  >
+                    {Object.entries(severityConfig).map(([key, { label }]) => (
+                      <option key={key} value={key}>{label}</option>
+                    ))}
+                  </select>
+                </div>
+              </div>
 
-            <div>
-              <label className="block text-sm font-medium text-slate-300 mb-1">Förfaller</label>
-              <input
-                type="date"
-                value={dueDate}
-                onChange={(e) => setDueDate(e.target.value)}
-                className="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-white focus:outline-none focus:border-blue-500"
-              />
-            </div>
-          </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 mb-1">Plats</label>
+                  <input
+                    type="text"
+                    value={location}
+                    onChange={(e) => setLocation(e.target.value)}
+                    className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all"
+                    placeholder="t.ex. Plan 2, Rum 205"
+                  />
+                </div>
 
-          <div className="flex justify-end gap-3 pt-4">
-            <button
-              type="button"
-              onClick={onClose}
-              className="px-4 py-2 text-slate-400 hover:text-white transition-colors"
-            >
-              Avbryt
-            </button>
-            <button
-              type="submit"
-              disabled={!title.trim() || isSubmitting}
-              className="px-4 py-2 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-500 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              {isSubmitting ? 'Skapar...' : 'Skapa avvikelse'}
-            </button>
-          </div>
-        </form>
-      </div>
-    </div>
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 mb-1">Ritningsref.</label>
+                  <input
+                    type="text"
+                    value={drawingReference}
+                    onChange={(e) => setDrawingReference(e.target.value)}
+                    className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all"
+                    placeholder="t.ex. K-101"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 mb-1">Ansvarig</label>
+                  <select
+                    value={assignedTo}
+                    onChange={(e) => setAssignedTo(e.target.value)}
+                    className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl text-slate-900 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all"
+                  >
+                    <option value="">Ingen tilldelad</option>
+                    {members.map((member) => (
+                      <option key={member.user_id} value={member.user_id}>
+                        {member.profile.full_name || 'Okänd'}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 mb-1">Förfaller</label>
+                  <input
+                    type="date"
+                    value={dueDate}
+                    onChange={(e) => setDueDate(e.target.value)}
+                    className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl text-slate-900 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all"
+                  />
+                </div>
+              </div>
+
+              <div className="flex justify-end gap-3 pt-4">
+                <button
+                  type="button"
+                  onClick={onClose}
+                  className="px-4 py-2 text-slate-600 hover:text-slate-900 transition-colors"
+                >
+                  Avbryt
+                </button>
+                <button
+                  type="submit"
+                  disabled={!title.trim() || isSubmitting}
+                  className="px-4 py-2 bg-gradient-to-r from-indigo-600 to-purple-600 text-white rounded-xl font-medium hover:from-indigo-500 hover:to-purple-500 transition-all shadow-md shadow-indigo-500/20 disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {isSubmitting ? 'Skapar...' : 'Skapa avvikelse'}
+                </button>
+              </div>
+            </form>
+          </motion.div>
+        </motion.div>
+      )}
+    </AnimatePresence>
   )
 }
 
@@ -429,280 +442,292 @@ function DeviationDetailModal({ deviation, isOpen, onClose, onUpdate, members, g
     }
   }
 
-  if (!isOpen) return null
-
   return (
-    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-      <div className="bg-slate-900 border border-slate-700 rounded-xl w-full max-w-2xl max-h-[90vh] overflow-y-auto">
-        <div className="flex items-center justify-between px-6 py-4 border-b border-slate-800 sticky top-0 bg-slate-900 z-10">
-          <div className="flex items-center gap-3">
-            <span className={`text-lg ${severityConfig[deviation.severity].color}`}>
-              {severityConfig[deviation.severity].icon}
-            </span>
-            <h2 className="text-lg font-semibold text-white">
-              AVV-{String(deviation.deviation_number).padStart(3, '0')}
-            </h2>
-          </div>
-          <button onClick={onClose} className="text-slate-400 hover:text-white transition-colors">
-            <XIcon />
-          </button>
-        </div>
-
-        <div className="p-6 space-y-6">
-          {/* Header Info */}
-          <div>
-            <h3 className="text-xl font-semibold text-white mb-2">{deviation.title}</h3>
-            {deviation.description && (
-              <p className="text-slate-400">{deviation.description}</p>
-            )}
-          </div>
-
-          {/* Status & Details */}
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <label className="block text-xs font-medium text-slate-500 mb-1">Status</label>
-              <select
-                value={deviation.status}
-                onChange={(e) => handleStatusChange(e.target.value as DeviationStatus)}
-                className="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-white focus:outline-none focus:border-blue-500"
-              >
-                {Object.entries(statusConfig).map(([key, { label }]) => (
-                  <option key={key} value={key}>{label}</option>
-                ))}
-              </select>
-            </div>
-            <div>
-              <label className="block text-xs font-medium text-slate-500 mb-1">Allvarlighet</label>
-              <div className={`px-3 py-2 rounded-lg ${severityConfig[deviation.severity].color}`}>
-                {severityConfig[deviation.severity].icon} {severityConfig[deviation.severity].label}
-              </div>
-            </div>
-          </div>
-
-          {/* Location & Reference */}
-          <div className="grid grid-cols-2 gap-4 text-sm">
-            {deviation.location && (
-              <div>
-                <span className="text-slate-500">Plats:</span>
-                <span className="text-white ml-2">{deviation.location}</span>
-              </div>
-            )}
-            {deviation.drawing_reference && (
-              <div>
-                <span className="text-slate-500">Ritningsref:</span>
-                <span className="text-white ml-2">{deviation.drawing_reference}</span>
-              </div>
-            )}
-            <div>
-              <span className="text-slate-500">Kategori:</span>
-              <span className="text-white ml-2">{categoryConfig[deviation.category].label}</span>
-            </div>
-            {deviation.due_date && (
-              <div>
-                <span className="text-slate-500">Förfaller:</span>
-                <span className="text-white ml-2">{formatDate(deviation.due_date)}</span>
-              </div>
-            )}
-          </div>
-
-          {/* People */}
-          <div className="grid grid-cols-2 gap-4 text-sm">
-            <div>
-              <span className="text-slate-500">Rapporterad av:</span>
-              <span className="text-white ml-2">{deviation.reporter?.full_name || 'Okänd'}</span>
-            </div>
-            {deviation.assignee && (
-              <div>
-                <span className="text-slate-500">Ansvarig:</span>
-                <span className="text-white ml-2">{deviation.assignee.full_name}</span>
-              </div>
-            )}
-          </div>
-
-          {/* Attachments */}
-          <div>
-            <label className="block text-sm font-medium text-slate-300 mb-2">Bilagor</label>
-            <div className="flex flex-wrap gap-2 mb-2">
-              {attachments.map((att) => (
-                <div
-                  key={att.id}
-                  className="flex items-center gap-2 px-3 py-1.5 bg-slate-800 rounded-lg text-sm"
-                >
-                  <button
-                    onClick={() => handleViewAttachment(att.id)}
-                    className="text-blue-400 hover:text-blue-300"
-                  >
-                    {att.file_name}
-                  </button>
-                  <button
-                    onClick={() => handleDeleteAttachment(att.id)}
-                    className="text-slate-500 hover:text-red-400"
-                  >
-                    <XIcon />
-                  </button>
-                </div>
-              ))}
-            </div>
-            <label className="inline-flex items-center gap-2 px-3 py-1.5 bg-slate-800 hover:bg-slate-700 rounded-lg text-sm text-slate-400 cursor-pointer transition-colors">
-              <input
-                type="file"
-                className="hidden"
-                onChange={handleFileUpload}
-                disabled={isUploading}
-              />
-              {isUploading ? 'Laddar upp...' : '+ Lägg till bilaga'}
-            </label>
-          </div>
-
-          {/* Root Cause */}
-          <div>
-            <label className="block text-sm font-medium text-slate-300 mb-1">Grundorsak</label>
-            <textarea
-              value={rootCause}
-              onChange={(e) => setRootCause(e.target.value)}
-              rows={2}
-              className="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-white placeholder-slate-500 focus:outline-none focus:border-blue-500"
-              placeholder="Beskriv grundorsaken till avvikelsen..."
-            />
-          </div>
-
-          {/* Corrective Action */}
-          <div>
-            <label className="block text-sm font-medium text-slate-300 mb-1">Åtgärd</label>
-            <textarea
-              value={correctiveAction}
-              onChange={(e) => setCorrectiveAction(e.target.value)}
-              rows={2}
-              className="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-white placeholder-slate-500 focus:outline-none focus:border-blue-500"
-              placeholder="Beskriv vilken åtgärd som vidtagits..."
-            />
-          </div>
-
-          <button
-            onClick={handleSaveDetails}
-            disabled={isSaving}
-            className="px-4 py-2 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-500 transition-colors disabled:opacity-50"
+    <AnimatePresence>
+      {isOpen && (
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-[100] p-4"
+        >
+          <motion.div
+            initial={{ opacity: 0, scale: 0.95, y: 20 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            exit={{ opacity: 0, scale: 0.95, y: 20 }}
+            className="bg-white border border-slate-200 rounded-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto shadow-2xl"
           >
-            {isSaving ? 'Sparar...' : 'Spara ändringar'}
-          </button>
-
-          {/* Comments */}
-          <div>
-            <label className="block text-sm font-medium text-slate-300 mb-2">Kommentarer</label>
-            <div className="space-y-3 mb-4">
-              {comments.length === 0 ? (
-                <p className="text-slate-500 text-sm">Inga kommentarer än.</p>
-              ) : (
-                comments.map((comment) => (
-                  <div key={comment.id} className="bg-slate-800 rounded-lg p-3">
-                    <div className="flex items-center gap-2 mb-1">
-                      <span className="text-white text-sm font-medium">
-                        {(comment as DeviationComment & { author?: { full_name: string } }).author?.full_name || 'Okänd'}
-                      </span>
-                      <span className="text-slate-500 text-xs">
-                        {formatDate(comment.created_at)}
-                      </span>
-                    </div>
-                    <p className="text-slate-300 text-sm">{comment.content}</p>
-                  </div>
-                ))
-              )}
+            <div className="flex items-center justify-between px-6 py-4 border-b border-slate-200 sticky top-0 bg-white z-10 rounded-t-2xl">
+              <div className="flex items-center gap-3">
+                <span className={`text-lg ${severityConfig[deviation.severity].color}`}>
+                  {severityConfig[deviation.severity].icon}
+                </span>
+                <h2 className="text-lg font-semibold text-slate-900">
+                  AVV-{String(deviation.deviation_number).padStart(3, '0')}
+                </h2>
+              </div>
+              <button onClick={onClose} className="text-slate-400 hover:text-slate-600 transition-colors">
+                <XIcon />
+              </button>
             </div>
-            <form onSubmit={handleAddComment} className="relative">
-              <div className="flex gap-2">
-                <div className="relative flex-1">
-                  <input
-                    ref={commentInputRef}
-                    type="text"
-                    value={newComment}
-                    onChange={handleCommentChange}
-                    placeholder="Skriv en kommentar... (använd @ för att nämna någon)"
-                    className="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-white placeholder-slate-500 focus:outline-none focus:border-blue-500"
-                  />
-                  {/* Mention suggestions dropdown */}
-                  {showMentionSuggestions && (filteredGroups.length > 0 || filteredMembers.length > 0) && (
-                    <div className="absolute bottom-full left-0 right-0 mb-1 bg-slate-800 border border-slate-700 rounded-lg shadow-lg max-h-64 overflow-y-auto z-20">
-                      {/* Groups section */}
-                      {filteredGroups.length > 0 && (
-                        <>
-                          <div className="px-3 py-1.5 text-xs font-medium text-slate-500 border-b border-slate-700">
-                            Grupper
-                          </div>
-                          {filteredGroups.map((group) => (
-                            <button
-                              key={group.id}
-                              type="button"
-                              onClick={() => insertMention(group.name)}
-                              className="w-full px-3 py-2 text-left text-white hover:bg-slate-700 flex items-center gap-2 transition-colors"
-                            >
-                              <div
-                                className="w-6 h-6 rounded flex items-center justify-center text-xs font-medium text-white"
-                                style={{ backgroundColor: group.color }}
-                              >
-                                👥
-                              </div>
-                              <span className="flex-1">{group.name}</span>
-                              <span className="text-xs text-slate-500">
-                                {group.member_count} pers
-                              </span>
-                            </button>
-                          ))}
-                        </>
-                      )}
 
-                      {/* Separator between groups and members */}
-                      {filteredGroups.length > 0 && filteredMembers.length > 0 && (
-                        <div className="border-t border-slate-700" />
-                      )}
+            <div className="p-6 space-y-6">
+              {/* Header Info */}
+              <div>
+                <h3 className="text-xl font-semibold text-slate-900 mb-2">{deviation.title}</h3>
+                {deviation.description && (
+                  <p className="text-slate-600">{deviation.description}</p>
+                )}
+              </div>
 
-                      {/* Members section */}
-                      {filteredMembers.length > 0 && (
-                        <>
-                          <div className="px-3 py-1.5 text-xs font-medium text-slate-500 border-b border-slate-700">
-                            Personer
-                          </div>
-                          {filteredMembers.map((member) => {
-                            const displayName = member.profile.full_name || member.profile.email || 'Okänd'
-                            return (
-                              <button
-                                key={member.user_id}
-                                type="button"
-                                onClick={() => insertMention(displayName)}
-                                className="w-full px-3 py-2 text-left text-white hover:bg-slate-700 flex items-center gap-2 transition-colors"
-                              >
-                                <div className="w-6 h-6 rounded-full bg-blue-600 flex items-center justify-center text-xs font-medium">
-                                  {displayName.charAt(0).toUpperCase()}
-                                </div>
-                                <span>{displayName}</span>
-                                {member.group && (
-                                  <span
-                                    className="px-1.5 py-0.5 rounded text-xs text-white"
-                                    style={{ backgroundColor: member.group.color }}
-                                  >
-                                    {member.group.name}
-                                  </span>
-                                )}
-                              </button>
-                            )
-                          })}
-                        </>
-                      )}
+              {/* Status & Details */}
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-xs font-medium text-slate-500 mb-1">Status</label>
+                  <select
+                    value={deviation.status}
+                    onChange={(e) => handleStatusChange(e.target.value as DeviationStatus)}
+                    className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl text-slate-900 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all"
+                  >
+                    {Object.entries(statusConfig).map(([key, { label }]) => (
+                      <option key={key} value={key}>{label}</option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-slate-500 mb-1">Allvarlighet</label>
+                  <div className={`px-3 py-2 rounded-xl bg-slate-50 ${severityConfig[deviation.severity].color}`}>
+                    {severityConfig[deviation.severity].icon} {severityConfig[deviation.severity].label}
+                  </div>
+                </div>
+              </div>
+
+              {/* Location & Reference */}
+              <div className="grid grid-cols-2 gap-4 text-sm">
+                {deviation.location && (
+                  <div>
+                    <span className="text-slate-500">Plats:</span>
+                    <span className="text-slate-900 ml-2">{deviation.location}</span>
+                  </div>
+                )}
+                {deviation.drawing_reference && (
+                  <div>
+                    <span className="text-slate-500">Ritningsref:</span>
+                    <span className="text-slate-900 ml-2">{deviation.drawing_reference}</span>
+                  </div>
+                )}
+                <div>
+                  <span className="text-slate-500">Kategori:</span>
+                  <span className="text-slate-900 ml-2">{categoryConfig[deviation.category].label}</span>
+                </div>
+                {deviation.due_date && (
+                  <div>
+                    <span className="text-slate-500">Förfaller:</span>
+                    <span className="text-slate-900 ml-2">{formatDate(deviation.due_date)}</span>
+                  </div>
+                )}
+              </div>
+
+              {/* People */}
+              <div className="grid grid-cols-2 gap-4 text-sm">
+                <div>
+                  <span className="text-slate-500">Rapporterad av:</span>
+                  <span className="text-slate-900 ml-2">{deviation.reporter?.full_name || 'Okänd'}</span>
+                </div>
+                {deviation.assignee && (
+                  <div>
+                    <span className="text-slate-500">Ansvarig:</span>
+                    <span className="text-slate-900 ml-2">{deviation.assignee.full_name}</span>
+                  </div>
+                )}
+              </div>
+
+              {/* Attachments */}
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-2">Bilagor</label>
+                <div className="flex flex-wrap gap-2 mb-2">
+                  {attachments.map((att) => (
+                    <div
+                      key={att.id}
+                      className="flex items-center gap-2 px-3 py-1.5 bg-slate-50 border border-slate-200 rounded-xl text-sm"
+                    >
+                      <button
+                        onClick={() => handleViewAttachment(att.id)}
+                        className="text-indigo-600 hover:text-indigo-700"
+                      >
+                        {att.file_name}
+                      </button>
+                      <button
+                        onClick={() => handleDeleteAttachment(att.id)}
+                        className="text-slate-400 hover:text-red-500"
+                      >
+                        <XIcon />
+                      </button>
                     </div>
+                  ))}
+                </div>
+                <label className="inline-flex items-center gap-2 px-3 py-1.5 bg-slate-50 hover:bg-slate-100 border border-slate-200 rounded-xl text-sm text-slate-600 cursor-pointer transition-colors">
+                  <input
+                    type="file"
+                    className="hidden"
+                    onChange={handleFileUpload}
+                    disabled={isUploading}
+                  />
+                  {isUploading ? 'Laddar upp...' : '+ Lägg till bilaga'}
+                </label>
+              </div>
+
+              {/* Root Cause */}
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-1">Grundorsak</label>
+                <textarea
+                  value={rootCause}
+                  onChange={(e) => setRootCause(e.target.value)}
+                  rows={2}
+                  className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all"
+                  placeholder="Beskriv grundorsaken till avvikelsen..."
+                />
+              </div>
+
+              {/* Corrective Action */}
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-1">Åtgärd</label>
+                <textarea
+                  value={correctiveAction}
+                  onChange={(e) => setCorrectiveAction(e.target.value)}
+                  rows={2}
+                  className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all"
+                  placeholder="Beskriv vilken åtgärd som vidtagits..."
+                />
+              </div>
+
+              <button
+                onClick={handleSaveDetails}
+                disabled={isSaving}
+                className="px-4 py-2 bg-gradient-to-r from-indigo-600 to-purple-600 text-white rounded-xl font-medium hover:from-indigo-500 hover:to-purple-500 transition-all shadow-md shadow-indigo-500/20 disabled:opacity-50"
+              >
+                {isSaving ? 'Sparar...' : 'Spara ändringar'}
+              </button>
+
+              {/* Comments */}
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-2">Kommentarer</label>
+                <div className="space-y-3 mb-4">
+                  {comments.length === 0 ? (
+                    <p className="text-slate-500 text-sm">Inga kommentarer än.</p>
+                  ) : (
+                    comments.map((comment) => (
+                      <div key={comment.id} className="bg-slate-50 border border-slate-200 rounded-xl p-3">
+                        <div className="flex items-center gap-2 mb-1">
+                          <span className="text-slate-900 text-sm font-medium">
+                            {(comment as DeviationComment & { author?: { full_name: string } }).author?.full_name || 'Okänd'}
+                          </span>
+                          <span className="text-slate-400 text-xs">
+                            {formatDate(comment.created_at)}
+                          </span>
+                        </div>
+                        <p className="text-slate-600 text-sm">{comment.content}</p>
+                      </div>
+                    ))
                   )}
                 </div>
-                <button
-                  type="submit"
-                  disabled={!newComment.trim() || isSubmittingComment}
-                  className="px-4 py-2 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-500 transition-colors disabled:opacity-50"
-                >
-                  Skicka
-                </button>
+                <form onSubmit={handleAddComment} className="relative">
+                  <div className="flex gap-2">
+                    <div className="relative flex-1">
+                      <input
+                        ref={commentInputRef}
+                        type="text"
+                        value={newComment}
+                        onChange={handleCommentChange}
+                        placeholder="Skriv en kommentar... (använd @ för att nämna någon)"
+                        className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all"
+                      />
+                      {/* Mention suggestions dropdown */}
+                      {showMentionSuggestions && (filteredGroups.length > 0 || filteredMembers.length > 0) && (
+                        <div className="absolute bottom-full left-0 right-0 mb-1 bg-white border border-slate-200 rounded-xl shadow-lg max-h-64 overflow-y-auto z-20">
+                          {/* Groups section */}
+                          {filteredGroups.length > 0 && (
+                            <>
+                              <div className="px-3 py-1.5 text-xs font-medium text-slate-500 border-b border-slate-200 bg-slate-50 rounded-t-xl">
+                                Grupper
+                              </div>
+                              {filteredGroups.map((group) => (
+                                <button
+                                  key={group.id}
+                                  type="button"
+                                  onClick={() => insertMention(group.name)}
+                                  className="w-full px-3 py-2 text-left text-slate-900 hover:bg-slate-50 flex items-center gap-2 transition-colors"
+                                >
+                                  <div
+                                    className="w-6 h-6 rounded flex items-center justify-center text-xs font-medium text-white"
+                                    style={{ backgroundColor: group.color }}
+                                  >
+                                    👥
+                                  </div>
+                                  <span className="flex-1">{group.name}</span>
+                                  <span className="text-xs text-slate-500">
+                                    {group.member_count} pers
+                                  </span>
+                                </button>
+                              ))}
+                            </>
+                          )}
+
+                          {/* Separator between groups and members */}
+                          {filteredGroups.length > 0 && filteredMembers.length > 0 && (
+                            <div className="border-t border-slate-200" />
+                          )}
+
+                          {/* Members section */}
+                          {filteredMembers.length > 0 && (
+                            <>
+                              <div className="px-3 py-1.5 text-xs font-medium text-slate-500 border-b border-slate-200 bg-slate-50">
+                                Personer
+                              </div>
+                              {filteredMembers.map((member) => {
+                                const displayName = member.profile.full_name || member.profile.email || 'Okänd'
+                                return (
+                                  <button
+                                    key={member.user_id}
+                                    type="button"
+                                    onClick={() => insertMention(displayName)}
+                                    className="w-full px-3 py-2 text-left text-slate-900 hover:bg-slate-50 flex items-center gap-2 transition-colors"
+                                  >
+                                    <div className="w-6 h-6 rounded-full bg-gradient-to-br from-indigo-500 to-purple-500 flex items-center justify-center text-xs font-medium text-white">
+                                      {displayName.charAt(0).toUpperCase()}
+                                    </div>
+                                    <span>{displayName}</span>
+                                    {member.group && (
+                                      <span
+                                        className="px-1.5 py-0.5 rounded text-xs text-white"
+                                        style={{ backgroundColor: member.group.color }}
+                                      >
+                                        {member.group.name}
+                                      </span>
+                                    )}
+                                  </button>
+                                )
+                              })}
+                            </>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                    <button
+                      type="submit"
+                      disabled={!newComment.trim() || isSubmittingComment}
+                      className="px-4 py-2 bg-gradient-to-r from-indigo-600 to-purple-600 text-white rounded-xl font-medium hover:from-indigo-500 hover:to-purple-500 transition-all shadow-md shadow-indigo-500/20 disabled:opacity-50"
+                    >
+                      Skicka
+                    </button>
+                  </div>
+                </form>
               </div>
-            </form>
-          </div>
-        </div>
-      </div>
-    </div>
+            </div>
+          </motion.div>
+        </motion.div>
+      )}
+    </AnimatePresence>
   )
 }
 
@@ -796,10 +821,12 @@ export default function ProjectDeviationsPage() {
 
     // Title
     doc.setFontSize(20)
+    doc.setTextColor(79, 70, 229) // Indigo
     doc.text('Avvikelselista (NCR)', 14, 22)
 
     // Metadata
     doc.setFontSize(10)
+    doc.setTextColor(100, 116, 139) // Slate-500
     doc.text(`Exporterad: ${new Date().toLocaleDateString('sv-SE')}`, 14, 30)
     doc.text(`Totalt: ${filteredDeviations.length} avvikelser`, 14, 36)
 
@@ -820,7 +847,7 @@ export default function ProjectDeviationsPage() {
       body: tableData,
       startY: 42,
       styles: { fontSize: 7 },
-      headStyles: { fillColor: [59, 130, 246] },
+      headStyles: { fillColor: [99, 102, 241] }, // Indigo-500
       columnStyles: {
         0: { cellWidth: 18 },
         1: { cellWidth: 40 },
@@ -868,28 +895,36 @@ export default function ProjectDeviationsPage() {
   if (isLoading) {
     return (
       <div className="flex items-center justify-center h-64">
-        <div className="animate-spin h-8 w-8 border-2 border-blue-500 border-t-transparent rounded-full" />
+        <motion.div
+          className="h-8 w-8 border-2 border-indigo-200 border-t-indigo-600 rounded-full"
+          animate={{ rotate: 360 }}
+          transition={{ duration: 1, repeat: Infinity, ease: 'linear' }}
+        />
       </div>
     )
   }
 
   return (
-    <div>
+    <motion.div
+      initial={{ opacity: 0, y: 20 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.3 }}
+    >
       <div className="flex items-center justify-between mb-6">
         <div className="flex items-center gap-3">
           <Link
             href={`/dashboard/projects/${projectId}`}
-            className="text-slate-400 hover:text-white transition-colors"
+            className="text-slate-400 hover:text-slate-600 transition-colors"
           >
             <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" d="M10.5 19.5 3 12m0 0 7.5-7.5M3 12h18" />
             </svg>
           </Link>
-          <h1 className="text-2xl font-bold text-white">Avvikelser (NCR)</h1>
+          <h1 className="text-2xl font-bold text-slate-900">Avvikelser (NCR)</h1>
         </div>
         <button
           onClick={() => setShowCreateModal(true)}
-          className="px-4 py-2 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-500 transition-colors flex items-center gap-2"
+          className="px-4 py-2 bg-gradient-to-r from-indigo-600 to-purple-600 text-white rounded-xl font-medium hover:from-indigo-500 hover:to-purple-500 transition-all shadow-md shadow-indigo-500/20 flex items-center gap-2"
         >
           <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
             <path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
@@ -900,41 +935,76 @@ export default function ProjectDeviationsPage() {
 
       {/* Stats Cards */}
       <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-3 mb-6">
-        <div className="bg-slate-900 border border-slate-800 rounded-xl p-3">
-          <p className="text-slate-400 text-xs">Totalt</p>
-          <p className="text-xl font-bold text-white">{stats.total}</p>
-        </div>
-        <div className="bg-slate-900 border border-slate-800 rounded-xl p-3">
-          <p className="text-yellow-400 text-xs">Öppna</p>
-          <p className="text-xl font-bold text-white">{stats.open}</p>
-        </div>
-        <div className="bg-slate-900 border border-slate-800 rounded-xl p-3">
-          <p className="text-blue-400 text-xs">Utredning</p>
-          <p className="text-xl font-bold text-white">{stats.investigating}</p>
-        </div>
-        <div className="bg-slate-900 border border-slate-800 rounded-xl p-3">
-          <p className="text-orange-400 text-xs">Kräver åtgärd</p>
-          <p className="text-xl font-bold text-white">{stats.actionRequired}</p>
-        </div>
-        <div className="bg-slate-900 border border-slate-800 rounded-xl p-3">
-          <p className="text-cyan-400 text-xs">Åtgärdade</p>
-          <p className="text-xl font-bold text-white">{stats.corrected}</p>
-        </div>
-        <div className="bg-slate-900 border border-slate-800 rounded-xl p-3">
-          <p className="text-green-400 text-xs">Verifierade</p>
-          <p className="text-xl font-bold text-white">{stats.verified}</p>
-        </div>
-        <div className="bg-slate-900 border border-slate-800 rounded-xl p-3">
-          <p className="text-slate-400 text-xs">Stängda</p>
-          <p className="text-xl font-bold text-white">{stats.closed}</p>
-        </div>
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.05 }}
+          className="bg-white/80 backdrop-blur-sm border border-slate-200 rounded-xl p-3 shadow-sm"
+        >
+          <p className="text-slate-500 text-xs">Totalt</p>
+          <p className="text-xl font-bold text-slate-900">{stats.total}</p>
+        </motion.div>
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.1 }}
+          className="bg-white/80 backdrop-blur-sm border border-slate-200 rounded-xl p-3 shadow-sm"
+        >
+          <p className="text-amber-600 text-xs">Öppna</p>
+          <p className="text-xl font-bold text-slate-900">{stats.open}</p>
+        </motion.div>
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.15 }}
+          className="bg-white/80 backdrop-blur-sm border border-slate-200 rounded-xl p-3 shadow-sm"
+        >
+          <p className="text-blue-600 text-xs">Utredning</p>
+          <p className="text-xl font-bold text-slate-900">{stats.investigating}</p>
+        </motion.div>
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.2 }}
+          className="bg-white/80 backdrop-blur-sm border border-slate-200 rounded-xl p-3 shadow-sm"
+        >
+          <p className="text-orange-600 text-xs">Kräver åtgärd</p>
+          <p className="text-xl font-bold text-slate-900">{stats.actionRequired}</p>
+        </motion.div>
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.25 }}
+          className="bg-white/80 backdrop-blur-sm border border-slate-200 rounded-xl p-3 shadow-sm"
+        >
+          <p className="text-cyan-600 text-xs">Åtgärdade</p>
+          <p className="text-xl font-bold text-slate-900">{stats.corrected}</p>
+        </motion.div>
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.3 }}
+          className="bg-white/80 backdrop-blur-sm border border-slate-200 rounded-xl p-3 shadow-sm"
+        >
+          <p className="text-green-600 text-xs">Verifierade</p>
+          <p className="text-xl font-bold text-slate-900">{stats.verified}</p>
+        </motion.div>
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.35 }}
+          className="bg-white/80 backdrop-blur-sm border border-slate-200 rounded-xl p-3 shadow-sm"
+        >
+          <p className="text-slate-500 text-xs">Stängda</p>
+          <p className="text-xl font-bold text-slate-900">{stats.closed}</p>
+        </motion.div>
       </div>
 
       {/* Severity Summary */}
       <div className="flex gap-4 mb-4 text-sm">
-        <span className="text-yellow-400">○ {stats.bySeverity.minor} mindre</span>
-        <span className="text-orange-400">● {stats.bySeverity.major} allvarliga</span>
-        <span className="text-red-400">◉ {stats.bySeverity.critical} kritiska</span>
+        <span className="text-amber-500">○ {stats.bySeverity.minor} mindre</span>
+        <span className="text-orange-500">● {stats.bySeverity.major} allvarliga</span>
+        <span className="text-red-500">◉ {stats.bySeverity.critical} kritiska</span>
       </div>
 
       {/* Search and Filters */}
@@ -946,15 +1016,15 @@ export default function ProjectDeviationsPage() {
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             placeholder="Sök avvikelser..."
-            className="w-full pl-10 pr-10 py-2 bg-slate-800 border border-slate-700 rounded-lg text-white placeholder-slate-500 focus:outline-none focus:border-blue-500"
+            className="w-full pl-10 pr-10 py-2 bg-white border border-slate-200 rounded-xl text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all"
           />
-          <svg className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-slate-500" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+          <svg className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-slate-400" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
             <path strokeLinecap="round" strokeLinejoin="round" d="m21 21-5.197-5.197m0 0A7.5 7.5 0 1 0 5.196 5.196a7.5 7.5 0 0 0 10.607 10.607Z" />
           </svg>
           {searchQuery && (
             <button
               onClick={() => setSearchQuery('')}
-              className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 hover:text-white"
+              className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
             >
               <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" d="M6 18 18 6M6 6l12 12" />
@@ -966,7 +1036,7 @@ export default function ProjectDeviationsPage() {
         <select
           value={statusFilter}
           onChange={(e) => setStatusFilter(e.target.value as DeviationStatus | 'all')}
-          className="px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-white focus:outline-none focus:border-blue-500"
+          className="px-3 py-2 bg-white border border-slate-200 rounded-xl text-slate-900 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all"
         >
           <option value="all">Alla statusar</option>
           {Object.entries(statusConfig).map(([key, { label }]) => (
@@ -977,7 +1047,7 @@ export default function ProjectDeviationsPage() {
         <select
           value={severityFilter}
           onChange={(e) => setSeverityFilter(e.target.value as DeviationSeverity | 'all')}
-          className="px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-white focus:outline-none focus:border-blue-500"
+          className="px-3 py-2 bg-white border border-slate-200 rounded-xl text-slate-900 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all"
         >
           <option value="all">Alla allvarligheter</option>
           {Object.entries(severityConfig).map(([key, { label }]) => (
@@ -988,7 +1058,7 @@ export default function ProjectDeviationsPage() {
         <select
           value={categoryFilter}
           onChange={(e) => setCategoryFilter(e.target.value as DeviationCategory | 'all')}
-          className="px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-white focus:outline-none focus:border-blue-500"
+          className="px-3 py-2 bg-white border border-slate-200 rounded-xl text-slate-900 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all"
         >
           <option value="all">Alla kategorier</option>
           {Object.entries(categoryConfig).map(([key, { label }]) => (
@@ -1000,7 +1070,7 @@ export default function ProjectDeviationsPage() {
         <button
           onClick={exportToPDF}
           disabled={filteredDeviations.length === 0}
-          className="px-4 py-2 bg-slate-800 border border-slate-700 text-white rounded-lg font-medium hover:bg-slate-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+          className="px-4 py-2 bg-white border border-slate-200 text-slate-700 rounded-xl font-medium hover:bg-slate-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2 shadow-sm"
         >
           <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
             <path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5v2.25A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75V16.5M16.5 12 12 16.5m0 0L7.5 12m4.5 4.5V3" />
@@ -1010,20 +1080,24 @@ export default function ProjectDeviationsPage() {
       </div>
 
       {filteredDeviations.length === 0 ? (
-        <div className="bg-slate-900 border border-slate-800 rounded-xl p-12 text-center">
-          <div className="w-16 h-16 bg-slate-800 rounded-full flex items-center justify-center mx-auto mb-4">
-            <svg className="h-8 w-8 text-slate-500" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="bg-white/80 backdrop-blur-sm border border-slate-200 rounded-xl p-12 text-center shadow-sm"
+        >
+          <div className="w-16 h-16 bg-slate-100 rounded-full flex items-center justify-center mx-auto mb-4">
+            <svg className="h-8 w-8 text-slate-400" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75 11.25 15 15 9.75M21 12c0 1.268-.63 2.39-1.593 3.068a3.745 3.745 0 0 1-1.043 3.296 3.745 3.745 0 0 1-3.296 1.043A3.745 3.745 0 0 1 12 21c-1.268 0-2.39-.63-3.068-1.593a3.746 3.746 0 0 1-3.296-1.043 3.745 3.745 0 0 1-1.043-3.296A3.745 3.745 0 0 1 3 12c0-1.268.63-2.39 1.593-3.068a3.745 3.745 0 0 1 1.043-3.296 3.746 3.746 0 0 1 3.296-1.043A3.746 3.746 0 0 1 12 3c1.268 0 2.39.63 3.068 1.593a3.746 3.746 0 0 1 3.296 1.043 3.746 3.746 0 0 1 1.043 3.296A3.745 3.745 0 0 1 21 12Z" />
             </svg>
           </div>
-          <h2 className="text-lg font-semibold text-white mb-2">
+          <h2 className="text-lg font-semibold text-slate-900 mb-2">
             {searchQuery
               ? 'Inga avvikelser matchar sökningen'
               : statusFilter !== 'all' || severityFilter !== 'all' || categoryFilter !== 'all'
               ? 'Inga avvikelser matchar filtret'
               : 'Inga avvikelser än'}
           </h2>
-          <p className="text-slate-400 mb-6 max-w-md mx-auto">
+          <p className="text-slate-500 mb-6 max-w-md mx-auto">
             {searchQuery
               ? `Inga resultat för "${searchQuery}". Prova en annan sökterm.`
               : statusFilter !== 'all' || severityFilter !== 'all' || categoryFilter !== 'all'
@@ -1033,16 +1107,16 @@ export default function ProjectDeviationsPage() {
           {!searchQuery && statusFilter === 'all' && severityFilter === 'all' && categoryFilter === 'all' && (
             <button
               onClick={() => setShowCreateModal(true)}
-              className="px-4 py-2 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-500 transition-colors"
+              className="px-4 py-2 bg-gradient-to-r from-indigo-600 to-purple-600 text-white rounded-xl font-medium hover:from-indigo-500 hover:to-purple-500 transition-all shadow-md shadow-indigo-500/20"
             >
               Rapportera avvikelse
             </button>
           )}
-        </div>
+        </motion.div>
       ) : (
         <div className="space-y-4">
           {/* Results count */}
-          <div className="flex items-center justify-between text-sm text-slate-400">
+          <div className="flex items-center justify-between text-sm text-slate-500">
             <span>
               Visar {paginatedDeviations.length} av {filteredDeviations.length} avvikelser
               {searchQuery && ` för "${searchQuery}"`}
@@ -1052,26 +1126,29 @@ export default function ProjectDeviationsPage() {
             )}
           </div>
 
-          {paginatedDeviations.map((deviation) => (
-            <div
+          {paginatedDeviations.map((deviation, index) => (
+            <motion.div
               key={deviation.id}
-              className="bg-slate-900 border border-slate-800 rounded-xl p-5 hover:border-slate-700 transition-colors cursor-pointer"
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: index * 0.05 }}
+              className="bg-white/80 backdrop-blur-sm border border-slate-200 rounded-xl p-5 hover:border-indigo-300 hover:shadow-md transition-all cursor-pointer"
               onClick={() => setSelectedDeviation(deviation)}
             >
               <div className="flex items-start justify-between gap-4">
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-3 mb-2">
-                    <span className="text-slate-500 text-sm font-mono">
+                    <span className="text-slate-400 text-sm font-mono">
                       AVV-{String(deviation.deviation_number).padStart(3, '0')}
                     </span>
                     <span className={`text-lg ${severityConfig[deviation.severity].color}`}>
                       {severityConfig[deviation.severity].icon}
                     </span>
-                    <h3 className="text-white font-medium truncate">{deviation.title}</h3>
+                    <h3 className="text-slate-900 font-medium truncate">{deviation.title}</h3>
                   </div>
 
                   {deviation.description && (
-                    <p className="text-slate-400 text-sm mb-3 line-clamp-2">
+                    <p className="text-slate-500 text-sm mb-3 line-clamp-2">
                       {deviation.description}
                     </p>
                   )}
@@ -1101,7 +1178,7 @@ export default function ProjectDeviationsPage() {
 
                     {deviation.reporter && (
                       <span className="text-slate-500 flex items-center gap-1">
-                        <div className="w-5 h-5 rounded-full bg-blue-600 flex items-center justify-center text-xs font-medium text-white">
+                        <div className="w-5 h-5 rounded-full bg-gradient-to-br from-indigo-500 to-purple-500 flex items-center justify-center text-xs font-medium text-white">
                           {deviation.reporter.full_name?.charAt(0) || '?'}
                         </div>
                         {deviation.reporter.full_name}
@@ -1114,7 +1191,7 @@ export default function ProjectDeviationsPage() {
                   <select
                     value={deviation.status}
                     onChange={(e) => handleStatusChange(deviation.id, e.target.value as DeviationStatus)}
-                    className="px-2 py-1 bg-slate-800 border border-slate-700 rounded text-sm text-white focus:outline-none focus:border-blue-500"
+                    className="px-2 py-1 bg-white border border-slate-200 rounded-lg text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all"
                   >
                     {Object.entries(statusConfig).map(([key, { label }]) => (
                       <option key={key} value={key}>{label}</option>
@@ -1123,7 +1200,7 @@ export default function ProjectDeviationsPage() {
 
                   <button
                     onClick={() => handleDelete(deviation.id)}
-                    className="p-2 text-slate-400 hover:text-red-400 hover:bg-slate-800 rounded-lg transition-colors"
+                    className="p-2 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors"
                     title="Ta bort"
                   >
                     <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
@@ -1132,16 +1209,16 @@ export default function ProjectDeviationsPage() {
                   </button>
                 </div>
               </div>
-            </div>
+            </motion.div>
           ))}
 
           {/* Pagination Controls */}
           {totalPages > 1 && (
-            <div className="flex items-center justify-center gap-2 mt-6 pt-4 border-t border-slate-800">
+            <div className="flex items-center justify-center gap-2 mt-6 pt-4 border-t border-slate-200">
               <button
                 onClick={() => setCurrentPage(1)}
                 disabled={currentPage === 1}
-                className="px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-white disabled:opacity-50 disabled:cursor-not-allowed hover:bg-slate-700 transition-colors"
+                className="px-3 py-2 bg-white border border-slate-200 rounded-lg text-slate-700 disabled:opacity-50 disabled:cursor-not-allowed hover:bg-slate-50 transition-colors"
               >
                 <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" d="m18.75 4.5-7.5 7.5 7.5 7.5m-6-15L5.25 12l7.5 7.5" />
@@ -1150,7 +1227,7 @@ export default function ProjectDeviationsPage() {
               <button
                 onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
                 disabled={currentPage === 1}
-                className="px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-white disabled:opacity-50 disabled:cursor-not-allowed hover:bg-slate-700 transition-colors"
+                className="px-3 py-2 bg-white border border-slate-200 rounded-lg text-slate-700 disabled:opacity-50 disabled:cursor-not-allowed hover:bg-slate-50 transition-colors"
               >
                 <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 19.5 8.25 12l7.5-7.5" />
@@ -1175,8 +1252,8 @@ export default function ProjectDeviationsPage() {
                       onClick={() => setCurrentPage(pageNum)}
                       className={`px-3 py-2 rounded-lg font-medium transition-colors ${
                         currentPage === pageNum
-                          ? 'bg-blue-600 text-white'
-                          : 'bg-slate-800 border border-slate-700 text-white hover:bg-slate-700'
+                          ? 'bg-gradient-to-r from-indigo-600 to-purple-600 text-white shadow-md shadow-indigo-500/20'
+                          : 'bg-white border border-slate-200 text-slate-700 hover:bg-slate-50'
                       }`}
                     >
                       {pageNum}
@@ -1188,7 +1265,7 @@ export default function ProjectDeviationsPage() {
               <button
                 onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
                 disabled={currentPage === totalPages}
-                className="px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-white disabled:opacity-50 disabled:cursor-not-allowed hover:bg-slate-700 transition-colors"
+                className="px-3 py-2 bg-white border border-slate-200 rounded-lg text-slate-700 disabled:opacity-50 disabled:cursor-not-allowed hover:bg-slate-50 transition-colors"
               >
                 <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" d="m8.25 4.5 7.5 7.5-7.5 7.5" />
@@ -1197,7 +1274,7 @@ export default function ProjectDeviationsPage() {
               <button
                 onClick={() => setCurrentPage(totalPages)}
                 disabled={currentPage === totalPages}
-                className="px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-white disabled:opacity-50 disabled:cursor-not-allowed hover:bg-slate-700 transition-colors"
+                className="px-3 py-2 bg-white border border-slate-200 rounded-lg text-slate-700 disabled:opacity-50 disabled:cursor-not-allowed hover:bg-slate-50 transition-colors"
               >
                 <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" d="m5.25 4.5 7.5 7.5-7.5 7.5m6-15 7.5 7.5-7.5 7.5" />
@@ -1230,6 +1307,6 @@ export default function ProjectDeviationsPage() {
           groups={groups}
         />
       )}
-    </div>
+    </motion.div>
   )
 }

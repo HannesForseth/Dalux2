@@ -3,6 +3,7 @@
 import { useParams } from 'next/navigation'
 import Link from 'next/link'
 import { useState, useEffect, useCallback } from 'react'
+import { motion, AnimatePresence } from 'framer-motion'
 import {
   getProjectChecklists,
   createChecklist,
@@ -17,10 +18,10 @@ import {
 import type { ChecklistWithDetails, ChecklistStatus, ChecklistItem } from '@/types/database'
 
 const statusConfig: Record<ChecklistStatus, { label: string; color: string; bgColor: string }> = {
-  draft: { label: 'Utkast', color: 'text-slate-400', bgColor: 'bg-slate-800' },
-  in_progress: { label: 'Pågår', color: 'text-blue-400', bgColor: 'bg-blue-500/20' },
-  completed: { label: 'Klar', color: 'text-green-400', bgColor: 'bg-green-500/20' },
-  approved: { label: 'Godkänd', color: 'text-purple-400', bgColor: 'bg-purple-500/20' },
+  draft: { label: 'Utkast', color: 'text-slate-600', bgColor: 'bg-slate-100' },
+  in_progress: { label: 'Pågår', color: 'text-blue-600', bgColor: 'bg-blue-100' },
+  completed: { label: 'Klar', color: 'text-green-600', bgColor: 'bg-green-100' },
+  approved: { label: 'Godkänd', color: 'text-purple-600', bgColor: 'bg-purple-100' },
 }
 
 function formatDate(dateString: string | null): string {
@@ -114,59 +115,68 @@ export default function ProjectChecklistsPage() {
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
-        <div className="w-8 h-8 border-2 border-blue-500 border-t-transparent rounded-full animate-spin" />
+        <motion.div
+          className="w-8 h-8 border-2 border-indigo-200 border-t-indigo-600 rounded-full"
+          animate={{ rotate: 360 }}
+          transition={{ duration: 1, repeat: Infinity, ease: 'linear' }}
+        />
       </div>
     )
   }
 
   return (
-    <div className="flex flex-col h-full">
+    <motion.div
+      className="flex flex-col h-full"
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      transition={{ duration: 0.3 }}
+    >
       {/* Header */}
       <div className="flex items-center justify-between mb-6">
         <div className="flex items-center gap-3">
           <Link
             href={`/dashboard/projects/${projectId}`}
-            className="text-slate-400 hover:text-white transition-colors"
+            className="text-slate-400 hover:text-slate-600 transition-colors"
           >
             <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" d="M10.5 19.5 3 12m0 0 7.5-7.5M3 12h18" />
             </svg>
           </Link>
-          <h1 className="text-2xl font-bold text-white">Checklistor</h1>
+          <h1 className="text-2xl font-bold text-slate-900">Checklistor</h1>
         </div>
-        <button
+        <motion.button
           onClick={() => setShowCreateModal(true)}
-          className="px-4 py-2 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-500 transition-colors flex items-center gap-2"
+          className="px-4 py-2 bg-gradient-to-r from-indigo-600 to-purple-600 text-white rounded-xl font-medium hover:from-indigo-700 hover:to-purple-700 transition-all shadow-lg shadow-indigo-500/20 flex items-center gap-2"
+          whileHover={{ scale: 1.02 }}
+          whileTap={{ scale: 0.98 }}
         >
           <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
             <path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
           </svg>
           Ny checklista
-        </button>
+        </motion.button>
       </div>
 
       {/* Stats */}
       <div className="grid grid-cols-5 gap-4 mb-6">
-        <div className="bg-slate-900 border border-slate-800 rounded-xl p-4">
-          <div className="text-2xl font-bold text-white">{stats.total}</div>
-          <div className="text-sm text-slate-400">Totalt</div>
-        </div>
-        <div className="bg-slate-900 border border-slate-800 rounded-xl p-4">
-          <div className="text-2xl font-bold text-slate-400">{stats.draft}</div>
-          <div className="text-sm text-slate-400">Utkast</div>
-        </div>
-        <div className="bg-slate-900 border border-slate-800 rounded-xl p-4">
-          <div className="text-2xl font-bold text-blue-400">{stats.inProgress}</div>
-          <div className="text-sm text-slate-400">Pågår</div>
-        </div>
-        <div className="bg-slate-900 border border-slate-800 rounded-xl p-4">
-          <div className="text-2xl font-bold text-green-400">{stats.completed}</div>
-          <div className="text-sm text-slate-400">Klara</div>
-        </div>
-        <div className="bg-slate-900 border border-slate-800 rounded-xl p-4">
-          <div className="text-2xl font-bold text-purple-400">{stats.approved}</div>
-          <div className="text-sm text-slate-400">Godkända</div>
-        </div>
+        {[
+          { label: 'Totalt', value: stats.total, color: 'text-slate-900' },
+          { label: 'Utkast', value: stats.draft, color: 'text-slate-600' },
+          { label: 'Pågår', value: stats.inProgress, color: 'text-blue-600' },
+          { label: 'Klara', value: stats.completed, color: 'text-green-600' },
+          { label: 'Godkända', value: stats.approved, color: 'text-purple-600' },
+        ].map((stat, index) => (
+          <motion.div
+            key={stat.label}
+            className="bg-white/80 backdrop-blur-sm border border-slate-200 rounded-xl p-4 shadow-sm"
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: index * 0.05 }}
+          >
+            <div className={`text-2xl font-bold ${stat.color}`}>{stat.value}</div>
+            <div className="text-sm text-slate-500">{stat.label}</div>
+          </motion.div>
+        ))}
       </div>
 
       {/* Filters */}
@@ -174,7 +184,7 @@ export default function ProjectChecklistsPage() {
         <select
           value={statusFilter}
           onChange={(e) => setStatusFilter(e.target.value as ChecklistStatus | 'all')}
-          className="px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+          className="px-3 py-2 bg-white border border-slate-200 rounded-xl text-slate-900 focus:outline-none focus:ring-2 focus:ring-indigo-500"
         >
           <option value="all">Alla status</option>
           <option value="draft">Utkast</option>
@@ -187,37 +197,48 @@ export default function ProjectChecklistsPage() {
       {/* Content */}
       <div className="flex-1 grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Checklist List */}
-        <div className="bg-slate-900 border border-slate-800 rounded-xl overflow-hidden">
-          <div className="p-4 border-b border-slate-800">
-            <h2 className="font-semibold text-white">Checklistor</h2>
+        <motion.div
+          className="bg-white/80 backdrop-blur-sm border border-slate-200 rounded-xl overflow-hidden shadow-sm"
+          initial={{ opacity: 0, x: -20 }}
+          animate={{ opacity: 1, x: 0 }}
+          transition={{ delay: 0.1 }}
+        >
+          <div className="p-4 border-b border-slate-200">
+            <h2 className="font-semibold text-slate-900">Checklistor</h2>
           </div>
-          <div className="divide-y divide-slate-800 max-h-[600px] overflow-y-auto">
+          <div className="divide-y divide-slate-100 max-h-[600px] overflow-y-auto">
             {checklists.length === 0 ? (
-              <div className="p-8 text-center text-slate-400">
+              <div className="p-8 text-center text-slate-500">
+                <svg className="w-12 h-12 mx-auto mb-3 text-slate-300" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M9 12h3.75M9 15h3.75M9 18h3.75m3 .75H18a2.25 2.25 0 0 0 2.25-2.25V6.108c0-1.135-.845-2.098-1.976-2.192a48.424 48.424 0 0 0-1.123-.08m-5.801 0c-.065.21-.1.433-.1.664 0 .414.336.75.75.75h4.5a.75.75 0 0 0 .75-.75 2.25 2.25 0 0 0-.1-.664m-5.8 0A2.251 2.251 0 0 1 13.5 2.25H15c1.012 0 1.867.668 2.15 1.586m-5.8 0c-.376.023-.75.05-1.124.08C9.095 4.01 8.25 4.973 8.25 6.108V8.25m0 0H4.875c-.621 0-1.125.504-1.125 1.125v11.25c0 .621.504 1.125 1.125 1.125h9.75c.621 0 1.125-.504 1.125-1.125V9.375c0-.621-.504-1.125-1.125-1.125H8.25ZM6.75 12h.008v.008H6.75V12Zm0 3h.008v.008H6.75V15Zm0 3h.008v.008H6.75V18Z" />
+                </svg>
                 <p>Inga checklistor hittades</p>
               </div>
             ) : (
-              checklists.map((checklist) => {
+              checklists.map((checklist, index) => {
                 const completion = getCompletionPercentage(checklist.items || [])
                 const status = statusConfig[checklist.status]
                 const isSelected = selectedChecklist?.id === checklist.id
 
                 return (
-                  <div
+                  <motion.div
                     key={checklist.id}
                     onClick={() => setSelectedChecklist(checklist)}
-                    className={`p-4 cursor-pointer hover:bg-slate-800/50 transition-colors ${
-                      isSelected ? 'bg-slate-800/50 border-l-2 border-blue-500' : ''
+                    className={`p-4 cursor-pointer hover:bg-slate-50 transition-colors ${
+                      isSelected ? 'bg-indigo-50/50 border-l-2 border-indigo-500' : ''
                     }`}
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: index * 0.03 }}
                   >
                     <div className="flex items-start justify-between gap-3">
                       <div className="flex-1 min-w-0">
-                        <h3 className="font-medium text-white truncate">{checklist.name}</h3>
+                        <h3 className="font-medium text-slate-900 truncate">{checklist.name}</h3>
                         {checklist.description && (
-                          <p className="text-sm text-slate-400 truncate mt-1">{checklist.description}</p>
+                          <p className="text-sm text-slate-500 truncate mt-1">{checklist.description}</p>
                         )}
                         <div className="flex items-center gap-3 mt-2">
-                          <span className={`text-xs px-2 py-1 rounded ${status.bgColor} ${status.color}`}>
+                          <span className={`text-xs px-2 py-1 rounded-lg ${status.bgColor} ${status.color} font-medium`}>
                             {status.label}
                           </span>
                           {checklist.items && checklist.items.length > 0 && (
@@ -243,7 +264,7 @@ export default function ProjectChecklistsPage() {
                                 fill="none"
                                 stroke="currentColor"
                                 strokeWidth="4"
-                                className="text-slate-700"
+                                className="text-slate-200"
                               />
                               <circle
                                 cx="24"
@@ -253,40 +274,45 @@ export default function ProjectChecklistsPage() {
                                 stroke="currentColor"
                                 strokeWidth="4"
                                 strokeDasharray={`${completion * 1.256} 126`}
-                                className={completion === 100 ? 'text-green-500' : 'text-blue-500'}
+                                className={completion === 100 ? 'text-green-500' : 'text-indigo-500'}
                               />
                             </svg>
-                            <span className="absolute inset-0 flex items-center justify-center text-xs font-medium text-white">
+                            <span className="absolute inset-0 flex items-center justify-center text-xs font-medium text-slate-700">
                               {completion}%
                             </span>
                           </div>
                         )}
                       </div>
                     </div>
-                  </div>
+                  </motion.div>
                 )
               })
             )}
           </div>
-        </div>
+        </motion.div>
 
         {/* Checklist Detail */}
-        <div className="bg-slate-900 border border-slate-800 rounded-xl overflow-hidden">
+        <motion.div
+          className="bg-white/80 backdrop-blur-sm border border-slate-200 rounded-xl overflow-hidden shadow-sm"
+          initial={{ opacity: 0, x: 20 }}
+          animate={{ opacity: 1, x: 0 }}
+          transition={{ delay: 0.2 }}
+        >
           {selectedChecklist ? (
             <>
-              <div className="p-4 border-b border-slate-800">
+              <div className="p-4 border-b border-slate-200">
                 <div className="flex items-start justify-between">
                   <div>
-                    <h2 className="font-semibold text-white">{selectedChecklist.name}</h2>
+                    <h2 className="font-semibold text-slate-900">{selectedChecklist.name}</h2>
                     {selectedChecklist.description && (
-                      <p className="text-sm text-slate-400 mt-1">{selectedChecklist.description}</p>
+                      <p className="text-sm text-slate-500 mt-1">{selectedChecklist.description}</p>
                     )}
                   </div>
                   <div className="flex items-center gap-2">
                     <select
                       value={selectedChecklist.status}
                       onChange={(e) => handleStatusChange(selectedChecklist.id, e.target.value as ChecklistStatus)}
-                      className="px-2 py-1 bg-slate-800 border border-slate-700 rounded text-sm text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      className="px-2 py-1 bg-white border border-slate-200 rounded-lg text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-indigo-500"
                     >
                       <option value="draft">Utkast</option>
                       <option value="in_progress">Pågår</option>
@@ -295,7 +321,7 @@ export default function ProjectChecklistsPage() {
                     </select>
                     <button
                       onClick={() => handleDelete(selectedChecklist.id)}
-                      className="p-2 text-red-400 hover:text-red-300 hover:bg-red-500/10 rounded transition-colors"
+                      className="p-2 text-red-500 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
                     >
                       <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
                         <path strokeLinecap="round" strokeLinejoin="round" d="m14.74 9-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 0 1-2.244 2.077H8.084a2.25 2.25 0 0 1-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 0 0-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 0 1 3.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 0 0-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 0 0-7.5 0" />
@@ -303,7 +329,7 @@ export default function ProjectChecklistsPage() {
                     </button>
                   </div>
                 </div>
-                <div className="flex items-center gap-4 mt-3 text-sm text-slate-400">
+                <div className="flex items-center gap-4 mt-3 text-sm text-slate-500">
                   {selectedChecklist.location && (
                     <span className="flex items-center gap-1">
                       <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
@@ -328,16 +354,22 @@ export default function ProjectChecklistsPage() {
               </div>
 
               {/* Checklist Items */}
-              <div className="divide-y divide-slate-800 max-h-[500px] overflow-y-auto">
+              <div className="divide-y divide-slate-100 max-h-[500px] overflow-y-auto">
                 {!selectedChecklist.items || selectedChecklist.items.length === 0 ? (
-                  <div className="p-8 text-center text-slate-400">
+                  <div className="p-8 text-center text-slate-500">
+                    <svg className="w-12 h-12 mx-auto mb-3 text-slate-300" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M8.25 6.75h12M8.25 12h12m-12 5.25h12M3.75 6.75h.007v.008H3.75V6.75Zm.375 0a.375.375 0 1 1-.75 0 .375.375 0 0 1 .75 0ZM3.75 12h.007v.008H3.75V12Zm.375 0a.375.375 0 1 1-.75 0 .375.375 0 0 1 .75 0Zm-.375 5.25h.007v.008H3.75v-.008Zm.375 0a.375.375 0 1 1-.75 0 .375.375 0 0 1 .75 0Z" />
+                    </svg>
                     <p>Inga punkter i denna checklista</p>
                   </div>
                 ) : (
-                  selectedChecklist.items.map((item) => (
-                    <div
+                  selectedChecklist.items.map((item, index) => (
+                    <motion.div
                       key={item.id}
-                      className="p-4 hover:bg-slate-800/50 transition-colors"
+                      className="p-4 hover:bg-slate-50 transition-colors"
+                      initial={{ opacity: 0, x: -10 }}
+                      animate={{ opacity: 1, x: 0 }}
+                      transition={{ delay: index * 0.03 }}
                     >
                       <div className="flex items-start gap-3">
                         <button
@@ -345,7 +377,7 @@ export default function ProjectChecklistsPage() {
                           className={`mt-0.5 w-5 h-5 rounded border flex items-center justify-center transition-colors ${
                             item.is_checked
                               ? 'bg-green-500 border-green-500'
-                              : 'border-slate-600 hover:border-slate-500'
+                              : 'border-slate-300 hover:border-indigo-500'
                           }`}
                         >
                           {item.is_checked && (
@@ -356,34 +388,34 @@ export default function ProjectChecklistsPage() {
                         </button>
                         <div className="flex-1">
                           <div className="flex items-center gap-2">
-                            <span className={`font-medium ${item.is_checked ? 'text-slate-500 line-through' : 'text-white'}`}>
+                            <span className={`font-medium ${item.is_checked ? 'text-slate-400 line-through' : 'text-slate-900'}`}>
                               {item.title}
                             </span>
                             {item.is_required && (
-                              <span className="text-xs px-1.5 py-0.5 bg-red-500/20 text-red-400 rounded">
+                              <span className="text-xs px-1.5 py-0.5 bg-red-100 text-red-600 rounded font-medium">
                                 Obligatorisk
                               </span>
                             )}
                           </div>
                           {item.description && (
-                            <p className={`text-sm mt-1 ${item.is_checked ? 'text-slate-600' : 'text-slate-400'}`}>
+                            <p className={`text-sm mt-1 ${item.is_checked ? 'text-slate-400' : 'text-slate-500'}`}>
                               {item.description}
                             </p>
                           )}
                           {item.is_checked && item.checked_at && (
-                            <p className="text-xs text-slate-500 mt-1">
+                            <p className="text-xs text-slate-400 mt-1">
                               Avklarad {formatDate(item.checked_at)}
                             </p>
                           )}
                         </div>
                       </div>
-                    </div>
+                    </motion.div>
                   ))
                 )}
               </div>
 
               {/* Add Item Button */}
-              <div className="p-4 border-t border-slate-800">
+              <div className="p-4 border-t border-slate-200">
                 <AddItemForm
                   checklistId={selectedChecklist.id}
                   onItemAdded={async () => {
@@ -398,25 +430,31 @@ export default function ProjectChecklistsPage() {
               </div>
             </>
           ) : (
-            <div className="flex items-center justify-center h-full text-slate-400">
-              <p>Välj en checklista för att se detaljer</p>
+            <div className="flex flex-col items-center justify-center h-full text-slate-500 p-8">
+              <svg className="w-16 h-16 mb-4 text-slate-300" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M9 12h3.75M9 15h3.75M9 18h3.75m3 .75H18a2.25 2.25 0 0 0 2.25-2.25V6.108c0-1.135-.845-2.098-1.976-2.192a48.424 48.424 0 0 0-1.123-.08m-5.801 0c-.065.21-.1.433-.1.664 0 .414.336.75.75.75h4.5a.75.75 0 0 0 .75-.75 2.25 2.25 0 0 0-.1-.664m-5.8 0A2.251 2.251 0 0 1 13.5 2.25H15c1.012 0 1.867.668 2.15 1.586m-5.8 0c-.376.023-.75.05-1.124.08C9.095 4.01 8.25 4.973 8.25 6.108V8.25m0 0H4.875c-.621 0-1.125.504-1.125 1.125v11.25c0 .621.504 1.125 1.125 1.125h9.75c.621 0 1.125-.504 1.125-1.125V9.375c0-.621-.504-1.125-1.125-1.125H8.25ZM6.75 12h.008v.008H6.75V12Zm0 3h.008v.008H6.75V15Zm0 3h.008v.008H6.75V18Z" />
+              </svg>
+              <p className="text-lg font-medium text-slate-700">Välj en checklista</p>
+              <p className="text-sm text-slate-500 mt-1">Klicka på en checklista till vänster för att se detaljer</p>
             </div>
           )}
-        </div>
+        </motion.div>
       </div>
 
       {/* Create Modal */}
-      {showCreateModal && (
-        <CreateChecklistModal
-          projectId={projectId}
-          onClose={() => setShowCreateModal(false)}
-          onCreated={async () => {
-            await loadData()
-            setShowCreateModal(false)
-          }}
-        />
-      )}
-    </div>
+      <AnimatePresence>
+        {showCreateModal && (
+          <CreateChecklistModal
+            projectId={projectId}
+            onClose={() => setShowCreateModal(false)}
+            onCreated={async () => {
+              await loadData()
+              setShowCreateModal(false)
+            }}
+          />
+        )}
+      </AnimatePresence>
+    </motion.div>
   )
 }
 
@@ -457,26 +495,28 @@ function AddItemForm({
         value={title}
         onChange={(e) => setTitle(e.target.value)}
         placeholder="Lägg till ny punkt..."
-        className="flex-1 px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
+        className="flex-1 px-3 py-2 bg-white border border-slate-200 rounded-xl text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500"
         disabled={isAdding}
       />
-      <label className="flex items-center gap-2 text-sm text-slate-400">
+      <label className="flex items-center gap-2 text-sm text-slate-600">
         <input
           type="checkbox"
           checked={isRequired}
           onChange={(e) => setIsRequired(e.target.checked)}
-          className="rounded border-slate-600 bg-slate-800 text-blue-500 focus:ring-blue-500"
+          className="rounded border-slate-300 bg-white text-indigo-600 focus:ring-indigo-500"
           disabled={isAdding}
         />
         Obligatorisk
       </label>
-      <button
+      <motion.button
         type="submit"
         disabled={!title.trim() || isAdding}
-        className="px-4 py-2 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-500 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+        className="px-4 py-2 bg-gradient-to-r from-indigo-600 to-purple-600 text-white rounded-xl font-medium hover:from-indigo-700 hover:to-purple-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
+        whileHover={{ scale: !title.trim() || isAdding ? 1 : 1.02 }}
+        whileTap={{ scale: !title.trim() || isAdding ? 1 : 0.98 }}
       >
         {isAdding ? 'Lägger till...' : 'Lägg till'}
-      </button>
+      </motion.button>
     </form>
   )
 }
@@ -538,13 +578,25 @@ function CreateChecklistModal({
   }
 
   return (
-    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-      <div className="bg-slate-900 border border-slate-800 rounded-xl w-full max-w-lg max-h-[90vh] overflow-y-auto">
-        <div className="p-4 border-b border-slate-800 flex items-center justify-between">
-          <h2 className="text-lg font-semibold text-white">Skapa ny checklista</h2>
+    <motion.div
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
+      className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-[100] p-4"
+      onClick={onClose}
+    >
+      <motion.div
+        initial={{ opacity: 0, scale: 0.95, y: 20 }}
+        animate={{ opacity: 1, scale: 1, y: 0 }}
+        exit={{ opacity: 0, scale: 0.95, y: 20 }}
+        className="bg-white border border-slate-200 rounded-2xl w-full max-w-lg max-h-[90vh] overflow-y-auto shadow-2xl"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="p-4 border-b border-slate-200 flex items-center justify-between">
+          <h2 className="text-lg font-semibold text-slate-900">Skapa ny checklista</h2>
           <button
             onClick={onClose}
-            className="p-1 text-slate-400 hover:text-white transition-colors"
+            className="p-1 text-slate-400 hover:text-slate-600 transition-colors"
           >
             <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" d="M6 18 18 6M6 6l12 12" />
@@ -554,21 +606,21 @@ function CreateChecklistModal({
 
         <form onSubmit={handleSubmit} className="p-4 space-y-4">
           <div>
-            <label className="block text-sm font-medium text-slate-400 mb-1">
-              Namn <span className="text-red-400">*</span>
+            <label className="block text-sm font-medium text-slate-700 mb-1">
+              Namn <span className="text-red-500">*</span>
             </label>
             <input
               type="text"
               value={name}
               onChange={(e) => setName(e.target.value)}
               placeholder="t.ex. Säkerhetskontroll Våning 3"
-              className="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500"
               required
             />
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-slate-400 mb-1">
+            <label className="block text-sm font-medium text-slate-700 mb-1">
               Beskrivning
             </label>
             <textarea
@@ -576,13 +628,13 @@ function CreateChecklistModal({
               onChange={(e) => setDescription(e.target.value)}
               placeholder="Valfri beskrivning..."
               rows={2}
-              className="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
+              className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 resize-none"
             />
           </div>
 
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <label className="block text-sm font-medium text-slate-400 mb-1">
+              <label className="block text-sm font-medium text-slate-700 mb-1">
                 Plats
               </label>
               <input
@@ -590,51 +642,53 @@ function CreateChecklistModal({
                 value={location}
                 onChange={(e) => setLocation(e.target.value)}
                 placeholder="t.ex. Byggnad A"
-                className="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500"
               />
             </div>
             <div>
-              <label className="block text-sm font-medium text-slate-400 mb-1">
+              <label className="block text-sm font-medium text-slate-700 mb-1">
                 Förfallodatum
               </label>
               <input
                 type="date"
                 value={dueDate}
                 onChange={(e) => setDueDate(e.target.value)}
-                className="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl text-slate-900 focus:outline-none focus:ring-2 focus:ring-indigo-500"
               />
             </div>
           </div>
 
           {/* Items */}
           <div>
-            <label className="block text-sm font-medium text-slate-400 mb-2">
+            <label className="block text-sm font-medium text-slate-700 mb-2">
               Checklistpunkter
             </label>
 
             {items.length > 0 && (
               <div className="space-y-2 mb-3">
                 {items.map((item, index) => (
-                  <div
+                  <motion.div
                     key={index}
-                    className="flex items-center gap-2 px-3 py-2 bg-slate-800 rounded-lg"
+                    initial={{ opacity: 0, y: -10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    className="flex items-center gap-2 px-3 py-2 bg-slate-50 rounded-xl"
                   >
-                    <span className="flex-1 text-white">{item.title}</span>
+                    <span className="flex-1 text-slate-900">{item.title}</span>
                     {item.is_required && (
-                      <span className="text-xs px-1.5 py-0.5 bg-red-500/20 text-red-400 rounded">
+                      <span className="text-xs px-1.5 py-0.5 bg-red-100 text-red-600 rounded font-medium">
                         Obligatorisk
                       </span>
                     )}
                     <button
                       type="button"
                       onClick={() => removeItem(index)}
-                      className="p-1 text-slate-400 hover:text-red-400 transition-colors"
+                      className="p-1 text-slate-400 hover:text-red-500 transition-colors"
                     >
                       <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
                         <path strokeLinecap="round" strokeLinejoin="round" d="M6 18 18 6M6 6l12 12" />
                       </svg>
                     </button>
-                  </div>
+                  </motion.div>
                 ))}
               </div>
             )}
@@ -645,7 +699,7 @@ function CreateChecklistModal({
                 value={newItemTitle}
                 onChange={(e) => setNewItemTitle(e.target.value)}
                 placeholder="Ny punkt..."
-                className="flex-1 px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="flex-1 px-3 py-2 bg-white border border-slate-200 rounded-xl text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500"
                 onKeyDown={(e) => {
                   if (e.key === 'Enter') {
                     e.preventDefault()
@@ -653,12 +707,12 @@ function CreateChecklistModal({
                   }
                 }}
               />
-              <label className="flex items-center gap-1 text-sm text-slate-400">
+              <label className="flex items-center gap-1 text-sm text-slate-600">
                 <input
                   type="checkbox"
                   checked={newItemRequired}
                   onChange={(e) => setNewItemRequired(e.target.checked)}
-                  className="rounded border-slate-600 bg-slate-800 text-blue-500 focus:ring-blue-500"
+                  className="rounded border-slate-300 bg-white text-indigo-600 focus:ring-indigo-500"
                 />
                 Obl.
               </label>
@@ -666,7 +720,7 @@ function CreateChecklistModal({
                 type="button"
                 onClick={addItem}
                 disabled={!newItemTitle.trim()}
-                className="p-2 bg-slate-800 text-slate-400 hover:text-white rounded-lg disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                className="p-2 bg-slate-100 text-slate-600 hover:text-slate-900 hover:bg-slate-200 rounded-xl disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
               >
                 <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
@@ -675,24 +729,26 @@ function CreateChecklistModal({
             </div>
           </div>
 
-          <div className="flex justify-end gap-3 pt-4 border-t border-slate-800">
+          <div className="flex justify-end gap-3 pt-4 border-t border-slate-200">
             <button
               type="button"
               onClick={onClose}
-              className="px-4 py-2 text-slate-400 hover:text-white transition-colors"
+              className="px-4 py-2 text-slate-600 hover:text-slate-900 transition-colors"
             >
               Avbryt
             </button>
-            <button
+            <motion.button
               type="submit"
               disabled={!name.trim() || isCreating}
-              className="px-4 py-2 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-500 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+              className="px-4 py-2 bg-gradient-to-r from-indigo-600 to-purple-600 text-white rounded-xl font-medium hover:from-indigo-700 hover:to-purple-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
+              whileHover={{ scale: !name.trim() || isCreating ? 1 : 1.02 }}
+              whileTap={{ scale: !name.trim() || isCreating ? 1 : 0.98 }}
             >
               {isCreating ? 'Skapar...' : 'Skapa checklista'}
-            </button>
+            </motion.button>
           </div>
         </form>
-      </div>
-    </div>
+      </motion.div>
+    </motion.div>
   )
 }
