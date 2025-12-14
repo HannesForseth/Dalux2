@@ -3,6 +3,7 @@
 import { useParams, useRouter } from 'next/navigation'
 import { useState, useEffect, useCallback } from 'react'
 import Link from 'next/link'
+import { motion, AnimatePresence } from 'framer-motion'
 import {
   getProtocol,
   updateProtocol,
@@ -47,19 +48,19 @@ import type {
 type TabType = 'overview' | 'attendees' | 'agenda' | 'notes' | 'decisions' | 'actions' | 'links' | 'attachments'
 
 const statusConfig: Record<ProtocolStatus, { label: string; color: string; bg: string; icon: string }> = {
-  draft: { label: 'Utkast', color: 'text-yellow-400', bg: 'bg-yellow-400/10', icon: '✏️' },
-  finalized: { label: 'Slutfört', color: 'text-green-400', bg: 'bg-green-400/10', icon: '✅' },
-  archived: { label: 'Arkiverat', color: 'text-slate-400', bg: 'bg-slate-400/10', icon: '📦' },
+  draft: { label: 'Utkast', color: 'text-amber-600', bg: 'bg-amber-100', icon: '✏️' },
+  finalized: { label: 'Slutfört', color: 'text-green-600', bg: 'bg-green-100', icon: '✅' },
+  archived: { label: 'Arkiverat', color: 'text-slate-600', bg: 'bg-slate-100', icon: '📦' },
 }
 
 const meetingTypeConfig: Record<ProtocolMeetingType, { label: string; color: string; bg: string; icon: string }> = {
-  byggmote: { label: 'Byggmöte', color: 'text-blue-400', bg: 'bg-blue-500/10', icon: '🏗️' },
-  projektmote: { label: 'Projektmöte', color: 'text-purple-400', bg: 'bg-purple-500/10', icon: '📊' },
-  samordningsmote: { label: 'Samordningsmöte', color: 'text-cyan-400', bg: 'bg-cyan-500/10', icon: '🤝' },
-  startmote: { label: 'Startmöte', color: 'text-green-400', bg: 'bg-green-500/10', icon: '🚀' },
-  slutmote: { label: 'Slutmöte', color: 'text-orange-400', bg: 'bg-orange-500/10', icon: '🏁' },
-  besiktning: { label: 'Besiktning', color: 'text-red-400', bg: 'bg-red-500/10', icon: '🔍' },
-  other: { label: 'Övrigt', color: 'text-slate-400', bg: 'bg-slate-500/10', icon: '📋' },
+  byggmote: { label: 'Byggmöte', color: 'text-blue-600', bg: 'bg-blue-50', icon: '🏗️' },
+  projektmote: { label: 'Projektmöte', color: 'text-purple-600', bg: 'bg-purple-50', icon: '📊' },
+  samordningsmote: { label: 'Samordningsmöte', color: 'text-cyan-600', bg: 'bg-cyan-50', icon: '🤝' },
+  startmote: { label: 'Startmöte', color: 'text-green-600', bg: 'bg-green-50', icon: '🚀' },
+  slutmote: { label: 'Slutmöte', color: 'text-orange-600', bg: 'bg-orange-50', icon: '🏁' },
+  besiktning: { label: 'Besiktning', color: 'text-red-600', bg: 'bg-red-50', icon: '🔍' },
+  other: { label: 'Övrigt', color: 'text-slate-600', bg: 'bg-slate-50', icon: '📋' },
 }
 
 const attendeeRoleConfig: Record<ProtocolAttendeeRole, { label: string; icon: string }> = {
@@ -70,17 +71,17 @@ const attendeeRoleConfig: Record<ProtocolAttendeeRole, { label: string; icon: st
 }
 
 const actionStatusConfig: Record<ProtocolActionItemStatus, { label: string; color: string; bg: string; icon: string }> = {
-  pending: { label: 'Ej påbörjad', color: 'text-yellow-400', bg: 'bg-yellow-400/10', icon: '⏳' },
-  in_progress: { label: 'Pågående', color: 'text-blue-400', bg: 'bg-blue-400/10', icon: '🔄' },
-  completed: { label: 'Slutförd', color: 'text-green-400', bg: 'bg-green-400/10', icon: '✅' },
-  cancelled: { label: 'Avbruten', color: 'text-slate-400', bg: 'bg-slate-400/10', icon: '⛔' },
+  pending: { label: 'Ej påbörjad', color: 'text-amber-600', bg: 'bg-amber-100', icon: '⏳' },
+  in_progress: { label: 'Pågående', color: 'text-blue-600', bg: 'bg-blue-100', icon: '🔄' },
+  completed: { label: 'Slutförd', color: 'text-green-600', bg: 'bg-green-100', icon: '✅' },
+  cancelled: { label: 'Avbruten', color: 'text-slate-600', bg: 'bg-slate-100', icon: '⛔' },
 }
 
 const actionPriorityConfig: Record<ProtocolActionItemPriority, { label: string; color: string; bg: string }> = {
-  low: { label: 'Låg', color: 'text-slate-400', bg: 'bg-slate-400/20' },
-  medium: { label: 'Medium', color: 'text-yellow-400', bg: 'bg-yellow-400/20' },
-  high: { label: 'Hög', color: 'text-orange-400', bg: 'bg-orange-400/20' },
-  critical: { label: 'Kritisk', color: 'text-red-400', bg: 'bg-red-400/20' },
+  low: { label: 'Låg', color: 'text-slate-600', bg: 'bg-slate-100' },
+  medium: { label: 'Medium', color: 'text-amber-600', bg: 'bg-amber-100' },
+  high: { label: 'Hög', color: 'text-orange-600', bg: 'bg-orange-100' },
+  critical: { label: 'Kritisk', color: 'text-red-600', bg: 'bg-red-100' },
 }
 
 const linkTypeConfig: Record<ProtocolLinkType, { label: string; icon: string }> = {
@@ -275,7 +276,6 @@ export default function ProtocolDetailPage() {
   const handleAddAttendee = async (data: { user_id?: string; name: string; email?: string; company?: string; role: ProtocolAttendeeRole }) => {
     try {
       const newAttendee = await addAttendee(protocolId, data)
-      // Update state directly for immediate UI feedback
       setProtocol(prev => prev ? {
         ...prev,
         attendees: [...(prev.attendees || []), { ...newAttendee, profile: null }]
@@ -290,7 +290,6 @@ export default function ProtocolDetailPage() {
   const handleToggleAttendance = async (attendeeId: string, attended: boolean) => {
     try {
       await updateAttendee(attendeeId, { attended })
-      // Update state directly
       setProtocol(prev => prev ? {
         ...prev,
         attendees: prev.attendees?.map(a => a.id === attendeeId ? { ...a, attended } : a) || []
@@ -305,7 +304,6 @@ export default function ProtocolDetailPage() {
     if (!confirm('Ta bort denna deltagare?')) return
     try {
       await removeAttendee(attendeeId)
-      // Update state directly
       setProtocol(prev => prev ? {
         ...prev,
         attendees: prev.attendees?.filter(a => a.id !== attendeeId) || []
@@ -320,7 +318,6 @@ export default function ProtocolDetailPage() {
     try {
       const nextOrder = (protocol?.agenda_items?.length || 0) + 1
       const newItem = await addAgendaItem(protocolId, { ...data, order_index: nextOrder })
-      // Update state directly for immediate UI feedback
       setProtocol(prev => prev ? {
         ...prev,
         agenda_items: [...(prev.agenda_items || []), { ...newItem, presenter: null }]
@@ -336,7 +333,6 @@ export default function ProtocolDetailPage() {
     if (!confirm('Ta bort denna punkt?')) return
     try {
       await deleteAgendaItem(itemId)
-      // Update state directly
       setProtocol(prev => prev ? {
         ...prev,
         agenda_items: prev.agenda_items?.filter(a => a.id !== itemId) || []
@@ -350,7 +346,6 @@ export default function ProtocolDetailPage() {
   const handleAddDecision = async (description: string) => {
     try {
       const newDecision = await addDecision(protocolId, { description })
-      // Update state directly for immediate UI feedback
       setProtocol(prev => prev ? {
         ...prev,
         decisions: [...(prev.decisions || []), newDecision]
@@ -366,7 +361,6 @@ export default function ProtocolDetailPage() {
     if (!confirm('Ta bort detta beslut?')) return
     try {
       await deleteDecision(decisionId)
-      // Update state directly
       setProtocol(prev => prev ? {
         ...prev,
         decisions: prev.decisions?.filter(d => d.id !== decisionId) || []
@@ -380,7 +374,6 @@ export default function ProtocolDetailPage() {
   const handleAddActionItem = async (data: { description: string; assigned_to?: string; assigned_to_name?: string; deadline?: string; priority: ProtocolActionItemPriority }) => {
     try {
       const newAction = await addActionItem(protocolId, data)
-      // Update state directly for immediate UI feedback
       setProtocol(prev => prev ? {
         ...prev,
         action_items: [...(prev.action_items || []), { ...newAction, assignee: null }]
@@ -395,7 +388,6 @@ export default function ProtocolDetailPage() {
   const handleUpdateActionStatus = async (actionId: string, status: ProtocolActionItemStatus) => {
     try {
       await updateActionItem(actionId, { status })
-      // Update state directly
       setProtocol(prev => prev ? {
         ...prev,
         action_items: prev.action_items?.map(a => a.id === actionId ? { ...a, status } : a) || []
@@ -410,7 +402,6 @@ export default function ProtocolDetailPage() {
     if (!confirm('Ta bort denna åtgärd?')) return
     try {
       await deleteActionItem(actionId)
-      // Update state directly
       setProtocol(prev => prev ? {
         ...prev,
         action_items: prev.action_items?.filter(a => a.id !== actionId) || []
@@ -424,7 +415,6 @@ export default function ProtocolDetailPage() {
   const handleAddLink = async (data: { link_type: ProtocolLinkType; linked_item_id: string }) => {
     try {
       const newLink = await addLink(protocolId, data)
-      // Update state directly
       setProtocol(prev => prev ? {
         ...prev,
         links: [...(prev.links || []), newLink]
@@ -440,7 +430,6 @@ export default function ProtocolDetailPage() {
     if (!confirm('Ta bort denna koppling?')) return
     try {
       await removeLink(linkId)
-      // Update state directly
       setProtocol(prev => prev ? {
         ...prev,
         links: prev.links?.filter(l => l.id !== linkId) || []
@@ -486,7 +475,11 @@ export default function ProtocolDetailPage() {
   if (isLoading) {
     return (
       <div className="flex items-center justify-center h-64">
-        <div className="animate-spin h-8 w-8 border-2 border-blue-500 border-t-transparent rounded-full" />
+        <motion.div
+          className="w-8 h-8 border-2 border-indigo-200 border-t-indigo-600 rounded-full"
+          animate={{ rotate: 360 }}
+          transition={{ duration: 1, repeat: Infinity, ease: 'linear' }}
+        />
       </div>
     )
   }
@@ -494,7 +487,7 @@ export default function ProtocolDetailPage() {
   if (!protocol) {
     return (
       <div className="text-center py-12">
-        <p className="text-slate-400">Protokollet hittades inte.</p>
+        <p className="text-slate-500">Protokollet hittades inte.</p>
       </div>
     )
   }
@@ -515,15 +508,20 @@ export default function ProtocolDetailPage() {
   ]
 
   return (
-    <div className="max-w-5xl mx-auto relative pb-20">
+    <motion.div
+      initial={{ opacity: 0, y: 20 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.3 }}
+      className="max-w-5xl mx-auto relative pb-20"
+    >
       {/* Sticky Header */}
-      <div className="sticky top-0 z-10 bg-slate-950/95 backdrop-blur-sm pb-4 -mx-4 px-4">
+      <div className="sticky top-0 z-10 bg-white/95 backdrop-blur-sm pb-4 -mx-4 px-4 border-b border-slate-200">
         {/* Top row */}
         <div className="flex items-start justify-between py-4">
           <div className="flex items-start gap-4">
             <Link
               href={`/dashboard/projects/${projectId}/protocols`}
-              className="mt-1 text-slate-400 hover:text-white transition-colors p-2 hover:bg-slate-800 rounded-lg"
+              className="mt-1 text-slate-400 hover:text-slate-600 transition-colors p-2 hover:bg-slate-100 rounded-lg"
             >
               <ArrowLeftIcon />
             </Link>
@@ -532,15 +530,15 @@ export default function ProtocolDetailPage() {
                 <span className="text-3xl">{typeConfig.icon}</span>
                 <div>
                   <div className="flex items-center gap-2">
-                    <span className="text-blue-400 font-mono text-sm">#{protocol.protocol_number}</span>
+                    <span className="text-indigo-600 font-mono text-sm">#{protocol.protocol_number}</span>
                     <span className={`px-2 py-0.5 rounded-full text-xs ${statusConfig[protocol.status].bg} ${statusConfig[protocol.status].color}`}>
                       {statusConfig[protocol.status].icon} {statusConfig[protocol.status].label}
                     </span>
                   </div>
-                  <h1 className="text-xl font-bold text-white">{protocol.title}</h1>
+                  <h1 className="text-xl font-bold text-slate-900">{protocol.title}</h1>
                 </div>
               </div>
-              <div className="flex items-center gap-4 text-sm text-slate-400 ml-12">
+              <div className="flex items-center gap-4 text-sm text-slate-500 ml-12">
                 <span className={typeConfig.color}>{typeConfig.label}</span>
                 <span>📅 {formatDate(protocol.meeting_date)}</span>
                 {protocol.start_time && (
@@ -556,13 +554,13 @@ export default function ProtocolDetailPage() {
             <div className="text-right">
               <div className="text-xs text-slate-500 mb-1">Ifylld</div>
               <div className="flex items-center gap-2">
-                <div className="w-24 h-2 bg-slate-800 rounded-full overflow-hidden">
+                <div className="w-24 h-2 bg-slate-200 rounded-full overflow-hidden">
                   <div
-                    className={`h-full transition-all duration-300 ${completionPercent === 100 ? 'bg-green-500' : 'bg-blue-500'}`}
+                    className={`h-full transition-all duration-300 ${completionPercent === 100 ? 'bg-green-500' : 'bg-indigo-500'}`}
                     style={{ width: `${completionPercent}%` }}
                   />
                 </div>
-                <span className={`text-sm font-medium ${completionPercent === 100 ? 'text-green-400' : 'text-slate-400'}`}>
+                <span className={`text-sm font-medium ${completionPercent === 100 ? 'text-green-600' : 'text-slate-600'}`}>
                   {completionPercent}%
                 </span>
               </div>
@@ -571,7 +569,7 @@ export default function ProtocolDetailPage() {
             {/* Save as Template button */}
             <button
               onClick={() => setShowSaveAsTemplate(true)}
-              className="px-4 py-2 bg-slate-800 text-slate-300 border border-slate-700 rounded-lg font-medium hover:bg-slate-700 hover:text-white transition-colors flex items-center gap-2"
+              className="px-4 py-2 bg-white text-slate-700 border border-slate-200 rounded-xl font-medium hover:bg-slate-50 transition-colors flex items-center gap-2"
               title="Spara som mall"
             >
               <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
@@ -584,7 +582,7 @@ export default function ProtocolDetailPage() {
               <button
                 onClick={handleFinalize}
                 disabled={completionPercent < 50}
-                className="px-4 py-2 bg-green-600 text-white rounded-lg font-medium hover:bg-green-500 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+                className="px-4 py-2 bg-gradient-to-r from-green-500 to-emerald-600 text-white rounded-xl font-medium hover:from-green-400 hover:to-emerald-500 transition-all shadow-md shadow-green-500/25 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
               >
                 ✅ Slutför
               </button>
@@ -598,17 +596,17 @@ export default function ProtocolDetailPage() {
             <button
               key={tab.id}
               onClick={() => setActiveTab(tab.id)}
-              className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-colors whitespace-nowrap ${
+              className={`flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium transition-colors whitespace-nowrap ${
                 activeTab === tab.id
-                  ? 'bg-blue-600 text-white'
-                  : 'text-slate-400 hover:text-white hover:bg-slate-800'
+                  ? 'bg-indigo-100 text-indigo-700 border border-indigo-200'
+                  : 'text-slate-500 hover:text-slate-700 hover:bg-slate-100'
               }`}
             >
               <span>{tab.icon}</span>
               <span>{tab.label}</span>
               {tab.count !== undefined && (
                 <span className={`px-1.5 py-0.5 rounded-full text-xs ${
-                  activeTab === tab.id ? 'bg-blue-500' : 'bg-slate-700'
+                  activeTab === tab.id ? 'bg-indigo-200 text-indigo-700' : 'bg-slate-200 text-slate-600'
                 }`}>
                   {tab.count}
                 </span>
@@ -622,95 +620,80 @@ export default function ProtocolDetailPage() {
       <div className="mt-6">
         {/* Overview Tab */}
         {activeTab === 'overview' && (
-          <div className="space-y-6">
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            className="space-y-6"
+          >
             {/* Stats Grid */}
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-              <button
-                onClick={() => setActiveTab('attendees')}
-                className="bg-slate-900 border border-slate-800 rounded-xl p-4 text-left hover:border-slate-700 transition-colors"
-              >
-                <div className="text-2xl mb-2">👥</div>
-                <div className="text-2xl font-bold text-white">{protocol.attendees?.length || 0}</div>
-                <div className="text-sm text-slate-400">Deltagare</div>
-                <div className="text-xs text-slate-500 mt-1">
-                  {protocol.attendees?.filter(a => a.attended).length || 0} närvarande
-                </div>
-              </button>
-              <button
-                onClick={() => setActiveTab('agenda')}
-                className="bg-slate-900 border border-slate-800 rounded-xl p-4 text-left hover:border-slate-700 transition-colors"
-              >
-                <div className="text-2xl mb-2">📝</div>
-                <div className="text-2xl font-bold text-white">{protocol.agenda_items?.length || 0}</div>
-                <div className="text-sm text-slate-400">Punkter</div>
-                <div className="text-xs text-slate-500 mt-1">
-                  {protocol.agenda_items?.reduce((acc, item) => acc + (item.duration_minutes || 0), 0) || 0} min totalt
-                </div>
-              </button>
-              <button
-                onClick={() => setActiveTab('decisions')}
-                className="bg-slate-900 border border-slate-800 rounded-xl p-4 text-left hover:border-slate-700 transition-colors"
-              >
-                <div className="text-2xl mb-2">⚖️</div>
-                <div className="text-2xl font-bold text-white">{protocol.decisions?.length || 0}</div>
-                <div className="text-sm text-slate-400">Beslut</div>
-              </button>
-              <button
-                onClick={() => setActiveTab('actions')}
-                className="bg-slate-900 border border-slate-800 rounded-xl p-4 text-left hover:border-slate-700 transition-colors"
-              >
-                <div className="text-2xl mb-2">✅</div>
-                <div className="text-2xl font-bold text-white">{protocol.action_items?.length || 0}</div>
-                <div className="text-sm text-slate-400">Åtgärder</div>
-                <div className="text-xs text-slate-500 mt-1">
-                  {protocol.action_items?.filter(a => a.status === 'completed').length || 0} slutförda
-                </div>
-              </button>
+              {[
+                { tab: 'attendees' as TabType, icon: '👥', value: protocol.attendees?.length || 0, label: 'Deltagare', sub: `${protocol.attendees?.filter(a => a.attended).length || 0} närvarande` },
+                { tab: 'agenda' as TabType, icon: '📝', value: protocol.agenda_items?.length || 0, label: 'Punkter', sub: `${protocol.agenda_items?.reduce((acc, item) => acc + (item.duration_minutes || 0), 0) || 0} min totalt` },
+                { tab: 'decisions' as TabType, icon: '⚖️', value: protocol.decisions?.length || 0, label: 'Beslut', sub: null },
+                { tab: 'actions' as TabType, icon: '✅', value: protocol.action_items?.length || 0, label: 'Åtgärder', sub: `${protocol.action_items?.filter(a => a.status === 'completed').length || 0} slutförda` },
+              ].map((stat, index) => (
+                <motion.button
+                  key={stat.tab}
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: index * 0.05 }}
+                  onClick={() => setActiveTab(stat.tab)}
+                  className="bg-white/80 backdrop-blur-sm border border-slate-200 rounded-xl p-4 text-left hover:border-indigo-300 hover:shadow-md transition-all"
+                >
+                  <div className="text-2xl mb-2">{stat.icon}</div>
+                  <div className="text-2xl font-bold text-slate-900">{stat.value}</div>
+                  <div className="text-sm text-slate-500">{stat.label}</div>
+                  {stat.sub && (
+                    <div className="text-xs text-slate-400 mt-1">{stat.sub}</div>
+                  )}
+                </motion.button>
+              ))}
             </div>
 
             {/* AI Summary or Quick Overview */}
             {protocol.ai_summary ? (
-              <div className="bg-gradient-to-r from-blue-900/20 to-purple-900/20 border border-blue-800/50 rounded-xl p-6">
+              <div className="bg-gradient-to-r from-indigo-50 to-purple-50 border border-indigo-200 rounded-xl p-6">
                 <div className="flex items-center gap-2 mb-3">
                   <span className="text-xl">✨</span>
-                  <h3 className="text-lg font-semibold text-white">AI-sammanfattning</h3>
+                  <h3 className="text-lg font-semibold text-slate-900">AI-sammanfattning</h3>
                 </div>
-                <p className="text-slate-300">{protocol.ai_summary}</p>
+                <p className="text-slate-700">{protocol.ai_summary}</p>
               </div>
             ) : protocol.notes ? (
-              <div className="bg-slate-900 border border-slate-800 rounded-xl p-6">
+              <div className="bg-white/80 backdrop-blur-sm border border-slate-200 rounded-xl p-6">
                 <div className="flex items-center justify-between mb-3">
-                  <h3 className="text-lg font-semibold text-white">Anteckningar</h3>
+                  <h3 className="text-lg font-semibold text-slate-900">Anteckningar</h3>
                   {isEditable && (
                     <button
                       onClick={handleGenerateSummary}
                       disabled={isGeneratingSummary}
-                      className="flex items-center gap-2 px-3 py-1.5 bg-blue-600/20 text-blue-400 rounded-lg hover:bg-blue-600/30 text-sm disabled:opacity-50"
+                      className="flex items-center gap-2 px-3 py-1.5 bg-indigo-100 text-indigo-600 rounded-lg hover:bg-indigo-200 text-sm disabled:opacity-50"
                     >
                       ✨ {isGeneratingSummary ? 'Genererar...' : 'Generera AI-sammanfattning'}
                     </button>
                   )}
                 </div>
-                <p className="text-slate-300 line-clamp-4">{protocol.notes}</p>
+                <p className="text-slate-600 line-clamp-4">{protocol.notes}</p>
                 <button
                   onClick={() => setActiveTab('notes')}
-                  className="text-blue-400 hover:text-blue-300 text-sm mt-2"
+                  className="text-indigo-600 hover:text-indigo-700 text-sm mt-2 font-medium"
                 >
                   Läs mer →
                 </button>
               </div>
             ) : (
-              <div className="bg-slate-900 border border-slate-800 rounded-xl p-6 text-center">
+              <div className="bg-white/80 backdrop-blur-sm border border-slate-200 rounded-xl p-6 text-center">
                 <div className="text-4xl mb-3">📝</div>
-                <h3 className="text-lg font-semibold text-white mb-2">Inga anteckningar än</h3>
-                <p className="text-slate-400 text-sm mb-4">Börja dokumentera mötet genom att lägga till anteckningar</p>
+                <h3 className="text-lg font-semibold text-slate-900 mb-2">Inga anteckningar än</h3>
+                <p className="text-slate-500 text-sm mb-4">Börja dokumentera mötet genom att lägga till anteckningar</p>
                 {isEditable && (
                   <button
                     onClick={() => {
                       setActiveTab('notes')
                       setEditingNotes(true)
                     }}
-                    className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-500 transition-colors"
+                    className="px-4 py-2 bg-gradient-to-r from-indigo-600 to-purple-600 text-white rounded-xl hover:from-indigo-500 hover:to-purple-500 transition-all shadow-md shadow-indigo-500/25"
                   >
                     Lägg till anteckningar
                   </button>
@@ -720,24 +703,24 @@ export default function ProtocolDetailPage() {
 
             {/* Recent Actions */}
             {(protocol.action_items?.length || 0) > 0 && (
-              <div className="bg-slate-900 border border-slate-800 rounded-xl p-6">
+              <div className="bg-white/80 backdrop-blur-sm border border-slate-200 rounded-xl p-6">
                 <div className="flex items-center justify-between mb-4">
-                  <h3 className="text-lg font-semibold text-white">Senaste åtgärder</h3>
+                  <h3 className="text-lg font-semibold text-slate-900">Senaste åtgärder</h3>
                   <button
                     onClick={() => setActiveTab('actions')}
-                    className="text-blue-400 hover:text-blue-300 text-sm"
+                    className="text-indigo-600 hover:text-indigo-700 text-sm font-medium"
                   >
                     Visa alla →
                   </button>
                 </div>
                 <div className="space-y-3">
                   {protocol.action_items?.slice(0, 3).map((action) => (
-                    <div key={action.id} className="flex items-center gap-3 py-2 border-b border-slate-800 last:border-0">
+                    <div key={action.id} className="flex items-center gap-3 py-2 border-b border-slate-100 last:border-0">
                       <span className={`px-2 py-1 rounded-full text-xs ${actionStatusConfig[action.status].bg} ${actionStatusConfig[action.status].color}`}>
                         {actionStatusConfig[action.status].icon}
                       </span>
                       <div className="flex-1">
-                        <p className="text-white text-sm">{action.description}</p>
+                        <p className="text-slate-900 text-sm">{action.description}</p>
                         {action.assigned_to_name && (
                           <span className="text-xs text-slate-500">→ {action.assigned_to_name}</span>
                         )}
@@ -750,18 +733,22 @@ export default function ProtocolDetailPage() {
                 </div>
               </div>
             )}
-          </div>
+          </motion.div>
         )}
 
         {/* Attendees Tab */}
         {activeTab === 'attendees' && (
-          <div className="bg-slate-900 border border-slate-800 rounded-xl p-6">
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            className="bg-white/80 backdrop-blur-sm border border-slate-200 rounded-xl p-6"
+          >
             <div className="flex items-center justify-between mb-6">
-              <h3 className="text-lg font-semibold text-white">Deltagare</h3>
+              <h3 className="text-lg font-semibold text-slate-900">Deltagare</h3>
               {isEditable && !showAddAttendee && (
                 <button
                   onClick={() => setShowAddAttendee(true)}
-                  className="flex items-center gap-2 px-3 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-500 text-sm"
+                  className="flex items-center gap-2 px-3 py-2 bg-gradient-to-r from-indigo-600 to-purple-600 text-white rounded-xl hover:from-indigo-500 hover:to-purple-500 text-sm shadow-md shadow-indigo-500/25"
                 >
                   <PlusIcon /> Lägg till
                 </button>
@@ -780,23 +767,23 @@ export default function ProtocolDetailPage() {
 
             <div className="grid gap-3">
               {protocol.attendees?.map((attendee) => (
-                <div key={attendee.id} className="flex items-center justify-between p-3 bg-slate-800 rounded-lg">
+                <div key={attendee.id} className="flex items-center justify-between p-3 bg-slate-50 border border-slate-200 rounded-xl">
                   <div className="flex items-center gap-3">
                     <button
                       onClick={() => isEditable && handleToggleAttendance(attendee.id, !attendee.attended)}
                       disabled={!isEditable}
                       className={`w-10 h-10 rounded-full flex items-center justify-center text-lg transition-colors ${
                         attendee.attended
-                          ? 'bg-green-500/20 text-green-400'
-                          : 'bg-slate-700 text-slate-500'
+                          ? 'bg-green-100 text-green-600'
+                          : 'bg-slate-100 text-slate-400'
                       }`}
                     >
                       {attendee.attended ? '✓' : '—'}
                     </button>
                     <div>
                       <div className="flex items-center gap-2">
-                        <span className="text-white font-medium">{attendee.name}</span>
-                        <span className="text-xs px-2 py-0.5 rounded-full bg-slate-700 text-slate-400">
+                        <span className="text-slate-900 font-medium">{attendee.name}</span>
+                        <span className="text-xs px-2 py-0.5 rounded-full bg-slate-100 text-slate-500">
                           {attendeeRoleConfig[attendee.role].icon} {attendeeRoleConfig[attendee.role].label}
                         </span>
                       </div>
@@ -810,7 +797,7 @@ export default function ProtocolDetailPage() {
                   {isEditable && (
                     <button
                       onClick={() => handleRemoveAttendee(attendee.id)}
-                      className="text-slate-500 hover:text-red-400 p-2"
+                      className="text-slate-400 hover:text-red-500 p-2"
                     >
                       <XIcon />
                     </button>
@@ -824,18 +811,22 @@ export default function ProtocolDetailPage() {
                 </div>
               )}
             </div>
-          </div>
+          </motion.div>
         )}
 
         {/* Agenda Tab */}
         {activeTab === 'agenda' && (
-          <div className="bg-slate-900 border border-slate-800 rounded-xl p-6">
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            className="bg-white/80 backdrop-blur-sm border border-slate-200 rounded-xl p-6"
+          >
             <div className="flex items-center justify-between mb-6">
-              <h3 className="text-lg font-semibold text-white">Dagordning</h3>
+              <h3 className="text-lg font-semibold text-slate-900">Dagordning</h3>
               {isEditable && !showAddAgenda && (
                 <button
                   onClick={() => setShowAddAgenda(true)}
-                  className="flex items-center gap-2 px-3 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-500 text-sm"
+                  className="flex items-center gap-2 px-3 py-2 bg-gradient-to-r from-indigo-600 to-purple-600 text-white rounded-xl hover:from-indigo-500 hover:to-purple-500 text-sm shadow-md shadow-indigo-500/25"
                 >
                   <PlusIcon /> Lägg till punkt
                 </button>
@@ -853,14 +844,14 @@ export default function ProtocolDetailPage() {
 
             <div className="space-y-3">
               {protocol.agenda_items?.sort((a, b) => a.order_index - b.order_index).map((item, index) => (
-                <div key={item.id} className="flex items-start gap-4 p-4 bg-slate-800 rounded-lg group">
-                  <div className="w-8 h-8 rounded-full bg-blue-500/20 text-blue-400 flex items-center justify-center font-mono text-sm flex-shrink-0">
+                <div key={item.id} className="flex items-start gap-4 p-4 bg-slate-50 border border-slate-200 rounded-xl group">
+                  <div className="w-8 h-8 rounded-full bg-indigo-100 text-indigo-600 flex items-center justify-center font-mono text-sm flex-shrink-0">
                     {index + 1}
                   </div>
                   <div className="flex-1">
-                    <h4 className="text-white font-medium">{item.title}</h4>
+                    <h4 className="text-slate-900 font-medium">{item.title}</h4>
                     {item.description && (
-                      <p className="text-slate-400 text-sm mt-1">{item.description}</p>
+                      <p className="text-slate-500 text-sm mt-1">{item.description}</p>
                     )}
                     {item.duration_minutes && (
                       <span className="inline-flex items-center gap-1 text-xs text-slate-500 mt-2">
@@ -871,7 +862,7 @@ export default function ProtocolDetailPage() {
                   {isEditable && (
                     <button
                       onClick={() => handleDeleteAgendaItem(item.id)}
-                      className="text-slate-500 hover:text-red-400 p-2 opacity-0 group-hover:opacity-100 transition-opacity"
+                      className="text-slate-400 hover:text-red-500 p-2 opacity-0 group-hover:opacity-100 transition-opacity"
                     >
                       <XIcon />
                     </button>
@@ -885,18 +876,22 @@ export default function ProtocolDetailPage() {
                 </div>
               )}
             </div>
-          </div>
+          </motion.div>
         )}
 
         {/* Notes Tab */}
         {activeTab === 'notes' && (
-          <div className="bg-slate-900 border border-slate-800 rounded-xl p-6">
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            className="bg-white/80 backdrop-blur-sm border border-slate-200 rounded-xl p-6"
+          >
             <div className="flex items-center justify-between mb-6">
-              <h3 className="text-lg font-semibold text-white">Anteckningar</h3>
+              <h3 className="text-lg font-semibold text-slate-900">Anteckningar</h3>
               {isEditable && !editingNotes && (
                 <button
                   onClick={() => setEditingNotes(true)}
-                  className="text-blue-400 hover:text-blue-300 text-sm"
+                  className="text-indigo-600 hover:text-indigo-700 text-sm font-medium"
                 >
                   Redigera
                 </button>
@@ -909,7 +904,7 @@ export default function ProtocolDetailPage() {
                   value={notesValue}
                   onChange={(e) => setNotesValue(e.target.value)}
                   rows={15}
-                  className="w-full px-4 py-3 bg-slate-800 border border-slate-700 rounded-lg text-white placeholder-slate-500 focus:outline-none focus:border-blue-500 resize-none"
+                  className="w-full px-4 py-3 bg-white border border-slate-200 rounded-xl text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent resize-none"
                   placeholder="Skriv mötesanteckningar..."
                 />
                 <div className="flex justify-end gap-3">
@@ -918,14 +913,14 @@ export default function ProtocolDetailPage() {
                       setNotesValue(protocol.notes || '')
                       setEditingNotes(false)
                     }}
-                    className="px-4 py-2 text-slate-400 hover:text-white"
+                    className="px-4 py-2 text-slate-600 hover:text-slate-900"
                   >
                     Avbryt
                   </button>
                   <button
                     onClick={handleSaveNotes}
                     disabled={isSaving}
-                    className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-500 disabled:opacity-50"
+                    className="px-4 py-2 bg-gradient-to-r from-indigo-600 to-purple-600 text-white rounded-xl hover:from-indigo-500 hover:to-purple-500 disabled:opacity-50 shadow-md shadow-indigo-500/25"
                   >
                     {isSaving ? 'Sparar...' : 'Spara'}
                   </button>
@@ -934,7 +929,7 @@ export default function ProtocolDetailPage() {
             ) : (
               <>
                 {protocol.notes ? (
-                  <pre className="whitespace-pre-wrap text-slate-300 font-sans text-sm bg-slate-800 p-4 rounded-lg">
+                  <pre className="whitespace-pre-wrap text-slate-700 font-sans text-sm bg-slate-50 border border-slate-200 p-4 rounded-xl">
                     {protocol.notes}
                   </pre>
                 ) : (
@@ -944,7 +939,7 @@ export default function ProtocolDetailPage() {
                     {isEditable && (
                       <button
                         onClick={() => setEditingNotes(true)}
-                        className="mt-4 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-500"
+                        className="mt-4 px-4 py-2 bg-gradient-to-r from-indigo-600 to-purple-600 text-white rounded-xl hover:from-indigo-500 hover:to-purple-500 shadow-md shadow-indigo-500/25"
                       >
                         Lägg till anteckningar
                       </button>
@@ -954,12 +949,12 @@ export default function ProtocolDetailPage() {
 
                 {/* AI Summary Section */}
                 {protocol.ai_summary && (
-                  <div className="mt-6 p-4 bg-gradient-to-r from-blue-900/20 to-purple-900/20 border border-blue-800/50 rounded-lg">
+                  <div className="mt-6 p-4 bg-gradient-to-r from-indigo-50 to-purple-50 border border-indigo-200 rounded-xl">
                     <div className="flex items-center gap-2 mb-2">
                       <span>✨</span>
-                      <h4 className="text-blue-400 font-medium">AI-sammanfattning</h4>
+                      <h4 className="text-indigo-700 font-medium">AI-sammanfattning</h4>
                     </div>
-                    <p className="text-slate-300 text-sm">{protocol.ai_summary}</p>
+                    <p className="text-slate-700 text-sm">{protocol.ai_summary}</p>
                   </div>
                 )}
 
@@ -967,25 +962,29 @@ export default function ProtocolDetailPage() {
                   <button
                     onClick={handleGenerateSummary}
                     disabled={isGeneratingSummary}
-                    className="mt-4 flex items-center gap-2 px-4 py-2 bg-blue-600/20 text-blue-400 rounded-lg hover:bg-blue-600/30 disabled:opacity-50"
+                    className="mt-4 flex items-center gap-2 px-4 py-2 bg-indigo-100 text-indigo-600 rounded-xl hover:bg-indigo-200 disabled:opacity-50"
                   >
                     ✨ {isGeneratingSummary ? 'Genererar...' : 'Generera AI-sammanfattning'}
                   </button>
                 )}
               </>
             )}
-          </div>
+          </motion.div>
         )}
 
         {/* Decisions Tab */}
         {activeTab === 'decisions' && (
-          <div className="bg-slate-900 border border-slate-800 rounded-xl p-6">
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            className="bg-white/80 backdrop-blur-sm border border-slate-200 rounded-xl p-6"
+          >
             <div className="flex items-center justify-between mb-6">
-              <h3 className="text-lg font-semibold text-white">Beslut</h3>
+              <h3 className="text-lg font-semibold text-slate-900">Beslut</h3>
               {isEditable && !showAddDecision && (
                 <button
                   onClick={() => setShowAddDecision(true)}
-                  className="flex items-center gap-2 px-3 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-500 text-sm"
+                  className="flex items-center gap-2 px-3 py-2 bg-gradient-to-r from-indigo-600 to-purple-600 text-white rounded-xl hover:from-indigo-500 hover:to-purple-500 text-sm shadow-md shadow-indigo-500/25"
                 >
                   <PlusIcon /> Lägg till beslut
                 </button>
@@ -1003,12 +1002,12 @@ export default function ProtocolDetailPage() {
 
             <div className="space-y-3">
               {protocol.decisions?.map((decision) => (
-                <div key={decision.id} className="flex items-start gap-4 p-4 bg-slate-800 rounded-lg group">
-                  <div className="w-10 h-10 rounded-full bg-green-500/20 text-green-400 flex items-center justify-center font-mono text-sm flex-shrink-0">
+                <div key={decision.id} className="flex items-start gap-4 p-4 bg-slate-50 border border-slate-200 rounded-xl group">
+                  <div className="w-10 h-10 rounded-full bg-green-100 text-green-600 flex items-center justify-center font-mono text-sm flex-shrink-0">
                     B{decision.decision_number}
                   </div>
                   <div className="flex-1">
-                    <p className="text-white">{decision.description}</p>
+                    <p className="text-slate-900">{decision.description}</p>
                     {decision.decided_by && (
                       <span className="text-xs text-slate-500 mt-1 block">Beslutat av: {decision.decided_by}</span>
                     )}
@@ -1016,7 +1015,7 @@ export default function ProtocolDetailPage() {
                   {isEditable && (
                     <button
                       onClick={() => handleDeleteDecision(decision.id)}
-                      className="text-slate-500 hover:text-red-400 p-2 opacity-0 group-hover:opacity-100 transition-opacity"
+                      className="text-slate-400 hover:text-red-500 p-2 opacity-0 group-hover:opacity-100 transition-opacity"
                     >
                       <XIcon />
                     </button>
@@ -1030,18 +1029,22 @@ export default function ProtocolDetailPage() {
                 </div>
               )}
             </div>
-          </div>
+          </motion.div>
         )}
 
         {/* Actions Tab */}
         {activeTab === 'actions' && (
-          <div className="bg-slate-900 border border-slate-800 rounded-xl p-6">
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            className="bg-white/80 backdrop-blur-sm border border-slate-200 rounded-xl p-6"
+          >
             <div className="flex items-center justify-between mb-6">
-              <h3 className="text-lg font-semibold text-white">Åtgärdspunkter</h3>
+              <h3 className="text-lg font-semibold text-slate-900">Åtgärdspunkter</h3>
               {isEditable && !showAddAction && (
                 <button
                   onClick={() => setShowAddAction(true)}
-                  className="flex items-center gap-2 px-3 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-500 text-sm"
+                  className="flex items-center gap-2 px-3 py-2 bg-gradient-to-r from-indigo-600 to-purple-600 text-white rounded-xl hover:from-indigo-500 hover:to-purple-500 text-sm shadow-md shadow-indigo-500/25"
                 >
                   <PlusIcon /> Lägg till åtgärd
                 </button>
@@ -1060,14 +1063,14 @@ export default function ProtocolDetailPage() {
 
             <div className="space-y-3">
               {protocol.action_items?.map((action) => (
-                <div key={action.id} className="p-4 bg-slate-800 rounded-lg group">
+                <div key={action.id} className="p-4 bg-slate-50 border border-slate-200 rounded-xl group">
                   <div className="flex items-start justify-between">
                     <div className="flex items-start gap-3">
-                      <span className="text-orange-400 font-mono text-sm bg-orange-500/10 px-2 py-1 rounded">
+                      <span className="text-orange-600 font-mono text-sm bg-orange-100 px-2 py-1 rounded">
                         Å{action.action_number}
                       </span>
                       <div className="flex-1">
-                        <p className="text-white mb-2">{action.description}</p>
+                        <p className="text-slate-900 mb-2">{action.description}</p>
                         <div className="flex flex-wrap items-center gap-2">
                           <span className={`px-2 py-0.5 rounded-full text-xs ${actionStatusConfig[action.status].bg} ${actionStatusConfig[action.status].color}`}>
                             {actionStatusConfig[action.status].icon} {actionStatusConfig[action.status].label}
@@ -1076,10 +1079,10 @@ export default function ProtocolDetailPage() {
                             {actionPriorityConfig[action.priority].label}
                           </span>
                           {action.assigned_to_name && (
-                            <span className="text-xs text-slate-400">👤 {action.assigned_to_name}</span>
+                            <span className="text-xs text-slate-500">👤 {action.assigned_to_name}</span>
                           )}
                           {action.deadline && (
-                            <span className="text-xs text-slate-400">📅 {formatDate(action.deadline)}</span>
+                            <span className="text-xs text-slate-500">📅 {formatDate(action.deadline)}</span>
                           )}
                         </div>
                       </div>
@@ -1088,7 +1091,7 @@ export default function ProtocolDetailPage() {
                       <select
                         value={action.status}
                         onChange={(e) => handleUpdateActionStatus(action.id, e.target.value as ProtocolActionItemStatus)}
-                        className="px-2 py-1 bg-slate-700 border border-slate-600 rounded text-sm text-white focus:outline-none focus:border-blue-500"
+                        className="px-2 py-1 bg-white border border-slate-200 rounded-lg text-sm text-slate-700 focus:outline-none focus:ring-2 focus:ring-indigo-500"
                       >
                         {Object.entries(actionStatusConfig).map(([key, { label }]) => (
                           <option key={key} value={key}>{label}</option>
@@ -1097,7 +1100,7 @@ export default function ProtocolDetailPage() {
                       {isEditable && (
                         <button
                           onClick={() => handleDeleteAction(action.id)}
-                          className="text-slate-500 hover:text-red-400 p-2 opacity-0 group-hover:opacity-100 transition-opacity"
+                          className="text-slate-400 hover:text-red-500 p-2 opacity-0 group-hover:opacity-100 transition-opacity"
                         >
                           <XIcon />
                         </button>
@@ -1113,18 +1116,22 @@ export default function ProtocolDetailPage() {
                 </div>
               )}
             </div>
-          </div>
+          </motion.div>
         )}
 
         {/* Links Tab */}
         {activeTab === 'links' && (
-          <div className="bg-slate-900 border border-slate-800 rounded-xl p-6">
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            className="bg-white/80 backdrop-blur-sm border border-slate-200 rounded-xl p-6"
+          >
             <div className="flex items-center justify-between mb-6">
-              <h3 className="text-lg font-semibold text-white">Kopplingar</h3>
+              <h3 className="text-lg font-semibold text-slate-900">Kopplingar</h3>
               {isEditable && !showAddLink && (
                 <button
                   onClick={() => setShowAddLink(true)}
-                  className="flex items-center gap-2 px-3 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-500 text-sm"
+                  className="flex items-center gap-2 px-3 py-2 bg-gradient-to-r from-indigo-600 to-purple-600 text-white rounded-xl hover:from-indigo-500 hover:to-purple-500 text-sm shadow-md shadow-indigo-500/25"
                 >
                   <PlusIcon /> Lägg till koppling
                 </button>
@@ -1151,18 +1158,18 @@ export default function ProtocolDetailPage() {
                   : null
 
                 return (
-                  <div key={link.id} className="flex items-center justify-between p-4 bg-slate-800 rounded-lg group">
+                  <div key={link.id} className="flex items-center justify-between p-4 bg-slate-50 border border-slate-200 rounded-xl group">
                     <div className="flex items-center gap-3">
                       <span className="text-xl">{linkTypeConfig[link.link_type].icon}</span>
                       <div>
                         <span className="text-xs text-slate-500 block">{linkTypeConfig[link.link_type].label}</span>
-                        <span className="text-white">{linkedItem?.title || link.linked_item_id}</span>
+                        <span className="text-slate-900">{linkedItem?.title || link.linked_item_id}</span>
                       </div>
                     </div>
                     {isEditable && (
                       <button
                         onClick={() => handleRemoveLink(link.id)}
-                        className="text-slate-500 hover:text-red-400 p-2 opacity-0 group-hover:opacity-100 transition-opacity"
+                        className="text-slate-400 hover:text-red-500 p-2 opacity-0 group-hover:opacity-100 transition-opacity"
                       >
                         <XIcon />
                       </button>
@@ -1177,16 +1184,20 @@ export default function ProtocolDetailPage() {
                 </div>
               )}
             </div>
-          </div>
+          </motion.div>
         )}
 
         {/* Attachments Tab */}
         {activeTab === 'attachments' && (
-          <div className="bg-slate-900 border border-slate-800 rounded-xl p-6">
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            className="bg-white/80 backdrop-blur-sm border border-slate-200 rounded-xl p-6"
+          >
             <div className="flex items-center justify-between mb-6">
-              <h3 className="text-lg font-semibold text-white">Bilagor</h3>
+              <h3 className="text-lg font-semibold text-slate-900">Bilagor</h3>
               {isEditable && (
-                <label className="flex items-center gap-2 px-3 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-500 text-sm cursor-pointer">
+                <label className="flex items-center gap-2 px-3 py-2 bg-gradient-to-r from-indigo-600 to-purple-600 text-white rounded-xl hover:from-indigo-500 hover:to-purple-500 text-sm cursor-pointer shadow-md shadow-indigo-500/25">
                   <input
                     type="file"
                     className="hidden"
@@ -1202,16 +1213,16 @@ export default function ProtocolDetailPage() {
 
             <div className="grid gap-3">
               {attachments.map((attachment) => (
-                <div key={attachment.id} className="flex items-center justify-between p-4 bg-slate-800 rounded-lg group">
+                <div key={attachment.id} className="flex items-center justify-between p-4 bg-slate-50 border border-slate-200 rounded-xl group">
                   <button
                     onClick={() => handleViewAttachment(attachment.file_path)}
-                    className="flex items-center gap-3 text-left hover:text-blue-400 transition-colors"
+                    className="flex items-center gap-3 text-left hover:text-indigo-600 transition-colors"
                   >
-                    <div className="w-10 h-10 rounded-lg bg-slate-700 flex items-center justify-center text-xl">
+                    <div className="w-10 h-10 rounded-xl bg-slate-100 flex items-center justify-center text-xl">
                       📎
                     </div>
                     <div>
-                      <span className="text-white block">{attachment.file_name}</span>
+                      <span className="text-slate-900 block">{attachment.file_name}</span>
                       {attachment.file_size && (
                         <span className="text-xs text-slate-500">{Math.round(attachment.file_size / 1024)} KB</span>
                       )}
@@ -1220,7 +1231,7 @@ export default function ProtocolDetailPage() {
                   {isEditable && (
                     <button
                       onClick={() => handleDeleteAttachment(attachment.id)}
-                      className="text-slate-500 hover:text-red-400 p-2 opacity-0 group-hover:opacity-100 transition-opacity"
+                      className="text-slate-400 hover:text-red-500 p-2 opacity-0 group-hover:opacity-100 transition-opacity"
                     >
                       <XIcon />
                     </button>
@@ -1234,7 +1245,7 @@ export default function ProtocolDetailPage() {
                 </div>
               )}
             </div>
-          </div>
+          </motion.div>
         )}
       </div>
 
@@ -1242,37 +1253,44 @@ export default function ProtocolDetailPage() {
       {isEditable && (
         <div className="fixed bottom-6 right-6 z-20">
           <div className="relative">
-            {showQuickAdd && (
-              <div className="absolute bottom-16 right-0 bg-slate-900 border border-slate-700 rounded-xl shadow-xl p-2 w-48 animate-in fade-in slide-in-from-bottom-2">
-                <button
-                  onClick={() => { setActiveTab('attendees'); setShowAddAttendee(true); setShowQuickAdd(false) }}
-                  className="w-full flex items-center gap-3 px-3 py-2 text-left text-white hover:bg-slate-800 rounded-lg text-sm"
+            <AnimatePresence>
+              {showQuickAdd && (
+                <motion.div
+                  initial={{ opacity: 0, y: 10, scale: 0.95 }}
+                  animate={{ opacity: 1, y: 0, scale: 1 }}
+                  exit={{ opacity: 0, y: 10, scale: 0.95 }}
+                  className="absolute bottom-16 right-0 bg-white border border-slate-200 rounded-2xl shadow-xl p-2 w-48"
                 >
-                  <span>👥</span> Deltagare
-                </button>
-                <button
-                  onClick={() => { setActiveTab('agenda'); setShowAddAgenda(true); setShowQuickAdd(false) }}
-                  className="w-full flex items-center gap-3 px-3 py-2 text-left text-white hover:bg-slate-800 rounded-lg text-sm"
-                >
-                  <span>📝</span> Dagordning
-                </button>
-                <button
-                  onClick={() => { setActiveTab('decisions'); setShowAddDecision(true); setShowQuickAdd(false) }}
-                  className="w-full flex items-center gap-3 px-3 py-2 text-left text-white hover:bg-slate-800 rounded-lg text-sm"
-                >
-                  <span>⚖️</span> Beslut
-                </button>
-                <button
-                  onClick={() => { setActiveTab('actions'); setShowAddAction(true); setShowQuickAdd(false) }}
-                  className="w-full flex items-center gap-3 px-3 py-2 text-left text-white hover:bg-slate-800 rounded-lg text-sm"
-                >
-                  <span>✅</span> Åtgärd
-                </button>
-              </div>
-            )}
+                  <button
+                    onClick={() => { setActiveTab('attendees'); setShowAddAttendee(true); setShowQuickAdd(false) }}
+                    className="w-full flex items-center gap-3 px-3 py-2 text-left text-slate-700 hover:bg-slate-50 rounded-xl text-sm"
+                  >
+                    <span>👥</span> Deltagare
+                  </button>
+                  <button
+                    onClick={() => { setActiveTab('agenda'); setShowAddAgenda(true); setShowQuickAdd(false) }}
+                    className="w-full flex items-center gap-3 px-3 py-2 text-left text-slate-700 hover:bg-slate-50 rounded-xl text-sm"
+                  >
+                    <span>📝</span> Dagordning
+                  </button>
+                  <button
+                    onClick={() => { setActiveTab('decisions'); setShowAddDecision(true); setShowQuickAdd(false) }}
+                    className="w-full flex items-center gap-3 px-3 py-2 text-left text-slate-700 hover:bg-slate-50 rounded-xl text-sm"
+                  >
+                    <span>⚖️</span> Beslut
+                  </button>
+                  <button
+                    onClick={() => { setActiveTab('actions'); setShowAddAction(true); setShowQuickAdd(false) }}
+                    className="w-full flex items-center gap-3 px-3 py-2 text-left text-slate-700 hover:bg-slate-50 rounded-xl text-sm"
+                  >
+                    <span>✅</span> Åtgärd
+                  </button>
+                </motion.div>
+              )}
+            </AnimatePresence>
             <button
               onClick={() => setShowQuickAdd(!showQuickAdd)}
-              className={`w-14 h-14 rounded-full bg-blue-600 text-white shadow-lg hover:bg-blue-500 transition-all flex items-center justify-center text-2xl ${showQuickAdd ? 'rotate-45' : ''}`}
+              className={`w-14 h-14 rounded-full bg-gradient-to-r from-indigo-600 to-purple-600 text-white shadow-lg shadow-indigo-500/30 hover:from-indigo-500 hover:to-purple-500 transition-all flex items-center justify-center text-2xl ${showQuickAdd ? 'rotate-45' : ''}`}
             >
               +
             </button>
@@ -1281,27 +1299,29 @@ export default function ProtocolDetailPage() {
       )}
 
       {/* Save as Template Modal */}
-      {showSaveAsTemplate && protocol && (
-        <SaveAsTemplateModal
-          protocol={protocol}
-          onClose={() => setShowSaveAsTemplate(false)}
-          onSave={async (name, description) => {
-            setIsSavingTemplate(true)
-            try {
-              await saveProtocolAsTemplate(protocol.id, name, description)
-              setShowSaveAsTemplate(false)
-              alert('Mall sparad!')
-            } catch (error) {
-              console.error('Failed to save template:', error)
-              alert('Kunde inte spara mallen. Försök igen.')
-            } finally {
-              setIsSavingTemplate(false)
-            }
-          }}
-          isSaving={isSavingTemplate}
-        />
-      )}
-    </div>
+      <AnimatePresence>
+        {showSaveAsTemplate && protocol && (
+          <SaveAsTemplateModal
+            protocol={protocol}
+            onClose={() => setShowSaveAsTemplate(false)}
+            onSave={async (name, description) => {
+              setIsSavingTemplate(true)
+              try {
+                await saveProtocolAsTemplate(protocol.id, name, description)
+                setShowSaveAsTemplate(false)
+                alert('Mall sparad!')
+              } catch (error) {
+                console.error('Failed to save template:', error)
+                alert('Kunde inte spara mallen. Försök igen.')
+              } finally {
+                setIsSavingTemplate(false)
+              }
+            }}
+            isSaving={isSavingTemplate}
+          />
+        )}
+      </AnimatePresence>
+    </motion.div>
   )
 }
 
@@ -1322,41 +1342,51 @@ function SaveAsTemplateModal({ protocol, onClose, onSave, isSaving }: {
   }
 
   return (
-    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-      <div className="bg-slate-900 border border-slate-700 rounded-xl w-full max-w-lg">
-        <div className="flex items-center justify-between px-6 py-4 border-b border-slate-800">
-          <h2 className="text-lg font-semibold text-white">Spara som mall</h2>
-          <button onClick={onClose} className="text-slate-400 hover:text-white transition-colors">
+    <motion.div
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
+      className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-[100] p-4"
+    >
+      <motion.div
+        initial={{ opacity: 0, scale: 0.95, y: 20 }}
+        animate={{ opacity: 1, scale: 1, y: 0 }}
+        exit={{ opacity: 0, scale: 0.95, y: 20 }}
+        className="bg-white border border-slate-200 rounded-2xl shadow-2xl w-full max-w-lg"
+      >
+        <div className="flex items-center justify-between px-6 py-4 border-b border-slate-200">
+          <h2 className="text-lg font-semibold text-slate-900">Spara som mall</h2>
+          <button onClick={onClose} className="text-slate-400 hover:text-slate-600 transition-colors">
             <XIcon />
           </button>
         </div>
 
         <form onSubmit={handleSubmit} className="p-6 space-y-4">
           {/* Preview of what will be saved */}
-          <div className="bg-slate-800/50 rounded-lg p-4 space-y-3">
-            <h3 className="text-sm font-medium text-slate-300 mb-3">Mallen kommer att inkludera:</h3>
+          <div className="bg-slate-50 border border-slate-200 rounded-xl p-4 space-y-3">
+            <h3 className="text-sm font-medium text-slate-700 mb-3">Mallen kommer att inkludera:</h3>
             <div className="grid grid-cols-2 gap-3 text-sm">
-              <div className="flex items-center gap-2 text-slate-400">
+              <div className="flex items-center gap-2 text-slate-500">
                 <span>📅</span>
                 <span>Mötestyp: {meetingTypeConfig[protocol.meeting_type].label}</span>
               </div>
               {protocol.location && (
-                <div className="flex items-center gap-2 text-slate-400">
+                <div className="flex items-center gap-2 text-slate-500">
                   <span>📍</span>
                   <span>Plats: {protocol.location}</span>
                 </div>
               )}
               {protocol.start_time && (
-                <div className="flex items-center gap-2 text-slate-400">
+                <div className="flex items-center gap-2 text-slate-500">
                   <span>🕐</span>
                   <span>Tid: {formatTime(protocol.start_time)}{protocol.end_time ? ` - ${formatTime(protocol.end_time)}` : ''}</span>
                 </div>
               )}
-              <div className="flex items-center gap-2 text-slate-400">
+              <div className="flex items-center gap-2 text-slate-500">
                 <span>📝</span>
                 <span>{protocol.agenda_items?.length || 0} dagordningspunkter</span>
               </div>
-              <div className="flex items-center gap-2 text-slate-400">
+              <div className="flex items-center gap-2 text-slate-500">
                 <span>👥</span>
                 <span>{protocol.attendees?.length || 0} deltagarroller</span>
               </div>
@@ -1364,28 +1394,28 @@ function SaveAsTemplateModal({ protocol, onClose, onSave, isSaving }: {
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-slate-300 mb-1">
-              Mallens namn <span className="text-red-400">*</span>
+            <label className="block text-sm font-medium text-slate-700 mb-1">
+              Mallens namn <span className="text-red-500">*</span>
             </label>
             <input
               type="text"
               value={name}
               onChange={(e) => setName(e.target.value)}
-              className="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-white placeholder-slate-500 focus:outline-none focus:border-blue-500"
+              className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
               placeholder="t.ex. Byggmöte - Våra projekt"
               required
             />
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-slate-300 mb-1">
+            <label className="block text-sm font-medium text-slate-700 mb-1">
               Beskrivning (valfritt)
             </label>
             <textarea
               value={description}
               onChange={(e) => setDescription(e.target.value)}
               rows={3}
-              className="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-white placeholder-slate-500 focus:outline-none focus:border-blue-500 resize-none"
+              className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent resize-none"
               placeholder="Beskriv när denna mall bör användas..."
             />
           </div>
@@ -1394,21 +1424,22 @@ function SaveAsTemplateModal({ protocol, onClose, onSave, isSaving }: {
             <button
               type="button"
               onClick={onClose}
-              className="px-4 py-2 text-slate-400 hover:text-white transition-colors"
+              className="px-4 py-2 text-slate-600 hover:text-slate-900 transition-colors"
             >
               Avbryt
             </button>
             <button
               type="submit"
               disabled={!name.trim() || isSaving}
-              className="px-4 py-2 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-500 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+              className="px-4 py-2 bg-gradient-to-r from-indigo-600 to-purple-600 text-white rounded-xl font-medium hover:from-indigo-500 hover:to-purple-500 transition-all shadow-md shadow-indigo-500/25 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
             >
               {isSaving ? (
                 <>
-                  <svg className="animate-spin h-4 w-4" fill="none" viewBox="0 0 24 24">
-                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
-                  </svg>
+                  <motion.div
+                    className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full"
+                    animate={{ rotate: 360 }}
+                    transition={{ duration: 1, repeat: Infinity, ease: 'linear' }}
+                  />
                   Sparar...
                 </>
               ) : (
@@ -1422,8 +1453,8 @@ function SaveAsTemplateModal({ protocol, onClose, onSave, isSaving }: {
             </button>
           </div>
         </form>
-      </div>
-    </div>
+      </motion.div>
+    </motion.div>
   )
 }
 
@@ -1463,23 +1494,23 @@ function AddAttendeeForm({ members, onSubmit, onCancel }: {
   }
 
   return (
-    <form onSubmit={handleSubmit} className="bg-slate-800 rounded-lg p-4 space-y-4">
+    <form onSubmit={handleSubmit} className="bg-slate-50 border border-slate-200 rounded-xl p-4 space-y-4">
       <div className="flex gap-4">
-        <label className="flex items-center gap-2 text-sm text-slate-300 cursor-pointer">
+        <label className="flex items-center gap-2 text-sm text-slate-700 cursor-pointer">
           <input
             type="radio"
             checked={mode === 'member'}
             onChange={() => setMode('member')}
-            className="text-blue-500"
+            className="text-indigo-600"
           />
           Projektmedlem
         </label>
-        <label className="flex items-center gap-2 text-sm text-slate-300 cursor-pointer">
+        <label className="flex items-center gap-2 text-sm text-slate-700 cursor-pointer">
           <input
             type="radio"
             checked={mode === 'external'}
             onChange={() => setMode('external')}
-            className="text-blue-500"
+            className="text-indigo-600"
           />
           Extern deltagare
         </label>
@@ -1489,7 +1520,7 @@ function AddAttendeeForm({ members, onSubmit, onCancel }: {
         <select
           value={selectedMember}
           onChange={(e) => setSelectedMember(e.target.value)}
-          className="w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white"
+          className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl text-slate-900 focus:outline-none focus:ring-2 focus:ring-indigo-500"
         >
           <option value="">Välj medlem...</option>
           {members.map((member) => (
@@ -1505,7 +1536,7 @@ function AddAttendeeForm({ members, onSubmit, onCancel }: {
             value={name}
             onChange={(e) => setName(e.target.value)}
             placeholder="Namn *"
-            className="px-3 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white placeholder-slate-500"
+            className="px-3 py-2 bg-white border border-slate-200 rounded-xl text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500"
             required
           />
           <input
@@ -1513,14 +1544,14 @@ function AddAttendeeForm({ members, onSubmit, onCancel }: {
             value={email}
             onChange={(e) => setEmail(e.target.value)}
             placeholder="E-post"
-            className="px-3 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white placeholder-slate-500"
+            className="px-3 py-2 bg-white border border-slate-200 rounded-xl text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500"
           />
           <input
             type="text"
             value={company}
             onChange={(e) => setCompany(e.target.value)}
             placeholder="Företag"
-            className="col-span-2 px-3 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white placeholder-slate-500"
+            className="col-span-2 px-3 py-2 bg-white border border-slate-200 rounded-xl text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500"
           />
         </div>
       )}
@@ -1528,7 +1559,7 @@ function AddAttendeeForm({ members, onSubmit, onCancel }: {
       <select
         value={role}
         onChange={(e) => setRole(e.target.value as ProtocolAttendeeRole)}
-        className="w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white"
+        className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl text-slate-900 focus:outline-none focus:ring-2 focus:ring-indigo-500"
       >
         {Object.entries(attendeeRoleConfig).map(([key, { label, icon }]) => (
           <option key={key} value={key}>{icon} {label}</option>
@@ -1536,13 +1567,13 @@ function AddAttendeeForm({ members, onSubmit, onCancel }: {
       </select>
 
       <div className="flex justify-end gap-2">
-        <button type="button" onClick={onCancel} className="px-4 py-2 text-slate-400 hover:text-white">
+        <button type="button" onClick={onCancel} className="px-4 py-2 text-slate-600 hover:text-slate-900">
           Avbryt
         </button>
         <button
           type="submit"
           disabled={(mode === 'member' && !selectedMember) || (mode === 'external' && !name)}
-          className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-500 disabled:opacity-50"
+          className="px-4 py-2 bg-gradient-to-r from-indigo-600 to-purple-600 text-white rounded-xl hover:from-indigo-500 hover:to-purple-500 disabled:opacity-50 shadow-md shadow-indigo-500/25"
         >
           Lägg till
         </button>
@@ -1567,13 +1598,13 @@ function AddAgendaForm({ onSubmit, onCancel }: {
         description: description || undefined,
         duration_minutes: duration ? parseInt(duration) : undefined,
       })
-    }} className="bg-slate-800 rounded-lg p-4 space-y-4">
+    }} className="bg-slate-50 border border-slate-200 rounded-xl p-4 space-y-4">
       <input
         type="text"
         value={title}
         onChange={(e) => setTitle(e.target.value)}
         placeholder="Rubrik *"
-        className="w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white placeholder-slate-500"
+        className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500"
         required
       />
       <textarea
@@ -1581,7 +1612,7 @@ function AddAgendaForm({ onSubmit, onCancel }: {
         onChange={(e) => setDescription(e.target.value)}
         placeholder="Beskrivning (valfritt)"
         rows={2}
-        className="w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white placeholder-slate-500"
+        className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500"
       />
       <input
         type="number"
@@ -1589,16 +1620,16 @@ function AddAgendaForm({ onSubmit, onCancel }: {
         onChange={(e) => setDuration(e.target.value)}
         placeholder="Tid i minuter (valfritt)"
         min="1"
-        className="w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white placeholder-slate-500"
+        className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500"
       />
       <div className="flex justify-end gap-2">
-        <button type="button" onClick={onCancel} className="px-4 py-2 text-slate-400 hover:text-white">
+        <button type="button" onClick={onCancel} className="px-4 py-2 text-slate-600 hover:text-slate-900">
           Avbryt
         </button>
         <button
           type="submit"
           disabled={!title}
-          className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-500 disabled:opacity-50"
+          className="px-4 py-2 bg-gradient-to-r from-indigo-600 to-purple-600 text-white rounded-xl hover:from-indigo-500 hover:to-purple-500 disabled:opacity-50 shadow-md shadow-indigo-500/25"
         >
           Lägg till
         </button>
@@ -1617,23 +1648,23 @@ function AddDecisionForm({ onSubmit, onCancel }: {
     <form onSubmit={(e) => {
       e.preventDefault()
       onSubmit(description)
-    }} className="bg-slate-800 rounded-lg p-4 space-y-4">
+    }} className="bg-slate-50 border border-slate-200 rounded-xl p-4 space-y-4">
       <textarea
         value={description}
         onChange={(e) => setDescription(e.target.value)}
         placeholder="Beskriv beslutet *"
         rows={3}
-        className="w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white placeholder-slate-500"
+        className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500"
         required
       />
       <div className="flex justify-end gap-2">
-        <button type="button" onClick={onCancel} className="px-4 py-2 text-slate-400 hover:text-white">
+        <button type="button" onClick={onCancel} className="px-4 py-2 text-slate-600 hover:text-slate-900">
           Avbryt
         </button>
         <button
           type="submit"
           disabled={!description}
-          className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-500 disabled:opacity-50"
+          className="px-4 py-2 bg-gradient-to-r from-indigo-600 to-purple-600 text-white rounded-xl hover:from-indigo-500 hover:to-purple-500 disabled:opacity-50 shadow-md shadow-indigo-500/25"
         >
           Lägg till
         </button>
@@ -1663,20 +1694,20 @@ function AddActionForm({ members, onSubmit, onCancel }: {
         deadline: deadline || undefined,
         priority,
       })
-    }} className="bg-slate-800 rounded-lg p-4 space-y-4">
+    }} className="bg-slate-50 border border-slate-200 rounded-xl p-4 space-y-4">
       <textarea
         value={description}
         onChange={(e) => setDescription(e.target.value)}
         placeholder="Beskriv åtgärden *"
         rows={3}
-        className="w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white placeholder-slate-500"
+        className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500"
         required
       />
       <div className="grid grid-cols-2 gap-3">
         <select
           value={assignedTo}
           onChange={(e) => setAssignedTo(e.target.value)}
-          className="px-3 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white"
+          className="px-3 py-2 bg-white border border-slate-200 rounded-xl text-slate-900 focus:outline-none focus:ring-2 focus:ring-indigo-500"
         >
           <option value="">Välj ansvarig...</option>
           {members.map((member) => (
@@ -1689,26 +1720,26 @@ function AddActionForm({ members, onSubmit, onCancel }: {
           type="date"
           value={deadline}
           onChange={(e) => setDeadline(e.target.value)}
-          className="px-3 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white"
+          className="px-3 py-2 bg-white border border-slate-200 rounded-xl text-slate-900 focus:outline-none focus:ring-2 focus:ring-indigo-500"
         />
       </div>
       <select
         value={priority}
         onChange={(e) => setPriority(e.target.value as ProtocolActionItemPriority)}
-        className="w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white"
+        className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl text-slate-900 focus:outline-none focus:ring-2 focus:ring-indigo-500"
       >
         {Object.entries(actionPriorityConfig).map(([key, { label }]) => (
           <option key={key} value={key}>{label} prioritet</option>
         ))}
       </select>
       <div className="flex justify-end gap-2">
-        <button type="button" onClick={onCancel} className="px-4 py-2 text-slate-400 hover:text-white">
+        <button type="button" onClick={onCancel} className="px-4 py-2 text-slate-600 hover:text-slate-900">
           Avbryt
         </button>
         <button
           type="submit"
           disabled={!description}
-          className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-500 disabled:opacity-50"
+          className="px-4 py-2 bg-gradient-to-r from-indigo-600 to-purple-600 text-white rounded-xl hover:from-indigo-500 hover:to-purple-500 disabled:opacity-50 shadow-md shadow-indigo-500/25"
         >
           Lägg till
         </button>
@@ -1732,14 +1763,14 @@ function AddLinkForm({ issues, deviations, onSubmit, onCancel }: {
     <form onSubmit={(e) => {
       e.preventDefault()
       onSubmit({ link_type: linkType, linked_item_id: linkedItemId })
-    }} className="bg-slate-800 rounded-lg p-4 space-y-4">
+    }} className="bg-slate-50 border border-slate-200 rounded-xl p-4 space-y-4">
       <select
         value={linkType}
         onChange={(e) => {
           setLinkType(e.target.value as ProtocolLinkType)
           setLinkedItemId('')
         }}
-        className="w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white"
+        className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl text-slate-900 focus:outline-none focus:ring-2 focus:ring-indigo-500"
       >
         <option value="issue">{linkTypeConfig.issue.icon} Ärende</option>
         <option value="deviation">{linkTypeConfig.deviation.icon} Avvikelse</option>
@@ -1747,7 +1778,7 @@ function AddLinkForm({ issues, deviations, onSubmit, onCancel }: {
       <select
         value={linkedItemId}
         onChange={(e) => setLinkedItemId(e.target.value)}
-        className="w-full px-3 py-2 bg-slate-700 border border-slate-600 rounded-lg text-white"
+        className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl text-slate-900 focus:outline-none focus:ring-2 focus:ring-indigo-500"
       >
         <option value="">Välj {linkTypeConfig[linkType].label.toLowerCase()}...</option>
         {items.map((item) => (
@@ -1757,13 +1788,13 @@ function AddLinkForm({ issues, deviations, onSubmit, onCancel }: {
         ))}
       </select>
       <div className="flex justify-end gap-2">
-        <button type="button" onClick={onCancel} className="px-4 py-2 text-slate-400 hover:text-white">
+        <button type="button" onClick={onCancel} className="px-4 py-2 text-slate-600 hover:text-slate-900">
           Avbryt
         </button>
         <button
           type="submit"
           disabled={!linkedItemId}
-          className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-500 disabled:opacity-50"
+          className="px-4 py-2 bg-gradient-to-r from-indigo-600 to-purple-600 text-white rounded-xl hover:from-indigo-500 hover:to-purple-500 disabled:opacity-50 shadow-md shadow-indigo-500/25"
         >
           Lägg till
         </button>

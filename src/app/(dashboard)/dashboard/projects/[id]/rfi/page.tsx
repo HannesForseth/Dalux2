@@ -3,6 +3,7 @@
 import { useParams } from 'next/navigation'
 import Link from 'next/link'
 import { useState, useEffect, useCallback } from 'react'
+import { motion, AnimatePresence } from 'framer-motion'
 import {
   getProjectRfis,
   createRfi,
@@ -16,17 +17,17 @@ import { getProjectWithMembers } from '@/app/actions/projects'
 import type { RfiWithDetails, RfiStatus, RfiPriority, Profile } from '@/types/database'
 
 const statusConfig: Record<RfiStatus, { label: string; color: string; bgColor: string }> = {
-  open: { label: 'Öppen', color: 'text-yellow-400', bgColor: 'bg-yellow-500/20' },
-  pending: { label: 'Väntar', color: 'text-blue-400', bgColor: 'bg-blue-500/20' },
-  answered: { label: 'Besvarad', color: 'text-green-400', bgColor: 'bg-green-500/20' },
-  closed: { label: 'Stängd', color: 'text-slate-400', bgColor: 'bg-slate-800' },
+  open: { label: 'Öppen', color: 'text-amber-600', bgColor: 'bg-amber-100' },
+  pending: { label: 'Väntar', color: 'text-blue-600', bgColor: 'bg-blue-100' },
+  answered: { label: 'Besvarad', color: 'text-green-600', bgColor: 'bg-green-100' },
+  closed: { label: 'Stängd', color: 'text-slate-600', bgColor: 'bg-slate-100' },
 }
 
 const priorityConfig: Record<RfiPriority, { label: string; color: string }> = {
-  low: { label: 'Låg', color: 'text-slate-400' },
-  medium: { label: 'Medium', color: 'text-yellow-400' },
-  high: { label: 'Hög', color: 'text-orange-400' },
-  urgent: { label: 'Brådskande', color: 'text-red-400' },
+  low: { label: 'Låg', color: 'text-slate-600' },
+  medium: { label: 'Medium', color: 'text-amber-600' },
+  high: { label: 'Hög', color: 'text-orange-600' },
+  urgent: { label: 'Brådskande', color: 'text-red-600' },
 }
 
 function formatDate(dateString: string | null): string {
@@ -110,59 +111,68 @@ export default function ProjectRfiPage() {
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
-        <div className="w-8 h-8 border-2 border-blue-500 border-t-transparent rounded-full animate-spin" />
+        <motion.div
+          className="w-8 h-8 border-2 border-indigo-200 border-t-indigo-600 rounded-full"
+          animate={{ rotate: 360 }}
+          transition={{ duration: 1, repeat: Infinity, ease: 'linear' }}
+        />
       </div>
     )
   }
 
   return (
-    <div className="flex flex-col h-full">
+    <motion.div
+      className="flex flex-col h-full"
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      transition={{ duration: 0.3 }}
+    >
       {/* Header */}
       <div className="flex items-center justify-between mb-6">
         <div className="flex items-center gap-3">
           <Link
             href={`/dashboard/projects/${projectId}`}
-            className="text-slate-400 hover:text-white transition-colors"
+            className="text-slate-400 hover:text-slate-600 transition-colors"
           >
             <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" d="M10.5 19.5 3 12m0 0 7.5-7.5M3 12h18" />
             </svg>
           </Link>
-          <h1 className="text-2xl font-bold text-white">Frågor & Svar</h1>
+          <h1 className="text-2xl font-bold text-slate-900">Frågor & Svar</h1>
         </div>
-        <button
+        <motion.button
           onClick={() => setShowCreateModal(true)}
-          className="px-4 py-2 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-500 transition-colors flex items-center gap-2"
+          className="px-4 py-2 bg-gradient-to-r from-indigo-600 to-purple-600 text-white rounded-xl font-medium hover:from-indigo-700 hover:to-purple-700 transition-all shadow-lg shadow-indigo-500/20 flex items-center gap-2"
+          whileHover={{ scale: 1.02 }}
+          whileTap={{ scale: 0.98 }}
         >
           <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
             <path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
           </svg>
           Ny fråga
-        </button>
+        </motion.button>
       </div>
 
       {/* Stats */}
       <div className="grid grid-cols-5 gap-4 mb-6">
-        <div className="bg-slate-900 border border-slate-800 rounded-xl p-4">
-          <div className="text-2xl font-bold text-white">{stats.total}</div>
-          <div className="text-sm text-slate-400">Totalt</div>
-        </div>
-        <div className="bg-slate-900 border border-slate-800 rounded-xl p-4">
-          <div className="text-2xl font-bold text-yellow-400">{stats.open}</div>
-          <div className="text-sm text-slate-400">Öppna</div>
-        </div>
-        <div className="bg-slate-900 border border-slate-800 rounded-xl p-4">
-          <div className="text-2xl font-bold text-blue-400">{stats.pending}</div>
-          <div className="text-sm text-slate-400">Väntar</div>
-        </div>
-        <div className="bg-slate-900 border border-slate-800 rounded-xl p-4">
-          <div className="text-2xl font-bold text-green-400">{stats.answered}</div>
-          <div className="text-sm text-slate-400">Besvarade</div>
-        </div>
-        <div className="bg-slate-900 border border-slate-800 rounded-xl p-4">
-          <div className="text-2xl font-bold text-slate-400">{stats.closed}</div>
-          <div className="text-sm text-slate-400">Stängda</div>
-        </div>
+        {[
+          { label: 'Totalt', value: stats.total, color: 'text-slate-900' },
+          { label: 'Öppna', value: stats.open, color: 'text-amber-600' },
+          { label: 'Väntar', value: stats.pending, color: 'text-blue-600' },
+          { label: 'Besvarade', value: stats.answered, color: 'text-green-600' },
+          { label: 'Stängda', value: stats.closed, color: 'text-slate-600' },
+        ].map((stat, index) => (
+          <motion.div
+            key={stat.label}
+            className="bg-white/80 backdrop-blur-sm border border-slate-200 rounded-xl p-4 shadow-sm"
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: index * 0.05 }}
+          >
+            <div className={`text-2xl font-bold ${stat.color}`}>{stat.value}</div>
+            <div className="text-sm text-slate-500">{stat.label}</div>
+          </motion.div>
+        ))}
       </div>
 
       {/* Filters */}
@@ -170,7 +180,7 @@ export default function ProjectRfiPage() {
         <select
           value={statusFilter}
           onChange={(e) => setStatusFilter(e.target.value as RfiStatus | 'all')}
-          className="px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+          className="px-3 py-2 bg-white border border-slate-200 rounded-xl text-slate-900 focus:outline-none focus:ring-2 focus:ring-indigo-500"
         >
           <option value="all">Alla status</option>
           <option value="open">Öppna</option>
@@ -181,7 +191,7 @@ export default function ProjectRfiPage() {
         <select
           value={priorityFilter}
           onChange={(e) => setPriorityFilter(e.target.value as RfiPriority | 'all')}
-          className="px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+          className="px-3 py-2 bg-white border border-slate-200 rounded-xl text-slate-900 focus:outline-none focus:ring-2 focus:ring-indigo-500"
         >
           <option value="all">Alla prioriteter</option>
           <option value="low">Låg</option>
@@ -194,28 +204,39 @@ export default function ProjectRfiPage() {
       {/* Content */}
       <div className="flex-1 grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* RFI List */}
-        <div className="bg-slate-900 border border-slate-800 rounded-xl overflow-hidden">
-          <div className="p-4 border-b border-slate-800">
-            <h2 className="font-semibold text-white">Frågor</h2>
+        <motion.div
+          className="bg-white/80 backdrop-blur-sm border border-slate-200 rounded-xl overflow-hidden shadow-sm"
+          initial={{ opacity: 0, x: -20 }}
+          animate={{ opacity: 1, x: 0 }}
+          transition={{ delay: 0.1 }}
+        >
+          <div className="p-4 border-b border-slate-200">
+            <h2 className="font-semibold text-slate-900">Frågor</h2>
           </div>
-          <div className="divide-y divide-slate-800 max-h-[600px] overflow-y-auto">
+          <div className="divide-y divide-slate-100 max-h-[600px] overflow-y-auto">
             {rfis.length === 0 ? (
-              <div className="p-8 text-center text-slate-400">
+              <div className="p-8 text-center text-slate-500">
+                <svg className="w-12 h-12 mx-auto mb-3 text-slate-300" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M9.879 7.519c1.171-1.025 3.071-1.025 4.242 0 1.172 1.025 1.172 2.687 0 3.712-.203.179-.43.326-.67.442-.745.361-1.45.999-1.45 1.827v.75M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Zm-9 5.25h.008v.008H12v-.008Z" />
+                </svg>
                 <p>Inga frågor hittades</p>
               </div>
             ) : (
-              rfis.map((rfi) => {
+              rfis.map((rfi, index) => {
                 const status = statusConfig[rfi.status]
                 const priority = priorityConfig[rfi.priority]
                 const isSelected = selectedRfi?.id === rfi.id
 
                 return (
-                  <div
+                  <motion.div
                     key={rfi.id}
                     onClick={() => setSelectedRfi(rfi)}
-                    className={`p-4 cursor-pointer hover:bg-slate-800/50 transition-colors ${
-                      isSelected ? 'bg-slate-800/50 border-l-2 border-blue-500' : ''
+                    className={`p-4 cursor-pointer hover:bg-slate-50 transition-colors ${
+                      isSelected ? 'bg-indigo-50/50 border-l-2 border-indigo-500' : ''
                     }`}
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: index * 0.03 }}
                   >
                     <div className="flex items-start justify-between gap-3">
                       <div className="flex-1 min-w-0">
@@ -223,13 +244,13 @@ export default function ProjectRfiPage() {
                           <span className="text-xs text-slate-500 font-mono">
                             RFI-{rfi.rfi_number}
                           </span>
-                          <span className={`text-xs ${priority.color}`}>
+                          <span className={`text-xs font-medium ${priority.color}`}>
                             {priority.label}
                           </span>
                         </div>
-                        <h3 className="font-medium text-white truncate mt-1">{rfi.subject}</h3>
+                        <h3 className="font-medium text-slate-900 truncate mt-1">{rfi.subject}</h3>
                         <div className="flex items-center gap-3 mt-2">
-                          <span className={`text-xs px-2 py-1 rounded ${status.bgColor} ${status.color}`}>
+                          <span className={`text-xs px-2 py-1 rounded-lg ${status.bgColor} ${status.color} font-medium`}>
                             {status.label}
                           </span>
                           {rfi.due_date && (
@@ -240,24 +261,29 @@ export default function ProjectRfiPage() {
                         </div>
                       </div>
                     </div>
-                    <p className="text-sm text-slate-400 mt-2 line-clamp-2">
+                    <p className="text-sm text-slate-500 mt-2 line-clamp-2">
                       {rfi.question}
                     </p>
-                    <div className="flex items-center justify-between mt-3 text-xs text-slate-500">
+                    <div className="flex items-center justify-between mt-3 text-xs text-slate-400">
                       <span>
                         Av: {rfi.requester?.full_name || 'Okänd'}
                       </span>
                       <span>{formatDate(rfi.created_at)}</span>
                     </div>
-                  </div>
+                  </motion.div>
                 )
               })
             )}
           </div>
-        </div>
+        </motion.div>
 
         {/* RFI Detail */}
-        <div className="bg-slate-900 border border-slate-800 rounded-xl overflow-hidden">
+        <motion.div
+          className="bg-white/80 backdrop-blur-sm border border-slate-200 rounded-xl overflow-hidden shadow-sm"
+          initial={{ opacity: 0, x: 20 }}
+          animate={{ opacity: 1, x: 0 }}
+          transition={{ delay: 0.2 }}
+        >
           {selectedRfi ? (
             <RfiDetail
               rfi={selectedRfi}
@@ -271,26 +297,32 @@ export default function ProjectRfiPage() {
               }}
             />
           ) : (
-            <div className="flex items-center justify-center h-full text-slate-400">
-              <p>Välj en fråga för att se detaljer</p>
+            <div className="flex flex-col items-center justify-center h-full text-slate-500 p-8">
+              <svg className="w-16 h-16 mb-4 text-slate-300" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M9.879 7.519c1.171-1.025 3.071-1.025 4.242 0 1.172 1.025 1.172 2.687 0 3.712-.203.179-.43.326-.67.442-.745.361-1.45.999-1.45 1.827v.75M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Zm-9 5.25h.008v.008H12v-.008Z" />
+              </svg>
+              <p className="text-lg font-medium text-slate-700">Välj en fråga</p>
+              <p className="text-sm text-slate-500 mt-1">Klicka på en fråga till vänster för att se detaljer</p>
             </div>
           )}
-        </div>
+        </motion.div>
       </div>
 
       {/* Create Modal */}
-      {showCreateModal && (
-        <CreateRfiModal
-          projectId={projectId}
-          members={members}
-          onClose={() => setShowCreateModal(false)}
-          onCreated={async () => {
-            await loadData()
-            setShowCreateModal(false)
-          }}
-        />
-      )}
-    </div>
+      <AnimatePresence>
+        {showCreateModal && (
+          <CreateRfiModal
+            projectId={projectId}
+            members={members}
+            onClose={() => setShowCreateModal(false)}
+            onCreated={async () => {
+              await loadData()
+              setShowCreateModal(false)
+            }}
+          />
+        )}
+      </AnimatePresence>
+    </motion.div>
   )
 }
 
@@ -333,20 +365,20 @@ function RfiDetail({
   return (
     <>
       {/* Header */}
-      <div className="p-4 border-b border-slate-800">
+      <div className="p-4 border-b border-slate-200">
         <div className="flex items-start justify-between">
           <div>
             <div className="flex items-center gap-2 mb-1">
               <span className="text-xs text-slate-500 font-mono">RFI-{rfi.rfi_number}</span>
-              <span className={`text-xs ${priority.color}`}>{priority.label}</span>
+              <span className={`text-xs font-medium ${priority.color}`}>{priority.label}</span>
             </div>
-            <h2 className="font-semibold text-white">{rfi.subject}</h2>
+            <h2 className="font-semibold text-slate-900">{rfi.subject}</h2>
           </div>
           <div className="flex items-center gap-2">
             <select
               value={rfi.status}
               onChange={(e) => onStatusChange(rfi.id, e.target.value as RfiStatus)}
-              className="px-2 py-1 bg-slate-800 border border-slate-700 rounded text-sm text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="px-2 py-1 bg-white border border-slate-200 rounded-lg text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-indigo-500"
             >
               <option value="open">Öppen</option>
               <option value="pending">Väntar</option>
@@ -355,7 +387,7 @@ function RfiDetail({
             </select>
             <button
               onClick={() => onDelete(rfi.id)}
-              className="p-2 text-red-400 hover:text-red-300 hover:bg-red-500/10 rounded transition-colors"
+              className="p-2 text-red-500 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
             >
               <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" d="m14.74 9-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 0 1-2.244 2.077H8.084a2.25 2.25 0 0 1-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 0 0-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 0 1 3.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 0 0-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 0 0-7.5 0" />
@@ -363,12 +395,12 @@ function RfiDetail({
             </button>
           </div>
         </div>
-        <div className="flex items-center gap-4 mt-3 text-sm text-slate-400">
-          <span className={`px-2 py-1 rounded ${status.bgColor} ${status.color}`}>
+        <div className="flex items-center gap-4 mt-3 text-sm text-slate-500">
+          <span className={`px-2 py-1 rounded-lg ${status.bgColor} ${status.color} font-medium`}>
             {status.label}
           </span>
           {rfi.category && (
-            <span className="px-2 py-1 bg-slate-800 rounded">{rfi.category}</span>
+            <span className="px-2 py-1 bg-slate-100 rounded-lg">{rfi.category}</span>
           )}
           {rfi.due_date && (
             <span className="flex items-center gap-1">
@@ -385,10 +417,10 @@ function RfiDetail({
       <div className="p-4 space-y-6 max-h-[500px] overflow-y-auto">
         {/* Question */}
         <div>
-          <h3 className="text-sm font-medium text-slate-400 mb-2">Fråga</h3>
-          <div className="p-4 bg-slate-800 rounded-lg">
-            <p className="text-white whitespace-pre-wrap">{rfi.question}</p>
-            <div className="flex items-center justify-between mt-4 pt-4 border-t border-slate-700 text-xs text-slate-500">
+          <h3 className="text-sm font-medium text-slate-600 mb-2">Fråga</h3>
+          <div className="p-4 bg-slate-50 rounded-xl">
+            <p className="text-slate-900 whitespace-pre-wrap">{rfi.question}</p>
+            <div className="flex items-center justify-between mt-4 pt-4 border-t border-slate-200 text-xs text-slate-500">
               <span>Av: {rfi.requester?.full_name || 'Okänd'}</span>
               <span>{formatDate(rfi.created_at)}</span>
             </div>
@@ -398,12 +430,12 @@ function RfiDetail({
         {/* Assigned To */}
         {rfi.assignee && (
           <div>
-            <h3 className="text-sm font-medium text-slate-400 mb-2">Tilldelad</h3>
-            <div className="flex items-center gap-3 p-3 bg-slate-800 rounded-lg">
-              <div className="w-8 h-8 bg-blue-600 rounded-full flex items-center justify-center text-white font-medium">
+            <h3 className="text-sm font-medium text-slate-600 mb-2">Tilldelad</h3>
+            <div className="flex items-center gap-3 p-3 bg-slate-50 rounded-xl">
+              <div className="w-8 h-8 bg-gradient-to-br from-indigo-500 to-purple-500 rounded-full flex items-center justify-center text-white font-medium shadow-md">
                 {(rfi.assignee.full_name || '?')[0].toUpperCase()}
               </div>
-              <span className="text-white">
+              <span className="text-slate-900">
                 {rfi.assignee.full_name || 'Okänd'}
               </span>
             </div>
@@ -413,10 +445,10 @@ function RfiDetail({
         {/* Answer */}
         {rfi.answer ? (
           <div>
-            <h3 className="text-sm font-medium text-slate-400 mb-2">Svar</h3>
-            <div className="p-4 bg-green-500/10 border border-green-500/20 rounded-lg">
-              <p className="text-white whitespace-pre-wrap">{rfi.answer}</p>
-              <div className="flex items-center justify-between mt-4 pt-4 border-t border-green-500/20 text-xs text-slate-500">
+            <h3 className="text-sm font-medium text-slate-600 mb-2">Svar</h3>
+            <div className="p-4 bg-green-50 border border-green-200 rounded-xl">
+              <p className="text-slate-900 whitespace-pre-wrap">{rfi.answer}</p>
+              <div className="flex items-center justify-between mt-4 pt-4 border-t border-green-200 text-xs text-slate-500">
                 <span>Av: {rfi.answerer?.full_name || 'Okänd'}</span>
                 <span>{formatDate(rfi.answered_at)}</span>
               </div>
@@ -424,7 +456,7 @@ function RfiDetail({
           </div>
         ) : (
           <div>
-            <h3 className="text-sm font-medium text-slate-400 mb-2">Svar</h3>
+            <h3 className="text-sm font-medium text-slate-600 mb-2">Svar</h3>
             {showAnswerForm ? (
               <form onSubmit={handleSubmitAnswer} className="space-y-3">
                 <textarea
@@ -432,30 +464,32 @@ function RfiDetail({
                   onChange={(e) => setAnswer(e.target.value)}
                   placeholder="Skriv ditt svar..."
                   rows={4}
-                  className="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
+                  className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 resize-none"
                   required
                 />
                 <div className="flex justify-end gap-3">
                   <button
                     type="button"
                     onClick={() => setShowAnswerForm(false)}
-                    className="px-4 py-2 text-slate-400 hover:text-white transition-colors"
+                    className="px-4 py-2 text-slate-600 hover:text-slate-900 transition-colors"
                   >
                     Avbryt
                   </button>
-                  <button
+                  <motion.button
                     type="submit"
                     disabled={!answer.trim() || isSubmitting}
-                    className="px-4 py-2 bg-green-600 text-white rounded-lg font-medium hover:bg-green-500 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                    className="px-4 py-2 bg-gradient-to-r from-green-500 to-emerald-600 text-white rounded-xl font-medium hover:from-green-600 hover:to-emerald-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
+                    whileHover={{ scale: !answer.trim() || isSubmitting ? 1 : 1.02 }}
+                    whileTap={{ scale: !answer.trim() || isSubmitting ? 1 : 0.98 }}
                   >
                     {isSubmitting ? 'Skickar...' : 'Skicka svar'}
-                  </button>
+                  </motion.button>
                 </div>
               </form>
             ) : (
               <button
                 onClick={() => setShowAnswerForm(true)}
-                className="w-full p-4 border-2 border-dashed border-slate-700 rounded-lg text-slate-400 hover:text-white hover:border-blue-500 transition-colors flex items-center justify-center gap-2"
+                className="w-full p-4 border-2 border-dashed border-slate-200 rounded-xl text-slate-500 hover:text-indigo-600 hover:border-indigo-300 hover:bg-indigo-50/50 transition-colors flex items-center justify-center gap-2"
               >
                 <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
@@ -514,13 +548,25 @@ function CreateRfiModal({
   }
 
   return (
-    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-      <div className="bg-slate-900 border border-slate-800 rounded-xl w-full max-w-lg max-h-[90vh] overflow-y-auto">
-        <div className="p-4 border-b border-slate-800 flex items-center justify-between">
-          <h2 className="text-lg font-semibold text-white">Skapa ny fråga</h2>
+    <motion.div
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
+      className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-[100] p-4"
+      onClick={onClose}
+    >
+      <motion.div
+        initial={{ opacity: 0, scale: 0.95, y: 20 }}
+        animate={{ opacity: 1, scale: 1, y: 0 }}
+        exit={{ opacity: 0, scale: 0.95, y: 20 }}
+        className="bg-white border border-slate-200 rounded-2xl w-full max-w-lg max-h-[90vh] overflow-y-auto shadow-2xl"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="p-4 border-b border-slate-200 flex items-center justify-between">
+          <h2 className="text-lg font-semibold text-slate-900">Skapa ny fråga</h2>
           <button
             onClick={onClose}
-            className="p-1 text-slate-400 hover:text-white transition-colors"
+            className="p-1 text-slate-400 hover:text-slate-600 transition-colors"
           >
             <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" d="M6 18 18 6M6 6l12 12" />
@@ -530,42 +576,42 @@ function CreateRfiModal({
 
         <form onSubmit={handleSubmit} className="p-4 space-y-4">
           <div>
-            <label className="block text-sm font-medium text-slate-400 mb-1">
-              Ämne <span className="text-red-400">*</span>
+            <label className="block text-sm font-medium text-slate-700 mb-1">
+              Ämne <span className="text-red-500">*</span>
             </label>
             <input
               type="text"
               value={subject}
               onChange={(e) => setSubject(e.target.value)}
               placeholder="Kort beskrivning av frågan"
-              className="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500"
               required
             />
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-slate-400 mb-1">
-              Fråga <span className="text-red-400">*</span>
+            <label className="block text-sm font-medium text-slate-700 mb-1">
+              Fråga <span className="text-red-500">*</span>
             </label>
             <textarea
               value={question}
               onChange={(e) => setQuestion(e.target.value)}
               placeholder="Beskriv din fråga i detalj..."
               rows={4}
-              className="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
+              className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 resize-none"
               required
             />
           </div>
 
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <label className="block text-sm font-medium text-slate-400 mb-1">
+              <label className="block text-sm font-medium text-slate-700 mb-1">
                 Prioritet
               </label>
               <select
                 value={priority}
                 onChange={(e) => setPriority(e.target.value as RfiPriority)}
-                className="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl text-slate-900 focus:outline-none focus:ring-2 focus:ring-indigo-500"
               >
                 <option value="low">Låg</option>
                 <option value="medium">Medium</option>
@@ -574,7 +620,7 @@ function CreateRfiModal({
               </select>
             </div>
             <div>
-              <label className="block text-sm font-medium text-slate-400 mb-1">
+              <label className="block text-sm font-medium text-slate-700 mb-1">
                 Kategori
               </label>
               <input
@@ -582,20 +628,20 @@ function CreateRfiModal({
                 value={category}
                 onChange={(e) => setCategory(e.target.value)}
                 placeholder="t.ex. El, VVS"
-                className="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500"
               />
             </div>
           </div>
 
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <label className="block text-sm font-medium text-slate-400 mb-1">
+              <label className="block text-sm font-medium text-slate-700 mb-1">
                 Tilldela till
               </label>
               <select
                 value={assignedTo}
                 onChange={(e) => setAssignedTo(e.target.value)}
-                className="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl text-slate-900 focus:outline-none focus:ring-2 focus:ring-indigo-500"
               >
                 <option value="">Ingen tilldelning</option>
                 {members.map((member) => (
@@ -606,36 +652,38 @@ function CreateRfiModal({
               </select>
             </div>
             <div>
-              <label className="block text-sm font-medium text-slate-400 mb-1">
+              <label className="block text-sm font-medium text-slate-700 mb-1">
                 Förfallodatum
               </label>
               <input
                 type="date"
                 value={dueDate}
                 onChange={(e) => setDueDate(e.target.value)}
-                className="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl text-slate-900 focus:outline-none focus:ring-2 focus:ring-indigo-500"
               />
             </div>
           </div>
 
-          <div className="flex justify-end gap-3 pt-4 border-t border-slate-800">
+          <div className="flex justify-end gap-3 pt-4 border-t border-slate-200">
             <button
               type="button"
               onClick={onClose}
-              className="px-4 py-2 text-slate-400 hover:text-white transition-colors"
+              className="px-4 py-2 text-slate-600 hover:text-slate-900 transition-colors"
             >
               Avbryt
             </button>
-            <button
+            <motion.button
               type="submit"
               disabled={!subject.trim() || !question.trim() || isCreating}
-              className="px-4 py-2 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-500 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+              className="px-4 py-2 bg-gradient-to-r from-indigo-600 to-purple-600 text-white rounded-xl font-medium hover:from-indigo-700 hover:to-purple-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
+              whileHover={{ scale: !subject.trim() || !question.trim() || isCreating ? 1 : 1.02 }}
+              whileTap={{ scale: !subject.trim() || !question.trim() || isCreating ? 1 : 0.98 }}
             >
               {isCreating ? 'Skapar...' : 'Skapa fråga'}
-            </button>
+            </motion.button>
           </div>
         </form>
-      </div>
-    </div>
+      </motion.div>
+    </motion.div>
   )
 }
