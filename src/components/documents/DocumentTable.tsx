@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import { motion, AnimatePresence } from 'framer-motion'
 import type { DocumentWithUploader } from '@/types/database'
 
 interface DocumentTableProps {
@@ -35,13 +36,13 @@ function formatDate(dateString: string): string {
 }
 
 function getFileIcon(fileType: string): { icon: string; color: string } {
-  if (fileType.startsWith('image/')) return { icon: 'image', color: 'text-purple-400' }
-  if (fileType === 'application/pdf') return { icon: 'pdf', color: 'text-red-400' }
-  if (fileType.includes('word') || fileType.includes('document')) return { icon: 'doc', color: 'text-blue-400' }
-  if (fileType.includes('sheet') || fileType.includes('excel') || fileType.includes('csv')) return { icon: 'xls', color: 'text-green-400' }
-  if (fileType.includes('presentation') || fileType.includes('powerpoint')) return { icon: 'ppt', color: 'text-orange-400' }
-  if (fileType.includes('dwg') || fileType.includes('autocad')) return { icon: 'cad', color: 'text-cyan-400' }
-  if (fileType.includes('ifc')) return { icon: 'bim', color: 'text-teal-400' }
+  if (fileType.startsWith('image/')) return { icon: 'image', color: 'text-purple-500' }
+  if (fileType === 'application/pdf') return { icon: 'pdf', color: 'text-red-500' }
+  if (fileType.includes('word') || fileType.includes('document')) return { icon: 'doc', color: 'text-blue-500' }
+  if (fileType.includes('sheet') || fileType.includes('excel') || fileType.includes('csv')) return { icon: 'xls', color: 'text-green-500' }
+  if (fileType.includes('presentation') || fileType.includes('powerpoint')) return { icon: 'ppt', color: 'text-orange-500' }
+  if (fileType.includes('dwg') || fileType.includes('autocad')) return { icon: 'cad', color: 'text-cyan-500' }
+  if (fileType.includes('ifc')) return { icon: 'bim', color: 'text-teal-500' }
   return { icon: 'file', color: 'text-slate-400' }
 }
 
@@ -60,7 +61,7 @@ function FileTypeIcon({ fileType, className }: { fileType: string; className?: s
 function SortIcon({ active, direction }: { active: boolean; direction: 'asc' | 'desc' }) {
   return (
     <svg
-      className={`h-3 w-3 ml-1 ${active ? 'text-blue-400' : 'text-slate-600'}`}
+      className={`h-3 w-3 ml-1 ${active ? 'text-indigo-500' : 'text-slate-300'}`}
       fill="none"
       viewBox="0 0 24 24"
       strokeWidth={2}
@@ -105,7 +106,7 @@ export default function DocumentTable({
 
     // Create drag image
     const dragImage = document.createElement('div')
-    dragImage.className = 'bg-slate-800 border border-blue-500 rounded-lg px-3 py-2 text-white text-sm shadow-lg'
+    dragImage.className = 'bg-white border border-indigo-300 rounded-lg px-3 py-2 text-slate-700 text-sm shadow-lg'
     dragImage.textContent = idsToMove.length > 1
       ? `${idsToMove.length} filer`
       : doc.name
@@ -191,13 +192,13 @@ export default function DocumentTable({
   if (documents.length === 0) {
     return (
       <div className="flex flex-col items-center justify-center py-16 text-center">
-        <div className="w-16 h-16 bg-slate-800 rounded-full flex items-center justify-center mb-4">
-          <svg className="h-8 w-8 text-slate-500" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+        <div className="w-16 h-16 bg-slate-100 rounded-2xl flex items-center justify-center mb-4">
+          <svg className="h-8 w-8 text-slate-400" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
             <path strokeLinecap="round" strokeLinejoin="round" d="M2.25 12.75V12A2.25 2.25 0 0 1 4.5 9.75h15A2.25 2.25 0 0 1 21.75 12v.75m-8.69-6.44-2.12-2.12a1.5 1.5 0 0 0-1.061-.44H4.5A2.25 2.25 0 0 0 2.25 6v12a2.25 2.25 0 0 0 2.25 2.25h15A2.25 2.25 0 0 0 21.75 18V9a2.25 2.25 0 0 0-2.25-2.25h-5.379a1.5 1.5 0 0 1-1.06-.44Z" />
           </svg>
         </div>
-        <p className="text-slate-400 mb-2">Inga filer i denna mapp</p>
-        <p className="text-sm text-slate-500">Ladda upp filer eller välj en annan mapp</p>
+        <p className="text-slate-600 font-medium mb-1">Inga filer i denna mapp</p>
+        <p className="text-sm text-slate-400">Ladda upp filer eller välj en annan mapp</p>
       </div>
     )
   }
@@ -205,7 +206,7 @@ export default function DocumentTable({
   return (
     <div onClick={closeContextMenu}>
       <table className="w-full">
-        <thead className="bg-slate-800/50 border-b border-slate-700">
+        <thead className="bg-slate-50/80 border-b border-slate-200">
           <tr>
             {onSelectionChange && (
               <th className="px-3 py-3 w-10">
@@ -213,15 +214,15 @@ export default function DocumentTable({
                   type="checkbox"
                   checked={documents.length > 0 && selectedIds.size === documents.length}
                   onChange={handleSelectAll}
-                  className="rounded border-slate-600 bg-slate-700 text-blue-500 focus:ring-blue-500 focus:ring-offset-0"
+                  className="rounded border-slate-300 text-indigo-500 focus:ring-indigo-500 focus:ring-offset-0"
                 />
               </th>
             )}
             {columns.map(col => (
               <th
                 key={col.key}
-                className={`px-4 py-3 text-left text-xs font-medium text-slate-400 uppercase tracking-wider ${
-                  col.sortable ? 'cursor-pointer hover:text-white select-none' : ''
+                className={`px-4 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider ${
+                  col.sortable ? 'cursor-pointer hover:text-slate-700 select-none' : ''
                 }`}
                 onClick={() => col.sortable && onSort(col.key)}
               >
@@ -233,28 +234,31 @@ export default function DocumentTable({
                 </div>
               </th>
             ))}
-            <th className="px-4 py-3 text-right text-xs font-medium text-slate-400 uppercase tracking-wider">
+            <th className="px-4 py-3 text-right text-xs font-medium text-slate-500 uppercase tracking-wider">
               Åtgärder
             </th>
           </tr>
         </thead>
-        <tbody className="divide-y divide-slate-800">
-          {documents.map(doc => {
+        <tbody className="divide-y divide-slate-100">
+          {documents.map((doc, index) => {
             const isSelected = selectedIds.has(doc.id)
             const isDragging = draggingIds.includes(doc.id)
 
             return (
-            <tr
+            <motion.tr
               key={doc.id}
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: index * 0.02 }}
               draggable
-              onDragStart={(e) => handleDragStart(e, doc)}
+              onDragStart={(e) => handleDragStart(e as unknown as React.DragEvent, doc)}
               onDragEnd={handleDragEnd}
               className={`transition-colors cursor-grab active:cursor-grabbing ${
                 isDragging
-                  ? 'opacity-50 bg-blue-900/20'
+                  ? 'opacity-50 bg-indigo-50'
                   : isSelected
-                  ? 'bg-blue-900/30 hover:bg-blue-900/40'
-                  : 'hover:bg-slate-800/50'
+                  ? 'bg-indigo-50 hover:bg-indigo-100'
+                  : 'hover:bg-slate-50'
               }`}
               onContextMenu={(e) => handleContextMenu(e, doc)}
             >
@@ -268,48 +272,50 @@ export default function DocumentTable({
                       toggleSelection(doc.id, e.shiftKey)
                     }}
                     onChange={() => {}}
-                    className="rounded border-slate-600 bg-slate-700 text-blue-500 focus:ring-blue-500 focus:ring-offset-0"
+                    className="rounded border-slate-300 text-indigo-500 focus:ring-indigo-500 focus:ring-offset-0"
                   />
                 </td>
               )}
               <td className="px-4 py-3">
                 <button
                   onClick={() => onView(doc)}
-                  className="flex items-center gap-3 text-left hover:text-blue-400 transition-colors group"
+                  className="flex items-center gap-3 text-left hover:text-indigo-600 transition-colors group"
                 >
                   <FileTypeIcon fileType={doc.file_type} />
-                  <span className="text-white group-hover:text-blue-400 truncate max-w-[300px]">
+                  <span className="text-slate-800 font-medium group-hover:text-indigo-600 truncate max-w-[300px]">
                     {doc.name}
                   </span>
                 </button>
               </td>
-              <td className="px-4 py-3 text-slate-400 text-sm">
+              <td className="px-4 py-3 text-slate-500 text-sm">
                 {doc.file_type.split('/').pop()?.toUpperCase() || 'OKÄND'}
               </td>
-              <td className="px-4 py-3 text-slate-400 text-sm">
+              <td className="px-4 py-3 text-slate-500 text-sm">
                 {formatBytes(doc.file_size)}
               </td>
-              <td className="px-4 py-3 text-slate-400 text-sm">
+              <td className="px-4 py-3 text-slate-500 text-sm">
                 {formatDate(doc.created_at)}
               </td>
               <td className="px-4 py-3">
                 <div className="flex items-center gap-2">
-                  <div className="w-6 h-6 rounded-full bg-blue-600 flex items-center justify-center text-xs font-medium text-white flex-shrink-0">
+                  <div className="w-6 h-6 rounded-lg bg-gradient-to-br from-indigo-500 to-purple-500 flex items-center justify-center text-xs font-medium text-white flex-shrink-0 shadow-sm">
                     {doc.uploader?.full_name?.charAt(0) || '?'}
                   </div>
-                  <span className="text-slate-400 text-sm truncate max-w-[120px]">
+                  <span className="text-slate-600 text-sm truncate max-w-[120px]">
                     {doc.uploader?.full_name || 'Okänd'}
                   </span>
                 </div>
               </td>
-              <td className="px-4 py-3 text-slate-400 text-sm">
-                v{doc.version}
+              <td className="px-4 py-3">
+                <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-slate-100 text-slate-600">
+                  v{doc.version}
+                </span>
               </td>
               <td className="px-4 py-3">
                 <div className="flex items-center justify-end gap-1">
                   <button
                     onClick={() => onView(doc)}
-                    className="p-1.5 text-slate-400 hover:text-blue-400 hover:bg-slate-700 rounded transition-colors"
+                    className="p-1.5 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors"
                     title="Öppna"
                   >
                     <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
@@ -320,7 +326,7 @@ export default function DocumentTable({
                   <button
                     onClick={() => handleDownload(doc.id)}
                     disabled={downloadingId === doc.id}
-                    className="p-1.5 text-slate-400 hover:text-white hover:bg-slate-700 rounded transition-colors disabled:opacity-50"
+                    className="p-1.5 text-slate-400 hover:text-slate-700 hover:bg-slate-100 rounded-lg transition-colors disabled:opacity-50"
                     title="Ladda ner"
                   >
                     {downloadingId === doc.id ? (
@@ -337,7 +343,7 @@ export default function DocumentTable({
                   <button
                     onClick={() => handleDelete(doc.id)}
                     disabled={deletingId === doc.id}
-                    className="p-1.5 text-slate-400 hover:text-red-400 hover:bg-slate-700 rounded transition-colors disabled:opacity-50"
+                    className="p-1.5 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors disabled:opacity-50"
                     title="Ta bort"
                   >
                     {deletingId === doc.id ? (
@@ -353,58 +359,64 @@ export default function DocumentTable({
                   </button>
                 </div>
               </td>
-            </tr>
+            </motion.tr>
           )})}
         </tbody>
       </table>
 
       {/* Context menu */}
-      {contextMenu && (
-        <div
-          className="fixed bg-slate-800 border border-slate-700 rounded-lg shadow-xl py-1 z-50 min-w-[160px]"
-          style={{ left: contextMenu.x, top: contextMenu.y }}
-          onClick={(e) => e.stopPropagation()}
-        >
-          <button
-            onClick={() => {
-              onView(contextMenu.doc)
-              closeContextMenu()
-            }}
-            className="w-full px-4 py-2 text-left text-sm text-slate-300 hover:bg-slate-700 hover:text-white flex items-center gap-2"
+      <AnimatePresence>
+        {contextMenu && (
+          <motion.div
+            initial={{ opacity: 0, scale: 0.95 }}
+            animate={{ opacity: 1, scale: 1 }}
+            exit={{ opacity: 0, scale: 0.95 }}
+            transition={{ duration: 0.1 }}
+            className="fixed bg-white border border-slate-200 rounded-xl shadow-xl py-1 z-[100] min-w-[160px]"
+            style={{ left: contextMenu.x, top: contextMenu.y }}
+            onClick={(e) => e.stopPropagation()}
           >
-            <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" d="M2.036 12.322a1.012 1.012 0 0 1 0-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.007 9.963 7.178.07.207.07.431 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.007-9.963-7.178Z" />
-              <path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z" />
-            </svg>
-            Öppna
-          </button>
-          <button
-            onClick={() => {
-              handleDownload(contextMenu.doc.id)
-              closeContextMenu()
-            }}
-            className="w-full px-4 py-2 text-left text-sm text-slate-300 hover:bg-slate-700 hover:text-white flex items-center gap-2"
-          >
-            <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5v2.25A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75V16.5M16.5 12 12 16.5m0 0L7.5 12m4.5 4.5V3" />
-            </svg>
-            Ladda ner
-          </button>
-          <div className="border-t border-slate-700 my-1" />
-          <button
-            onClick={() => {
-              handleDelete(contextMenu.doc.id)
-              closeContextMenu()
-            }}
-            className="w-full px-4 py-2 text-left text-sm text-red-400 hover:bg-slate-700 flex items-center gap-2"
-          >
-            <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" d="m14.74 9-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 0 1-2.244 2.077H8.084a2.25 2.25 0 0 1-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 0 0-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 0 1 3.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 0 0-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 0 0-7.5 0" />
-            </svg>
-            Ta bort
-          </button>
-        </div>
-      )}
+            <button
+              onClick={() => {
+                onView(contextMenu.doc)
+                closeContextMenu()
+              }}
+              className="w-full px-4 py-2 text-left text-sm text-slate-700 hover:bg-slate-50 flex items-center gap-2"
+            >
+              <svg className="h-4 w-4 text-slate-400" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M2.036 12.322a1.012 1.012 0 0 1 0-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.007 9.963 7.178.07.207.07.431 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.007-9.963-7.178Z" />
+                <path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z" />
+              </svg>
+              Öppna
+            </button>
+            <button
+              onClick={() => {
+                handleDownload(contextMenu.doc.id)
+                closeContextMenu()
+              }}
+              className="w-full px-4 py-2 text-left text-sm text-slate-700 hover:bg-slate-50 flex items-center gap-2"
+            >
+              <svg className="h-4 w-4 text-slate-400" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5v2.25A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75V16.5M16.5 12 12 16.5m0 0L7.5 12m4.5 4.5V3" />
+              </svg>
+              Ladda ner
+            </button>
+            <div className="border-t border-slate-100 my-1" />
+            <button
+              onClick={() => {
+                handleDelete(contextMenu.doc.id)
+                closeContextMenu()
+              }}
+              className="w-full px-4 py-2 text-left text-sm text-red-600 hover:bg-red-50 flex items-center gap-2"
+            >
+              <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" d="m14.74 9-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 0 1-2.244 2.077H8.084a2.25 2.25 0 0 1-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 0 0-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 0 1 3.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 0 0-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 0 0-7.5 0" />
+              </svg>
+              Ta bort
+            </button>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   )
 }

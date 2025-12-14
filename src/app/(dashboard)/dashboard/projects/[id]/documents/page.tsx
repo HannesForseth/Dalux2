@@ -3,6 +3,8 @@
 import { useParams, useSearchParams, useRouter } from 'next/navigation'
 import { useState, useEffect, useCallback, useMemo, useRef } from 'react'
 import dynamic from 'next/dynamic'
+import { motion, AnimatePresence } from 'framer-motion'
+import { Upload, FolderPlus, Sparkles, Search, List, Grid3X3, ChevronLeft, ChevronRight, X } from 'lucide-react'
 import FileUploader from '@/components/FileUploader'
 import AIFolderWizard from '@/components/AIFolderWizard'
 import FolderTree from '@/components/documents/FolderTree'
@@ -15,7 +17,15 @@ import type { Document, DocumentWithUploader } from '@/types/database'
 // Dynamically import DocumentViewer to avoid SSR issues with react-pdf
 const DocumentViewer = dynamic(() => import('@/components/DocumentViewer'), {
   ssr: false,
-  loading: () => <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60"><div className="animate-spin h-8 w-8 border-2 border-blue-500 border-t-transparent rounded-full" /></div>
+  loading: () => (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm">
+      <motion.div
+        className="w-10 h-10 border-3 border-indigo-200 border-t-indigo-600 rounded-full"
+        animate={{ rotate: 360 }}
+        transition={{ duration: 1, repeat: Infinity, ease: 'linear' }}
+      />
+    </div>
+  )
 })
 
 export default function ProjectDocumentsPage() {
@@ -469,113 +479,117 @@ export default function ProjectDocumentsPage() {
   if (isLoading) {
     return (
       <div className="flex items-center justify-center h-[calc(100vh-200px)]">
-        <div className="animate-spin h-8 w-8 border-2 border-blue-500 border-t-transparent rounded-full" />
+        <motion.div
+          className="w-10 h-10 border-3 border-indigo-200 border-t-indigo-600 rounded-full"
+          animate={{ rotate: 360 }}
+          transition={{ duration: 1, repeat: Infinity, ease: 'linear' }}
+        />
       </div>
     )
   }
 
   return (
-    <div className="h-[calc(100vh-120px)] flex flex-col">
+    <motion.div
+      className="h-[calc(100vh-120px)] flex flex-col"
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      transition={{ duration: 0.3 }}
+    >
       {/* Header bar */}
-      <div className="flex items-center justify-between px-4 py-3 bg-slate-900 border-b border-slate-800">
-        <div className="flex items-center gap-4">
+      <div className="flex items-center justify-between px-4 py-3 bg-white/80 backdrop-blur-sm border-b border-slate-200 rounded-t-2xl">
+        <div className="flex items-center gap-3">
           <button
             onClick={() => setShowUploader(!showUploader)}
-            className="px-4 py-2 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-500 transition-colors flex items-center gap-2 text-sm"
+            className="px-4 py-2 bg-gradient-to-r from-indigo-600 to-purple-600 text-white rounded-xl font-medium hover:from-indigo-500 hover:to-purple-500 transition-all shadow-md shadow-indigo-500/20 flex items-center gap-2 text-sm"
           >
-            <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5v2.25A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75V16.5m-13.5-9L12 3m0 0 4.5 4.5M12 3v13.5" />
-            </svg>
+            <Upload className="h-4 w-4" />
             Ladda upp
           </button>
           <button
             onClick={() => setShowNewFolderModal(true)}
-            className="px-4 py-2 bg-slate-700 text-white rounded-lg font-medium hover:bg-slate-600 transition-colors flex items-center gap-2 text-sm"
+            className="px-4 py-2 bg-white border border-slate-200 text-slate-700 rounded-xl font-medium hover:bg-slate-50 hover:border-slate-300 transition-all flex items-center gap-2 text-sm"
           >
-            <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" d="M12 10.5v6m3-3H9m4.06-7.19-2.12-2.12a1.5 1.5 0 0 0-1.061-.44H4.5A2.25 2.25 0 0 0 2.25 6v12a2.25 2.25 0 0 0 2.25 2.25h15A2.25 2.25 0 0 0 21.75 18V9a2.25 2.25 0 0 0-2.25-2.25h-5.379a1.5 1.5 0 0 1-1.06-.44Z" />
-            </svg>
+            <FolderPlus className="h-4 w-4" />
             Ny mapp
           </button>
           <button
             onClick={() => setShowAIWizard(true)}
-            className="px-4 py-2 bg-gradient-to-r from-purple-600 to-blue-600 text-white rounded-lg font-medium hover:from-purple-500 hover:to-blue-500 transition-colors flex items-center gap-2 text-sm"
+            className="px-4 py-2 bg-gradient-to-r from-purple-600 to-pink-600 text-white rounded-xl font-medium hover:from-purple-500 hover:to-pink-500 transition-all shadow-md shadow-purple-500/20 flex items-center gap-2 text-sm"
           >
-            <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" d="M9.813 15.904 9 18.75l-.813-2.846a4.5 4.5 0 0 0-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 0 0 3.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 0 0 3.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 0 0-3.09 3.09ZM18.259 8.715 18 9.75l-.259-1.035a3.375 3.375 0 0 0-2.455-2.456L14.25 6l1.036-.259a3.375 3.375 0 0 0 2.455-2.456L18 2.25l.259 1.035a3.375 3.375 0 0 0 2.456 2.456L21.75 6l-1.035.259a3.375 3.375 0 0 0-2.456 2.456Z" />
-            </svg>
+            <Sparkles className="h-4 w-4" />
             AI Struktur
           </button>
         </div>
 
-        <div className="flex items-center gap-4">
+        <div className="flex items-center gap-3">
           {/* Search */}
           <div className="relative">
-            <svg className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-500" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" d="m21 21-5.197-5.197m0 0A7.5 7.5 0 1 0 5.196 5.196a7.5 7.5 0 0 0 10.607 10.607Z" />
-            </svg>
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
             <input
               type="text"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               placeholder="Sök..."
-              className="pl-9 pr-4 py-2 bg-slate-800 border border-slate-700 rounded-lg text-white placeholder-slate-500 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 w-64"
+              className="pl-9 pr-4 py-2 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 placeholder-slate-400 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent w-64 transition-all"
             />
           </div>
 
           {/* View toggle */}
-          <div className="flex items-center gap-1 bg-slate-800 rounded-lg p-1">
-            <button className="p-1.5 bg-slate-700 text-white rounded" title="Listvy">
-              <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" d="M8.25 6.75h12M8.25 12h12m-12 5.25h12M3.75 6.75h.007v.008H3.75V6.75Zm.375 0a.375.375 0 1 1-.75 0 .375.375 0 0 1 .75 0ZM3.75 12h.007v.008H3.75V12Zm.375 0a.375.375 0 1 1-.75 0 .375.375 0 0 1 .75 0Zm-.375 5.25h.007v.008H3.75v-.008Zm.375 0a.375.375 0 1 1-.75 0 .375.375 0 0 1 .75 0Z" />
-              </svg>
+          <div className="flex items-center gap-1 bg-slate-100 rounded-xl p-1">
+            <button className="p-1.5 bg-white text-slate-700 rounded-lg shadow-sm" title="Listvy">
+              <List className="h-4 w-4" />
             </button>
-            <button className="p-1.5 text-slate-500 hover:text-white rounded" title="Rutnät">
-              <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" d="M3.75 6A2.25 2.25 0 0 1 6 3.75h2.25A2.25 2.25 0 0 1 10.5 6v2.25a2.25 2.25 0 0 1-2.25 2.25H6a2.25 2.25 0 0 1-2.25-2.25V6ZM3.75 15.75A2.25 2.25 0 0 1 6 13.5h2.25a2.25 2.25 0 0 1 2.25 2.25V18a2.25 2.25 0 0 1-2.25 2.25H6A2.25 2.25 0 0 1 3.75 18v-2.25ZM13.5 6a2.25 2.25 0 0 1 2.25-2.25H18A2.25 2.25 0 0 1 20.25 6v2.25A2.25 2.25 0 0 1 18 10.5h-2.25a2.25 2.25 0 0 1-2.25-2.25V6ZM13.5 15.75a2.25 2.25 0 0 1 2.25-2.25H18a2.25 2.25 0 0 1 2.25 2.25V18A2.25 2.25 0 0 1 18 20.25h-2.25A2.25 2.25 0 0 1 13.5 18v-2.25Z" />
-              </svg>
+            <button className="p-1.5 text-slate-400 hover:text-slate-600 rounded-lg" title="Rutnät">
+              <Grid3X3 className="h-4 w-4" />
             </button>
           </div>
         </div>
       </div>
 
       {/* Upload area */}
-      {showUploader && (
-        <div className="px-4 py-3 bg-slate-900 border-b border-slate-800">
-          <FileUploader
-            onUpload={handleUpload}
-            onMultipleUpload={handleMultipleUpload}
-            multiple={true}
-            accept={{
-              'application/pdf': ['.pdf'],
-              'application/msword': ['.doc'],
-              'application/vnd.openxmlformats-officedocument.wordprocessingml.document': ['.docx'],
-              'application/vnd.ms-excel': ['.xls'],
-              'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet': ['.xlsx'],
-              'text/csv': ['.csv'],
-              'application/vnd.ms-powerpoint': ['.ppt'],
-              'application/vnd.openxmlformats-officedocument.presentationml.presentation': ['.pptx'],
-              'image/*': ['.png', '.jpg', '.jpeg', '.gif', '.webp'],
-              'text/plain': ['.txt'],
-              'application/zip': ['.zip'],
-            }}
-          />
-          <button
-            onClick={() => setShowUploader(false)}
-            className="mt-2 text-sm text-slate-400 hover:text-white transition-colors"
+      <AnimatePresence>
+        {showUploader && (
+          <motion.div
+            initial={{ height: 0, opacity: 0 }}
+            animate={{ height: 'auto', opacity: 1 }}
+            exit={{ height: 0, opacity: 0 }}
+            className="px-4 py-3 bg-white/60 backdrop-blur-sm border-b border-slate-200 overflow-hidden"
           >
-            Avbryt
-          </button>
-        </div>
-      )}
+            <FileUploader
+              onUpload={handleUpload}
+              onMultipleUpload={handleMultipleUpload}
+              multiple={true}
+              accept={{
+                'application/pdf': ['.pdf'],
+                'application/msword': ['.doc'],
+                'application/vnd.openxmlformats-officedocument.wordprocessingml.document': ['.docx'],
+                'application/vnd.ms-excel': ['.xls'],
+                'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet': ['.xlsx'],
+                'text/csv': ['.csv'],
+                'application/vnd.ms-powerpoint': ['.ppt'],
+                'application/vnd.openxmlformats-officedocument.presentationml.presentation': ['.pptx'],
+                'image/*': ['.png', '.jpg', '.jpeg', '.gif', '.webp'],
+                'text/plain': ['.txt'],
+                'application/zip': ['.zip'],
+              }}
+            />
+            <button
+              onClick={() => setShowUploader(false)}
+              className="mt-2 text-sm text-slate-500 hover:text-slate-700 transition-colors"
+            >
+              Avbryt
+            </button>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {/* Main content with split view */}
-      <div className="flex-1 flex overflow-hidden">
+      <div className="flex-1 flex overflow-hidden bg-white/60 backdrop-blur-sm rounded-b-2xl border border-t-0 border-slate-200">
         {/* Left sidebar - Folder tree */}
         <div
           className={`${
             sidebarCollapsed ? 'w-0' : 'w-64'
-          } flex-shrink-0 bg-slate-900 border-r border-slate-800 overflow-y-auto transition-all duration-200`}
+          } flex-shrink-0 bg-white/80 border-r border-slate-200 overflow-y-auto transition-all duration-200`}
         >
           {!sidebarCollapsed && (
             <FolderTree
@@ -594,41 +608,35 @@ export default function ProjectDocumentsPage() {
         {/* Sidebar toggle */}
         <button
           onClick={() => setSidebarCollapsed(!sidebarCollapsed)}
-          className="flex-shrink-0 w-4 bg-slate-800 hover:bg-slate-700 flex items-center justify-center transition-colors"
+          className="flex-shrink-0 w-4 bg-slate-100 hover:bg-slate-200 flex items-center justify-center transition-colors"
         >
-          <svg
-            className={`h-4 w-4 text-slate-500 transition-transform ${sidebarCollapsed ? 'rotate-180' : ''}`}
-            fill="none"
-            viewBox="0 0 24 24"
-            strokeWidth={2}
-            stroke="currentColor"
-          >
-            <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 19.5 8.25 12l7.5-7.5" />
-          </svg>
+          {sidebarCollapsed ? (
+            <ChevronRight className="h-4 w-4 text-slate-400" />
+          ) : (
+            <ChevronLeft className="h-4 w-4 text-slate-400" />
+          )}
         </button>
 
         {/* Right side - Document list */}
-        <div className="flex-1 flex flex-col overflow-hidden bg-slate-950">
+        <div className="flex-1 flex flex-col overflow-hidden bg-white/40">
           {/* Breadcrumb */}
-          <div className="flex items-center gap-2 px-4 py-2 bg-slate-900/50 border-b border-slate-800 text-sm">
+          <div className="flex items-center gap-2 px-4 py-2 bg-slate-50/80 border-b border-slate-100 text-sm">
             {getBreadcrumbs().map((crumb, index, arr) => (
               <div key={crumb.path} className="flex items-center gap-2">
                 <button
                   onClick={() => setCurrentPath(crumb.path)}
-                  className={`hover:text-white transition-colors ${
-                    index === arr.length - 1 ? 'text-white font-medium' : 'text-slate-400'
+                  className={`hover:text-indigo-600 transition-colors ${
+                    index === arr.length - 1 ? 'text-slate-900 font-medium' : 'text-slate-500'
                   }`}
                 >
                   {crumb.name}
                 </button>
                 {index < arr.length - 1 && (
-                  <svg className="h-4 w-4 text-slate-600" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" d="m8.25 4.5 7.5 7.5-7.5 7.5" />
-                  </svg>
+                  <ChevronRight className="h-4 w-4 text-slate-300" />
                 )}
               </div>
             ))}
-            <span className="text-slate-500 ml-auto">
+            <span className="text-slate-400 ml-auto text-xs">
               {currentDocuments.length} {currentDocuments.length === 1 ? 'fil' : 'filer'}
             </span>
           </div>
@@ -665,131 +673,166 @@ export default function ProjectDocumentsPage() {
       />
 
       {/* New Folder Modal */}
-      {showNewFolderModal && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-          <div className="bg-slate-900 border border-slate-800 rounded-xl w-full max-w-md">
-            <div className="p-4 border-b border-slate-800 flex items-center justify-between">
-              <h2 className="text-lg font-semibold text-white">Skapa ny mapp</h2>
-              <button
-                onClick={() => {
-                  setShowNewFolderModal(false)
-                  setNewFolderName('')
-                  setSubfolderParent(null)
-                }}
-                className="p-1 text-slate-400 hover:text-white transition-colors"
-              >
-                <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M6 18 18 6M6 6l12 12" />
-                </svg>
-              </button>
-            </div>
-            <div className="p-4">
-              <label className="block text-sm font-medium text-slate-400 mb-2">
-                Mappnamn
-              </label>
-              <input
-                type="text"
-                value={newFolderName}
-                onChange={(e) => setNewFolderName(e.target.value)}
-                placeholder="t.ex. Ritningar, Kontrakt..."
-                className="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                autoFocus
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter') handleCreateFolder()
-                }}
-              />
-              <p className="mt-2 text-xs text-slate-500">
-                Mappen skapas i: {(subfolderParent ?? currentPath) === '/' ? 'Rot' : (subfolderParent ?? currentPath)}
-              </p>
-            </div>
-            <div className="p-4 border-t border-slate-800 flex justify-end gap-3">
-              <button
-                onClick={() => {
-                  setShowNewFolderModal(false)
-                  setNewFolderName('')
-                  setSubfolderParent(null)
-                }}
-                className="px-4 py-2 text-slate-400 hover:text-white transition-colors"
-              >
-                Avbryt
-              </button>
-              <button
-                onClick={handleCreateFolder}
-                disabled={!newFolderName.trim()}
-                className="px-4 py-2 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-500 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-              >
-                Skapa mapp
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      <AnimatePresence>
+        {showNewFolderModal && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-[100] p-4"
+          >
+            <motion.div
+              initial={{ scale: 0.95, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.95, opacity: 0 }}
+              className="bg-white border border-slate-200 rounded-2xl w-full max-w-md shadow-2xl"
+            >
+              <div className="p-4 border-b border-slate-100 flex items-center justify-between">
+                <h2 className="text-lg font-semibold text-slate-900">Skapa ny mapp</h2>
+                <button
+                  onClick={() => {
+                    setShowNewFolderModal(false)
+                    setNewFolderName('')
+                    setSubfolderParent(null)
+                  }}
+                  className="p-1 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-lg transition-colors"
+                >
+                  <X className="h-5 w-5" />
+                </button>
+              </div>
+              <div className="p-4">
+                <label className="block text-sm font-medium text-slate-700 mb-2">
+                  Mappnamn
+                </label>
+                <input
+                  type="text"
+                  value={newFolderName}
+                  onChange={(e) => setNewFolderName(e.target.value)}
+                  placeholder="t.ex. Ritningar, Kontrakt..."
+                  className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                  autoFocus
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') handleCreateFolder()
+                  }}
+                />
+                <p className="mt-2 text-xs text-slate-500">
+                  Mappen skapas i: {(subfolderParent ?? currentPath) === '/' ? 'Rot' : (subfolderParent ?? currentPath)}
+                </p>
+              </div>
+              <div className="p-4 border-t border-slate-100 flex justify-end gap-3">
+                <button
+                  onClick={() => {
+                    setShowNewFolderModal(false)
+                    setNewFolderName('')
+                    setSubfolderParent(null)
+                  }}
+                  className="px-4 py-2 text-slate-600 hover:text-slate-800 transition-colors"
+                >
+                  Avbryt
+                </button>
+                <button
+                  onClick={handleCreateFolder}
+                  disabled={!newFolderName.trim()}
+                  className="px-4 py-2 bg-gradient-to-r from-indigo-600 to-purple-600 text-white rounded-xl font-medium hover:from-indigo-500 hover:to-purple-500 disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-md shadow-indigo-500/20"
+                >
+                  Skapa mapp
+                </button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {/* Rename Folder Modal */}
-      {renameFolderPath && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-          <div className="bg-slate-900 border border-slate-800 rounded-xl w-full max-w-md">
-            <div className="p-4 border-b border-slate-800 flex items-center justify-between">
-              <h2 className="text-lg font-semibold text-white">Byt namn på mapp</h2>
-              <button
-                onClick={() => {
-                  setRenameFolderPath(null)
-                  setRenameFolderValue('')
-                }}
-                className="p-1 text-slate-400 hover:text-white transition-colors"
-              >
-                <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M6 18 18 6M6 6l12 12" />
-                </svg>
-              </button>
-            </div>
-            <div className="p-4">
-              <label className="block text-sm font-medium text-slate-400 mb-2">
-                Nytt namn
-              </label>
-              <input
-                type="text"
-                value={renameFolderValue}
-                onChange={(e) => setRenameFolderValue(e.target.value)}
-                placeholder="Nytt mappnamn..."
-                className="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                autoFocus
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter') handleRenameSubmit()
-                }}
-              />
-            </div>
-            <div className="p-4 border-t border-slate-800 flex justify-end gap-3">
-              <button
-                onClick={() => {
-                  setRenameFolderPath(null)
-                  setRenameFolderValue('')
-                }}
-                className="px-4 py-2 text-slate-400 hover:text-white transition-colors"
-              >
-                Avbryt
-              </button>
-              <button
-                onClick={handleRenameSubmit}
-                disabled={!renameFolderValue.trim()}
-                className="px-4 py-2 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-500 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-              >
-                Byt namn
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      <AnimatePresence>
+        {renameFolderPath && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-[100] p-4"
+          >
+            <motion.div
+              initial={{ scale: 0.95, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.95, opacity: 0 }}
+              className="bg-white border border-slate-200 rounded-2xl w-full max-w-md shadow-2xl"
+            >
+              <div className="p-4 border-b border-slate-100 flex items-center justify-between">
+                <h2 className="text-lg font-semibold text-slate-900">Byt namn på mapp</h2>
+                <button
+                  onClick={() => {
+                    setRenameFolderPath(null)
+                    setRenameFolderValue('')
+                  }}
+                  className="p-1 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-lg transition-colors"
+                >
+                  <X className="h-5 w-5" />
+                </button>
+              </div>
+              <div className="p-4">
+                <label className="block text-sm font-medium text-slate-700 mb-2">
+                  Nytt namn
+                </label>
+                <input
+                  type="text"
+                  value={renameFolderValue}
+                  onChange={(e) => setRenameFolderValue(e.target.value)}
+                  placeholder="Nytt mappnamn..."
+                  className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                  autoFocus
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') handleRenameSubmit()
+                  }}
+                />
+              </div>
+              <div className="p-4 border-t border-slate-100 flex justify-end gap-3">
+                <button
+                  onClick={() => {
+                    setRenameFolderPath(null)
+                    setRenameFolderValue('')
+                  }}
+                  className="px-4 py-2 text-slate-600 hover:text-slate-800 transition-colors"
+                >
+                  Avbryt
+                </button>
+                <button
+                  onClick={handleRenameSubmit}
+                  disabled={!renameFolderValue.trim()}
+                  className="px-4 py-2 bg-gradient-to-r from-indigo-600 to-purple-600 text-white rounded-xl font-medium hover:from-indigo-500 hover:to-purple-500 disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-md shadow-indigo-500/20"
+                >
+                  Byt namn
+                </button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {/* Moving indicator */}
-      {isMoving && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-          <div className="bg-slate-900 border border-slate-800 rounded-xl p-6 flex items-center gap-3">
-            <div className="animate-spin h-5 w-5 border-2 border-blue-500 border-t-transparent rounded-full" />
-            <span className="text-white">Flyttar filer...</span>
-          </div>
-        </div>
-      )}
+      <AnimatePresence>
+        {isMoving && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-[100]"
+          >
+            <motion.div
+              initial={{ scale: 0.95 }}
+              animate={{ scale: 1 }}
+              className="bg-white border border-slate-200 rounded-2xl p-6 flex items-center gap-3 shadow-2xl"
+            >
+              <motion.div
+                className="w-5 h-5 border-2 border-indigo-200 border-t-indigo-600 rounded-full"
+                animate={{ rotate: 360 }}
+                transition={{ duration: 1, repeat: Infinity, ease: 'linear' }}
+              />
+              <span className="text-slate-700 font-medium">Flyttar filer...</span>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {/* AI Folder Wizard */}
       <AIFolderWizard
@@ -808,6 +851,6 @@ export default function ProjectDocumentsPage() {
           onKeepBoth={handleKeepBoth}
         />
       )}
-    </div>
+    </motion.div>
   )
 }
