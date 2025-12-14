@@ -3,7 +3,8 @@
 import Link from "next/link"
 import { motion, useScroll, useTransform, useSpring } from "framer-motion"
 import { Button } from "@/components/ui/button"
-import { useRef } from "react"
+import { useRef, useState, useEffect } from "react"
+import { createClient } from "@/lib/supabase/client"
 import {
   FileText,
   Layers,
@@ -16,11 +17,22 @@ import {
   Zap,
   Shield,
   Users,
-  Play
+  Play,
+  FolderOpen
 } from "lucide-react"
 
 export default function Home() {
   const heroRef = useRef<HTMLDivElement>(null)
+  const [isLoggedIn, setIsLoggedIn] = useState(false)
+
+  useEffect(() => {
+    const checkAuth = async () => {
+      const supabase = createClient()
+      const { data: { user } } = await supabase.auth.getUser()
+      setIsLoggedIn(!!user)
+    }
+    checkAuth()
+  }, [])
   const { scrollYProgress } = useScroll({
     target: heroRef,
     offset: ["start start", "end start"]
@@ -117,17 +129,28 @@ export default function Home() {
               </div>
 
               <div className="flex items-center gap-2">
-                <Link href="/login">
-                  <Button variant="ghost" size="sm" className="text-slate-600 hover:text-slate-900">
-                    Logga in
-                  </Button>
-                </Link>
-                <Link href="/register">
-                  <Button size="sm" className="bg-slate-900 hover:bg-slate-800 text-white rounded-xl shadow-lg shadow-slate-900/10">
-                    Kom igång
-                    <ArrowRight className="w-4 h-4 ml-1" />
-                  </Button>
-                </Link>
+                {isLoggedIn ? (
+                  <Link href="/projects">
+                    <Button size="sm" className="bg-slate-900 hover:bg-slate-800 text-white rounded-xl shadow-lg shadow-slate-900/10">
+                      <FolderOpen className="w-4 h-4 mr-1.5" />
+                      Mina projekt
+                    </Button>
+                  </Link>
+                ) : (
+                  <>
+                    <Link href="/login">
+                      <Button variant="ghost" size="sm" className="text-slate-600 hover:text-slate-900">
+                        Logga in
+                      </Button>
+                    </Link>
+                    <Link href="/register">
+                      <Button size="sm" className="bg-slate-900 hover:bg-slate-800 text-white rounded-xl shadow-lg shadow-slate-900/10">
+                        Kom igång
+                        <ArrowRight className="w-4 h-4 ml-1" />
+                      </Button>
+                    </Link>
+                  </>
+                )}
               </div>
             </div>
           </div>
