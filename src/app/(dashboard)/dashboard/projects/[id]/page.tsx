@@ -8,6 +8,9 @@ import { getProjectWithMembers, getUserRoleInProject, getProjectStats, getProjec
 import type { ProjectStats, ActivityItem } from '@/app/actions/projects'
 import type { ProjectWithMembers, RoleName } from '@/types/database'
 import { canUpdateProject, canManageMembers, getRoleDisplayName } from '@/lib/permissions'
+import AttentionSection from '@/components/dashboard/AttentionSection'
+import MiniCalendar from '@/components/calendar/MiniCalendar'
+import CalendarModal from '@/components/calendar/CalendarModal'
 
 const containerVariants = {
   hidden: { opacity: 0 },
@@ -31,6 +34,7 @@ export default function ProjectDetailPage() {
   const [stats, setStats] = useState<ProjectStats | null>(null)
   const [activities, setActivities] = useState<ActivityItem[]>([])
   const [isLoading, setIsLoading] = useState(true)
+  const [isCalendarModalOpen, setIsCalendarModalOpen] = useState(false)
 
   useEffect(() => {
     loadProject()
@@ -162,7 +166,7 @@ export default function ProjectDetailPage() {
           </motion.div>
 
           {/* Quick actions with real counts */}
-          <motion.div variants={itemVariants} className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
+          <motion.div variants={itemVariants} className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
             <QuickActionCard
               title="Dokument"
               count={stats?.documentsCount.toString() || '0'}
@@ -180,12 +184,22 @@ export default function ProjectDetailPage() {
               index={1}
             />
             <QuickActionCard
+              title="Avvikelser"
+              count={stats?.deviationsCount.toString() || '0'}
+              subtext={stats?.criticalDeviationsCount ? `${stats.criticalDeviationsCount} kritiska` : stats?.openDeviationsCount ? `${stats.openDeviationsCount} öppna` : undefined}
+              icon={<ShieldExclamationIcon />}
+              href={`/dashboard/projects/${project.id}/deviations`}
+              highlight={(stats?.criticalDeviationsCount ?? 0) > 0 || (stats?.actionRequiredDeviationsCount ?? 0) > 0}
+              highlightColor="red"
+              index={2}
+            />
+            <QuickActionCard
               title="Checklistor"
               count={stats?.checklistsCount.toString() || '0'}
               subtext={stats?.completedChecklistsCount ? `${stats.completedChecklistsCount} klara` : undefined}
               icon={<ClipboardIcon />}
               href={`/dashboard/projects/${project.id}/checklists`}
-              index={2}
+              index={3}
             />
             <QuickActionCard
               title="F/S"
@@ -194,7 +208,7 @@ export default function ProjectDetailPage() {
               icon={<QuestionIcon />}
               href={`/dashboard/projects/${project.id}/rfi`}
               highlight={stats?.openRfisCount ? stats.openRfisCount > 0 : false}
-              index={3}
+              index={4}
             />
             <QuickActionCard
               title="Protokoll"
@@ -203,9 +217,14 @@ export default function ProjectDetailPage() {
               icon={<ProtocolIcon />}
               href={`/dashboard/projects/${project.id}/protocols`}
               highlight={stats?.unseenProtocolsCount ? stats.unseenProtocolsCount > 0 : false}
-              index={4}
+              index={5}
             />
           </motion.div>
+
+          {/* Attention Section - Kräver uppmärksamhet */}
+          {stats && (
+            <AttentionSection stats={stats} projectId={project.id} />
+          )}
 
           {/* Activity Feed */}
           <motion.div
@@ -327,8 +346,23 @@ export default function ProjectDetailPage() {
               </div>
             </motion.div>
           )}
+
+          {/* Mini Calendar */}
+          <motion.div variants={itemVariants}>
+            <MiniCalendar
+              projectId={project.id}
+              onExpandClick={() => setIsCalendarModalOpen(true)}
+            />
+          </motion.div>
         </div>
       </div>
+
+      {/* Calendar Modal */}
+      <CalendarModal
+        isOpen={isCalendarModalOpen}
+        onClose={() => setIsCalendarModalOpen(false)}
+        projectId={project.id}
+      />
     </motion.div>
   )
 }
@@ -340,6 +374,7 @@ function QuickActionCard({
   icon,
   href,
   highlight = false,
+  highlightColor = 'amber',
   index = 0,
 }: {
   title: string
@@ -348,8 +383,23 @@ function QuickActionCard({
   icon: React.ReactNode
   href: string
   highlight?: boolean
+  highlightColor?: 'amber' | 'red'
   index?: number
 }) {
+  const colorClasses = {
+    amber: {
+      border: 'border-amber-200 bg-amber-50/50 hover:border-amber-300 hover:shadow-amber-100/50',
+      icon: 'bg-amber-100 text-amber-600 group-hover:bg-amber-200',
+      text: 'text-amber-600'
+    },
+    red: {
+      border: 'border-red-200 bg-red-50/50 hover:border-red-300 hover:shadow-red-100/50',
+      icon: 'bg-red-100 text-red-600 group-hover:bg-red-200',
+      text: 'text-red-600'
+    }
+  }
+  const colors = colorClasses[highlightColor]
+
   return (
     <Link href={href}>
       <motion.div
@@ -360,14 +410,14 @@ function QuickActionCard({
         whileTap={{ scale: 0.98 }}
         className={`bg-white/80 backdrop-blur-sm border rounded-2xl p-4 transition-all cursor-pointer group shadow-sm ${
           highlight
-            ? 'border-amber-200 bg-amber-50/50 hover:border-amber-300 hover:shadow-amber-100/50'
+            ? colors.border
             : 'border-slate-200 hover:border-indigo-200 hover:shadow-lg hover:shadow-indigo-100/50'
         }`}
       >
         <div className="flex items-center gap-3">
           <div className={`w-10 h-10 rounded-xl flex items-center justify-center transition-all ${
             highlight
-              ? 'bg-amber-100 text-amber-600 group-hover:bg-amber-200'
+              ? colors.icon
               : 'bg-slate-100 text-slate-500 group-hover:bg-gradient-to-br group-hover:from-indigo-500 group-hover:to-purple-500 group-hover:text-white'
           }`}>
             {icon}
@@ -383,7 +433,7 @@ function QuickActionCard({
             </motion.p>
             <p className="text-slate-500 text-sm">{title}</p>
             {subtext && (
-              <p className={`text-xs ${highlight ? 'text-amber-600' : 'text-slate-400'}`}>{subtext}</p>
+              <p className={`text-xs ${highlight ? colors.text : 'text-slate-400'}`}>{subtext}</p>
             )}
           </div>
         </div>
@@ -565,6 +615,54 @@ function ProtocolSmallIcon() {
   return (
     <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
       <path strokeLinecap="round" strokeLinejoin="round" d="M9 12h3.75M9 15h3.75M9 18h3.75m3 .75H18a2.25 2.25 0 0 0 2.25-2.25V6.108c0-1.135-.845-2.098-1.976-2.192a48.424 48.424 0 0 0-1.123-.08m-5.801 0c-.065.21-.1.433-.1.664 0 .414.336.75.75.75h4.5a.75.75 0 0 0 .75-.75 2.25 2.25 0 0 0-.1-.664m-5.8 0A2.251 2.251 0 0 1 13.5 2.25H15c1.012 0 1.867.668 2.15 1.586m-5.8 0c-.376.023-.75.05-1.124.08C9.095 4.01 8.25 4.973 8.25 6.108V8.25m0 0H4.875c-.621 0-1.125.504-1.125 1.125v11.25c0 .621.504 1.125 1.125 1.125h9.75c.621 0 1.125-.504 1.125-1.125V9.375c0-.621-.504-1.125-1.125-1.125H8.25ZM6.75 12h.008v.008H6.75V12Zm0 3h.008v.008H6.75V15Zm0 3h.008v.008H6.75V18Z" />
+    </svg>
+  )
+}
+
+function ShieldExclamationIcon() {
+  return (
+    <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+      <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m0-10.036A11.959 11.959 0 0 1 3.598 6 11.99 11.99 0 0 0 3 9.75c0 5.592 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.31-.21-2.57-.598-3.75h-.152c-3.196 0-6.1-1.25-8.25-3.286Zm0 13.036h.008v.008H12v-.008Z" />
+    </svg>
+  )
+}
+
+function CalendarIcon({ className = "h-5 w-5" }: { className?: string }) {
+  return (
+    <svg className={className} fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+      <path strokeLinecap="round" strokeLinejoin="round" d="M6.75 3v2.25M17.25 3v2.25M3 18.75V7.5a2.25 2.25 0 0 1 2.25-2.25h13.5A2.25 2.25 0 0 1 21 7.5v11.25m-18 0A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75m-18 0v-7.5A2.25 2.25 0 0 1 5.25 9h13.5A2.25 2.25 0 0 1 21 11.25v7.5" />
+    </svg>
+  )
+}
+
+function ClockIcon({ className = "h-4 w-4" }: { className?: string }) {
+  return (
+    <svg className={className} fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+      <path strokeLinecap="round" strokeLinejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" />
+    </svg>
+  )
+}
+
+function ChevronLeftIcon({ className = "h-4 w-4" }: { className?: string }) {
+  return (
+    <svg className={className} fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+      <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 19.5 8.25 12l7.5-7.5" />
+    </svg>
+  )
+}
+
+function ChevronRightIcon({ className = "h-4 w-4" }: { className?: string }) {
+  return (
+    <svg className={className} fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+      <path strokeLinecap="round" strokeLinejoin="round" d="m8.25 4.5 7.5 7.5-7.5 7.5" />
+    </svg>
+  )
+}
+
+function ExpandIcon({ className = "h-4 w-4" }: { className?: string }) {
+  return (
+    <svg className={className} fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+      <path strokeLinecap="round" strokeLinejoin="round" d="M3.75 3.75v4.5m0-4.5h4.5m-4.5 0L9 9M3.75 20.25v-4.5m0 4.5h4.5m-4.5 0L9 15M20.25 3.75h-4.5m4.5 0v4.5m0-4.5L15 9m5.25 11.25h-4.5m4.5 0v-4.5m0 4.5L15 15" />
     </svg>
   )
 }

@@ -273,6 +273,15 @@ export interface ProjectStats {
   protocolsCount: number
   draftProtocolsCount: number
   unseenProtocolsCount: number
+  // New fields for Overview improvements
+  deviationsCount: number
+  openDeviationsCount: number
+  criticalDeviationsCount: number
+  actionRequiredDeviationsCount: number
+  overdueIssuesCount: number
+  overdueDeviationsCount: number
+  pendingActionItemsCount: number
+  upcomingDeadlinesCount: number
 }
 
 export async function getProjectStats(projectId: string): Promise<ProjectStats> {
@@ -282,6 +291,10 @@ export async function getProjectStats(projectId: string): Promise<ProjectStats> 
   if (!user) {
     throw new Error('Inte inloggad')
   }
+
+  // Calculate date thresholds
+  const now = new Date().toISOString()
+  const sevenDaysFromNow = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString()
 
   // Fetch all counts in parallel
   const [
@@ -293,7 +306,17 @@ export async function getProjectStats(projectId: string): Promise<ProjectStats> 
     rfisResult,
     openRfisResult,
     protocolsResult,
-    draftProtocolsResult
+    draftProtocolsResult,
+    // New deviation counts
+    deviationsResult,
+    openDeviationsResult,
+    criticalDeviationsResult,
+    actionRequiredDeviationsResult,
+    // Overdue counts
+    overdueIssuesResult,
+    overdueDeviationsResult,
+    // Pending action items
+    pendingActionItemsResult
   ] = await Promise.all([
     supabase.from('documents').select('id', { count: 'exact', head: true }).eq('project_id', projectId),
     supabase.from('issues').select('id', { count: 'exact', head: true }).eq('project_id', projectId),
@@ -303,7 +326,21 @@ export async function getProjectStats(projectId: string): Promise<ProjectStats> 
     supabase.from('rfis').select('id', { count: 'exact', head: true }).eq('project_id', projectId),
     supabase.from('rfis').select('id', { count: 'exact', head: true }).eq('project_id', projectId).in('status', ['open', 'pending']),
     supabase.from('protocols').select('id', { count: 'exact', head: true }).eq('project_id', projectId),
-    supabase.from('protocols').select('id', { count: 'exact', head: true }).eq('project_id', projectId).eq('status', 'draft')
+    supabase.from('protocols').select('id', { count: 'exact', head: true }).eq('project_id', projectId).eq('status', 'draft'),
+    // Deviations - total count
+    supabase.from('deviations').select('id', { count: 'exact', head: true }).eq('project_id', projectId),
+    // Deviations - open (not verified or closed)
+    supabase.from('deviations').select('id', { count: 'exact', head: true }).eq('project_id', projectId).not('status', 'in', '("verified","closed")'),
+    // Deviations - critical severity and not closed
+    supabase.from('deviations').select('id', { count: 'exact', head: true }).eq('project_id', projectId).eq('severity', 'critical').not('status', 'in', '("verified","closed")'),
+    // Deviations - action required status
+    supabase.from('deviations').select('id', { count: 'exact', head: true }).eq('project_id', projectId).eq('status', 'action_required'),
+    // Issues - overdue (due_date < now and not resolved/closed)
+    supabase.from('issues').select('id', { count: 'exact', head: true }).eq('project_id', projectId).lt('due_date', now).not('status', 'in', '("resolved","closed")'),
+    // Deviations - overdue (due_date < now and not verified/closed)
+    supabase.from('deviations').select('id', { count: 'exact', head: true }).eq('project_id', projectId).lt('due_date', now).not('status', 'in', '("verified","closed")'),
+    // Protocol action items - pending or in_progress (need to join with protocols to filter by project)
+    supabase.from('protocol_action_items').select('id, protocol:protocols!inner(project_id)', { count: 'exact', head: true }).eq('protocol.project_id', projectId).in('status', ['pending', 'in_progress'])
   ])
 
   // Count unseen protocols (protocols user hasn't viewed yet)
@@ -335,6 +372,30 @@ export async function getProjectStats(projectId: string): Promise<ProjectStats> 
     unseenCount = count || 0
   }
 
+  // Count upcoming deadlines (next 7 days) from issues, deviations, and action items
+  const [upcomingIssues, upcomingDeviations, upcomingActionItems] = await Promise.all([
+    // Issues with due_date in next 7 days and not closed
+    supabase.from('issues').select('id', { count: 'exact', head: true })
+      .eq('project_id', projectId)
+      .gte('due_date', now)
+      .lte('due_date', sevenDaysFromNow)
+      .not('status', 'in', '("resolved","closed")'),
+    // Deviations with due_date in next 7 days and not closed
+    supabase.from('deviations').select('id', { count: 'exact', head: true })
+      .eq('project_id', projectId)
+      .gte('due_date', now)
+      .lte('due_date', sevenDaysFromNow)
+      .not('status', 'in', '("verified","closed")'),
+    // Action items with deadline in next 7 days (need to join with protocols)
+    supabase.from('protocol_action_items').select('id, protocol:protocols!inner(project_id)', { count: 'exact', head: true })
+      .eq('protocol.project_id', projectId)
+      .gte('deadline', now)
+      .lte('deadline', sevenDaysFromNow)
+      .not('status', 'eq', 'completed')
+  ])
+
+  const upcomingDeadlinesCount = (upcomingIssues.count || 0) + (upcomingDeviations.count || 0) + (upcomingActionItems.count || 0)
+
   return {
     documentsCount: documentsResult.count || 0,
     issuesCount: issuesResult.count || 0,
@@ -345,7 +406,16 @@ export async function getProjectStats(projectId: string): Promise<ProjectStats> 
     openRfisCount: openRfisResult.count || 0,
     protocolsCount: protocolsResult.count || 0,
     draftProtocolsCount: draftProtocolsResult.count || 0,
-    unseenProtocolsCount: unseenCount
+    unseenProtocolsCount: unseenCount,
+    // New fields
+    deviationsCount: deviationsResult.count || 0,
+    openDeviationsCount: openDeviationsResult.count || 0,
+    criticalDeviationsCount: criticalDeviationsResult.count || 0,
+    actionRequiredDeviationsCount: actionRequiredDeviationsResult.count || 0,
+    overdueIssuesCount: overdueIssuesResult.count || 0,
+    overdueDeviationsCount: overdueDeviationsResult.count || 0,
+    pendingActionItemsCount: pendingActionItemsResult.count || 0,
+    upcomingDeadlinesCount
   }
 }
 
