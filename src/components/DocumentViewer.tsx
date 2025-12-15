@@ -312,14 +312,21 @@ export default function DocumentViewer({
     window.open(fileUrl, '_blank')
   }
 
-  // Pan handlers
+  // Pan handlers - right mouse button only for panning
   const handleMouseDown = (e: React.MouseEvent) => {
-    // Don't start panning in highlight mode - allow text selection
-    if (highlightMode) return
+    // Only pan with right mouse button (button === 2)
+    if (e.button !== 2) return
     if (scale <= 1 || content.type !== 'pdf') return
     e.preventDefault()
     setIsPanning(true)
     setPanStart({ x: e.clientX - panOffset.x, y: e.clientY - panOffset.y })
+  }
+
+  // Prevent context menu when right-clicking for panning
+  const handleContextMenu = (e: React.MouseEvent) => {
+    if (scale > 1 && content.type === 'pdf') {
+      e.preventDefault()
+    }
   }
 
   const handleMouseMove = (e: React.MouseEvent) => {
@@ -930,11 +937,12 @@ export default function DocumentViewer({
           {content.type === 'pdf' && !compareMode && (
             <div
               ref={pdfContainerRef}
-              className={`flex flex-col items-center min-h-full ${scale > 1 && !highlightMode ? 'select-none cursor-grab' : 'select-text'} ${isPanning ? 'cursor-grabbing' : ''} ${highlightMode ? 'cursor-text' : ''}`}
+              className={`flex flex-col items-center min-h-full select-text ${isPanning ? 'cursor-grabbing' : ''} ${highlightMode ? 'cursor-text' : ''}`}
               onMouseDown={handleMouseDown}
               onMouseMove={handleMouseMove}
               onMouseUp={handleMouseUp}
               onMouseLeave={handleMouseLeave}
+              onContextMenu={handleContextMenu}
             >
               {/* Old version banner */}
               {viewingOldVersion && (
@@ -1188,10 +1196,10 @@ export default function DocumentViewer({
               </div>
               <div className="flex-1 overflow-y-auto">
                 {highlights.length === 0 ? (
-                  <div className="p-4 text-center text-slate-500 text-sm">
-                    <HighlighterIcon className="w-8 h-8 mx-auto mb-2 text-slate-300" />
-                    <p>Inga markeringar ännu</p>
-                    <p className="text-xs mt-1">Aktivera markeringsläge och markera text i dokumentet</p>
+                  <div className="p-4 text-center text-sm">
+                    <HighlighterIcon className="w-8 h-8 mx-auto mb-2 text-slate-400" />
+                    <p className="text-slate-700 font-medium">Inga markeringar ännu</p>
+                    <p className="text-xs mt-1 text-slate-600">Aktivera markeringsläge och markera text i dokumentet</p>
                   </div>
                 ) : (
                   highlights.map((highlight) => {
