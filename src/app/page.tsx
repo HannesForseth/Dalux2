@@ -19,7 +19,10 @@ import {
   Shield,
   Users,
   Play,
-  FolderOpen
+  FolderOpen,
+  AtSign,
+  Bell,
+  Upload
 } from "lucide-react"
 
 export default function Home() {
@@ -300,6 +303,66 @@ export default function Home() {
             <div>
               <p className="text-sm font-semibold text-slate-900">AI sorterade 24 filer</p>
               <p className="text-xs text-slate-500">Automatiskt</p>
+            </div>
+          </div>
+        </FloatingCard>
+
+        <FloatingCard
+          className="absolute bottom-[25%] right-[8%] hidden lg:block"
+          delay={1.5}
+        >
+          <div className="flex items-center gap-3 px-4 py-3 bg-white rounded-xl shadow-xl shadow-slate-900/5 border border-slate-100">
+            <div className="w-10 h-10 rounded-lg bg-amber-100 flex items-center justify-center">
+              <ClipboardCheck className="w-5 h-5 text-amber-600" />
+            </div>
+            <div>
+              <p className="text-sm font-semibold text-slate-900">Nytt protokoll</p>
+              <p className="text-xs text-slate-500">Byggmöte #14</p>
+            </div>
+          </div>
+        </FloatingCard>
+
+        <FloatingCard
+          className="absolute top-[45%] left-[3%] hidden xl:block"
+          delay={2}
+        >
+          <div className="flex items-center gap-3 px-4 py-3 bg-white rounded-xl shadow-xl shadow-slate-900/5 border border-slate-100">
+            <div className="w-10 h-10 rounded-lg bg-violet-100 flex items-center justify-center">
+              <Upload className="w-5 h-5 text-violet-600" />
+            </div>
+            <div>
+              <p className="text-sm font-semibold text-slate-900">PM03 uppladdat</p>
+              <p className="text-xs text-slate-500">3 min sedan</p>
+            </div>
+          </div>
+        </FloatingCard>
+
+        <FloatingCard
+          className="absolute top-[55%] right-[3%] hidden xl:block"
+          delay={2.5}
+        >
+          <div className="flex items-center gap-3 px-4 py-3 bg-white rounded-xl shadow-xl shadow-slate-900/5 border border-slate-100">
+            <div className="w-10 h-10 rounded-lg bg-pink-100 flex items-center justify-center">
+              <AtSign className="w-5 h-5 text-pink-600" />
+            </div>
+            <div>
+              <p className="text-sm font-semibold text-slate-900">Pär taggade dig</p>
+              <p className="text-xs text-slate-500">K-ritning Plan 2</p>
+            </div>
+          </div>
+        </FloatingCard>
+
+        <FloatingCard
+          className="absolute bottom-[35%] left-[2%] hidden xl:block"
+          delay={3}
+        >
+          <div className="flex items-center gap-3 px-4 py-3 bg-white rounded-xl shadow-xl shadow-slate-900/5 border border-slate-100">
+            <div className="w-10 h-10 rounded-lg bg-red-100 flex items-center justify-center">
+              <AlertTriangle className="w-5 h-5 text-red-600" />
+            </div>
+            <div>
+              <p className="text-sm font-semibold text-slate-900">Ny avvikelse</p>
+              <p className="text-xs text-slate-500">Hus B, våning 3</p>
             </div>
           </div>
         </FloatingCard>
