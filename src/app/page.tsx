@@ -5,6 +5,7 @@ import { motion, useScroll, useTransform, useSpring } from "framer-motion"
 import { Button } from "@/components/ui/button"
 import { useRef, useState, useEffect } from "react"
 import { createClient } from "@/lib/supabase/client"
+import Image from "next/image"
 import {
   FileText,
   Layers,
@@ -107,13 +108,15 @@ export default function Home() {
         <div className="mx-4 mt-4">
           <div className="max-w-6xl mx-auto px-6 py-3 bg-white/70 backdrop-blur-xl rounded-2xl border border-white/20 shadow-lg shadow-black/[0.03]">
             <div className="flex justify-between items-center">
-              <Link href="/" className="flex items-center gap-2.5">
-                <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-indigo-500 via-purple-500 to-pink-500 flex items-center justify-center shadow-lg shadow-indigo-500/25">
-                  <Building2 className="w-5 h-5 text-white" />
-                </div>
-                <span className="text-xl font-bold bg-gradient-to-r from-slate-900 to-slate-700 bg-clip-text text-transparent">
-                  Dalux2
-                </span>
+              <Link href="/" className="flex items-center gap-2">
+                <Image
+                  src="/bloxr-logo.png"
+                  alt="Bloxr"
+                  width={120}
+                  height={36}
+                  className="h-9 w-auto"
+                  priority
+                />
               </Link>
 
               <div className="hidden md:flex items-center gap-1">
@@ -498,21 +501,24 @@ export default function Home() {
       <footer className="py-16 px-6 border-t border-slate-200">
         <div className="max-w-6xl mx-auto">
           <div className="flex flex-col md:flex-row justify-between items-center gap-6">
-            <Link href="/" className="flex items-center gap-2.5">
-              <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-indigo-500 via-purple-500 to-pink-500 flex items-center justify-center">
-                <Building2 className="w-5 h-5 text-white" />
-              </div>
-              <span className="text-xl font-bold text-slate-900">Dalux2</span>
+            <Link href="/" className="flex items-center gap-2">
+              <Image
+                src="/bloxr-logo.png"
+                alt="Bloxr"
+                width={100}
+                height={30}
+                className="h-8 w-auto"
+              />
             </Link>
 
             <div className="flex gap-8 text-slate-600">
               <a href="#" className="hover:text-slate-900 transition-colors">Integritetspolicy</a>
               <a href="#" className="hover:text-slate-900 transition-colors">Villkor</a>
-              <a href="#" className="hover:text-slate-900 transition-colors">Kontakt</a>
+              <a href="mailto:support@bloxr.se" className="hover:text-slate-900 transition-colors">Kontakt</a>
             </div>
 
             <p className="text-slate-500 text-sm">
-              © 2024 Dalux2
+              © {new Date().getFullYear()} Bloxr
             </p>
           </div>
         </div>

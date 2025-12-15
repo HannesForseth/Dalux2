@@ -214,7 +214,7 @@ export default function NewProjectPage() {
               <p className="text-slate-400 mb-4">
                 Enterprise-planen inkluderar obegränsade användare, lagring och prioriterad support.
               </p>
-              <a href="mailto:kontakt@dalux2.se" className="text-blue-400 hover:text-blue-300">
+              <a href="mailto:kontakt@bloxr.se" className="text-blue-400 hover:text-blue-300">
                 Kontakta oss för offert →
               </a>
             </div>

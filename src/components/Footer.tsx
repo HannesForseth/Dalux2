@@ -1,8 +1,9 @@
 'use client'
 
 import Link from 'next/link'
+import Image from 'next/image'
 import { motion } from 'framer-motion'
-import { Building2, Heart } from 'lucide-react'
+import { Heart } from 'lucide-react'
 
 export default function Footer() {
   const currentYear = new Date().getFullYear()
@@ -18,11 +19,15 @@ export default function Footer() {
         <div className="flex flex-col sm:flex-row justify-between items-center gap-4">
           {/* Logo & Copyright */}
           <div className="flex items-center gap-3">
-            <div className="w-7 h-7 rounded-lg bg-gradient-to-br from-indigo-500 via-purple-500 to-pink-500 flex items-center justify-center shadow-sm">
-              <Building2 className="w-4 h-4 text-white" />
-            </div>
+            <Image
+              src="/bloxr-icon.png"
+              alt="Bloxr"
+              width={28}
+              height={28}
+              className="rounded-lg"
+            />
             <span className="text-sm text-slate-500">
-              © {currentYear} ByggSmart. Byggd med{' '}
+              © {currentYear} Bloxr. Byggd med{' '}
               <Heart className="inline w-3 h-3 text-pink-500 fill-pink-500 mx-0.5" />{' '}
               i Sverige
             </span>
@@ -43,7 +48,7 @@ export default function Footer() {
               Inställningar
             </Link>
             <a
-              href="mailto:support@byggsmart.se"
+              href="mailto:support@bloxr.se"
               className="text-sm text-slate-500 hover:text-indigo-600 transition-colors"
             >
               Support

@@ -1,4 +1,4 @@
-// Database types for Dalux2
+// Database types for Bloxr
 
 export type ProjectStatus = 'active' | 'completed' | 'archived'
 export type MemberStatus = 'pending' | 'active' | 'removed'

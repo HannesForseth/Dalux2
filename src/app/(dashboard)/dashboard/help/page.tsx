@@ -88,7 +88,7 @@ export default function HelpPage() {
           description="Hantera ditt konto"
         />
         <QuickLink
-          href="mailto:support@dalux.se"
+          href="mailto:support@bloxr.se"
           icon={<MailIcon />}
           title="Kontakta support"
           description="Få hjälp från vårt team"
@@ -168,7 +168,7 @@ export default function HelpPage() {
           Hittade du inte svaret du letade efter?
         </p>
         <a
-          href="mailto:support@dalux.se"
+          href="mailto:support@bloxr.se"
           className="inline-flex items-center gap-2 px-6 py-3 bg-indigo-600 text-white rounded-xl font-medium hover:bg-indigo-700 transition-colors"
         >
           <MailIcon className="w-5 h-5" />

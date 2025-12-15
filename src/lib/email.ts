@@ -2,8 +2,8 @@ import { Resend } from 'resend'
 
 const resend = new Resend(process.env.RESEND_API_KEY)
 
-const APP_URL = process.env.NEXT_PUBLIC_APP_URL || 'https://dalux2-1xcz.vercel.app'
-const FROM_EMAIL = process.env.EMAIL_FROM || 'Dalux Portal <onboarding@resend.dev>'
+const APP_URL = process.env.NEXT_PUBLIC_APP_URL || 'https://bloxr.se'
+const FROM_EMAIL = process.env.EMAIL_FROM || 'Bloxr <onboarding@resend.dev>'
 
 interface SendInvitationEmailParams {
   to: string
@@ -36,7 +36,7 @@ export async function sendInvitationEmail({
         </head>
         <body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; padding: 20px;">
           <div style="background: linear-gradient(135deg, #2563EB 0%, #1D4ED8 100%); padding: 30px; border-radius: 12px 12px 0 0; text-align: center;">
-            <h1 style="color: white; margin: 0; font-size: 28px;">Dalux Portal</h1>
+            <h1 style="color: white; margin: 0; font-size: 28px;">Bloxr</h1>
           </div>
 
           <div style="background: #ffffff; padding: 30px; border: 1px solid #e5e7eb; border-top: none; border-radius: 0 0 12px 12px;">
