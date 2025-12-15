@@ -65,6 +65,12 @@ export default function DocumentViewer({
   const [compareMode, setCompareMode] = useState<{ url1: string; url2: string; v1: number; v2: number } | null>(null)
   const [actualFileUrl, setActualFileUrl] = useState<string>(fileUrl)
 
+  // Pan/drag state
+  const [isPanning, setIsPanning] = useState(false)
+  const [panStart, setPanStart] = useState({ x: 0, y: 0 })
+  const [panOffset, setPanOffset] = useState({ x: 0, y: 0 })
+  const [lastPanOffset, setLastPanOffset] = useState({ x: 0, y: 0 })
+
   const pdfContainerRef = useRef<HTMLDivElement>(null)
   const searchInputRef = useRef<HTMLInputElement>(null)
 
@@ -237,15 +243,52 @@ export default function DocumentViewer({
   }
 
   const handleZoomIn = () => {
-    setScale(prev => Math.min(2.5, prev + 0.25))
+    setScale(prev => Math.min(3.0, prev + 0.25))
   }
 
   const handleZoomOut = () => {
-    setScale(prev => Math.max(0.5, prev - 0.25))
+    setScale(prev => Math.max(0.25, prev - 0.25))
+  }
+
+  const handleZoomReset = () => {
+    setScale(1.0)
+    setPanOffset({ x: 0, y: 0 })
+    setLastPanOffset({ x: 0, y: 0 })
   }
 
   const handleDownload = () => {
     window.open(fileUrl, '_blank')
+  }
+
+  // Pan handlers
+  const handleMouseDown = (e: React.MouseEvent) => {
+    if (scale <= 1 || content.type !== 'pdf') return
+    e.preventDefault()
+    setIsPanning(true)
+    setPanStart({ x: e.clientX - panOffset.x, y: e.clientY - panOffset.y })
+  }
+
+  const handleMouseMove = (e: React.MouseEvent) => {
+    if (!isPanning) return
+    const newOffset = {
+      x: e.clientX - panStart.x,
+      y: e.clientY - panStart.y
+    }
+    setPanOffset(newOffset)
+  }
+
+  const handleMouseUp = () => {
+    if (isPanning) {
+      setIsPanning(false)
+      setLastPanOffset(panOffset)
+    }
+  }
+
+  const handleMouseLeave = () => {
+    if (isPanning) {
+      setIsPanning(false)
+      setLastPanOffset(panOffset)
+    }
   }
 
   // Handle mouse wheel events for zoom and page navigation
@@ -263,22 +306,36 @@ export default function DocumentViewer({
         setCurrentPage(prev => Math.max(1, prev - 1))
       }
     } else {
-      // Regular wheel = zoom (only when hovering over the PDF)
+      // Regular wheel = zoom at cursor position
       const target = e.target as HTMLElement
       const pdfContainer = pdfContainerRef.current
       if (pdfContainer && pdfContainer.contains(target)) {
         e.preventDefault()
         const zoomStep = 0.1
-        if (e.deltaY < 0) {
-          // Scroll up = zoom in
-          setScale(prev => Math.min(3.0, prev + zoomStep))
-        } else {
-          // Scroll down = zoom out
-          setScale(prev => Math.max(0.25, prev - zoomStep))
-        }
+        const rect = pdfContainer.getBoundingClientRect()
+
+        // Calculate cursor position relative to container center
+        const cursorX = e.clientX - rect.left - rect.width / 2
+        const cursorY = e.clientY - rect.top - rect.height / 2
+
+        setScale(prev => {
+          const newScale = e.deltaY < 0
+            ? Math.min(3.0, prev + zoomStep)
+            : Math.max(0.25, prev - zoomStep)
+
+          // Calculate new pan offset to zoom towards cursor
+          const scaleFactor = newScale / prev
+          const newPanX = lastPanOffset.x - cursorX * (scaleFactor - 1)
+          const newPanY = lastPanOffset.y - cursorY * (scaleFactor - 1)
+
+          setPanOffset({ x: newPanX, y: newPanY })
+          setLastPanOffset({ x: newPanX, y: newPanY })
+
+          return newScale
+        })
       }
     }
-  }, [content.type, numPages])
+  }, [content.type, numPages, lastPanOffset])
 
   // Add wheel event listener
   useEffect(() => {
@@ -317,6 +374,20 @@ export default function DocumentViewer({
           setCurrentPage(prev => Math.min(numPages, prev + 1))
         } else if (e.key === 'ArrowLeft' || e.key === 'ArrowUp') {
           setCurrentPage(prev => Math.max(1, prev - 1))
+        }
+      }
+
+      // Zoom keyboard shortcuts
+      if (content.type === 'pdf' && !searchOpen) {
+        if (e.key === '+' || e.key === '=') {
+          e.preventDefault()
+          setScale(prev => Math.min(3.0, prev + 0.25))
+        } else if (e.key === '-') {
+          e.preventDefault()
+          setScale(prev => Math.max(0.25, prev - 0.25))
+        } else if (e.key === '0') {
+          e.preventDefault()
+          handleZoomReset()
         }
       }
 
@@ -404,31 +475,31 @@ export default function DocumentViewer({
     <div className="fixed inset-0 z-50 flex items-center justify-center">
       {/* Backdrop */}
       <div
-        className="absolute inset-0 bg-black/80 backdrop-blur-sm"
+        className="absolute inset-0 bg-black/50 backdrop-blur-sm"
         onClick={onClose}
       />
 
       {/* Modal */}
-      <div className="relative w-full max-w-6xl h-[90vh] mx-4 bg-slate-900 rounded-xl shadow-2xl flex flex-col overflow-hidden">
+      <div className="relative w-full max-w-7xl h-[95vh] mx-2 bg-white/95 backdrop-blur-xl border border-slate-200/50 rounded-2xl shadow-2xl flex flex-col overflow-hidden">
         {/* Header */}
-        <div className="flex items-center justify-between px-6 py-4 border-b border-slate-700">
+        <div className="flex items-center justify-between px-6 py-4 border-b border-slate-200">
           <div className="flex items-center gap-4">
             <FileIcon fileType={fileType} fileName={fileName} />
             <div>
               <div className="flex items-center gap-2">
-                <h2 className="text-lg font-semibold text-white truncate max-w-md">{fileName}</h2>
-                <span className="px-2 py-0.5 text-xs font-medium bg-slate-700 text-slate-300 rounded">
+                <h2 className="text-lg font-semibold text-slate-900 truncate max-w-md">{fileName}</h2>
+                <span className="px-2 py-0.5 text-xs font-medium bg-indigo-100 text-indigo-700 rounded">
                   v{viewingOldVersion?.version || currentVersion}
                 </span>
               </div>
-              <p className="text-sm text-slate-400">{getFileTypeLabel(fileType, fileName)}</p>
+              <p className="text-sm text-slate-500">{getFileTypeLabel(fileType, fileName)}</p>
             </div>
           </div>
 
           <div className="flex items-center gap-2">
             {/* Search bar for PDF */}
             {content.type === 'pdf' && searchOpen && (
-              <div className="flex items-center gap-2 bg-slate-800 rounded-lg px-3 py-1.5 mr-2">
+              <div className="flex items-center gap-2 bg-white border border-slate-200 rounded-lg px-3 py-1.5 mr-2 shadow-sm">
                 <SearchIcon className="h-4 w-4 text-slate-400" />
                 <input
                   ref={searchInputRef}
@@ -439,17 +510,17 @@ export default function DocumentViewer({
                     performSearch(e.target.value)
                   }}
                   placeholder="Sök i PDF..."
-                  className="bg-transparent text-white text-sm w-40 outline-none placeholder-slate-500"
+                  className="bg-transparent text-slate-900 text-sm w-40 outline-none placeholder-slate-400"
                 />
                 {searchResults.length > 0 && (
-                  <span className="text-xs text-slate-400">
+                  <span className="text-xs text-slate-500">
                     {currentSearchIndex + 1}/{searchResults.length}
                   </span>
                 )}
                 <button
                   onClick={goToPrevSearchResult}
                   disabled={searchResults.length === 0}
-                  className="p-1 text-slate-400 hover:text-white disabled:opacity-50"
+                  className="p-1 text-slate-400 hover:text-slate-900 disabled:opacity-50"
                   title="Föregående (Shift+Enter)"
                 >
                   <ChevronUpIcon />
@@ -457,7 +528,7 @@ export default function DocumentViewer({
                 <button
                   onClick={goToNextSearchResult}
                   disabled={searchResults.length === 0}
-                  className="p-1 text-slate-400 hover:text-white disabled:opacity-50"
+                  className="p-1 text-slate-400 hover:text-slate-900 disabled:opacity-50"
                   title="Nästa (Enter)"
                 >
                   <ChevronDownIcon />
@@ -468,7 +539,7 @@ export default function DocumentViewer({
                     setSearchText('')
                     setSearchResults([])
                   }}
-                  className="p-1 text-slate-400 hover:text-white"
+                  className="p-1 text-slate-400 hover:text-slate-900"
                 >
                   <CloseIcon />
                 </button>
@@ -482,7 +553,7 @@ export default function DocumentViewer({
                   setSearchOpen(true)
                   setTimeout(() => searchInputRef.current?.focus(), 100)
                 }}
-                className="p-2 text-slate-400 hover:text-white hover:bg-slate-700 rounded-lg transition-colors"
+                className="p-2 text-slate-500 hover:text-slate-900 hover:bg-slate-100 rounded-lg transition-colors"
                 title="Sök (Ctrl+F)"
               >
                 <SearchIcon />
@@ -493,7 +564,7 @@ export default function DocumentViewer({
             {content.type === 'pdf' && projectId && documentId && (
               <button
                 onClick={() => setCommentsOpen(!commentsOpen)}
-                className={`p-2 rounded-lg transition-colors ${commentsOpen ? 'text-blue-400 bg-slate-700' : 'text-slate-400 hover:text-white hover:bg-slate-700'}`}
+                className={`p-2 rounded-lg transition-colors ${commentsOpen ? 'text-indigo-600 bg-indigo-50' : 'text-slate-500 hover:text-slate-900 hover:bg-slate-100'}`}
                 title="Kommentarer"
               >
                 <CommentIcon />
@@ -504,7 +575,7 @@ export default function DocumentViewer({
             {documentId && (
               <button
                 onClick={() => setVersionsOpen(!versionsOpen)}
-                className={`p-2 rounded-lg transition-colors ${versionsOpen ? 'text-orange-400 bg-slate-700' : 'text-slate-400 hover:text-white hover:bg-slate-700'}`}
+                className={`p-2 rounded-lg transition-colors ${versionsOpen ? 'text-amber-600 bg-amber-50' : 'text-slate-500 hover:text-slate-900 hover:bg-slate-100'}`}
                 title="Versionshistorik"
               >
                 <ClockIcon />
@@ -515,40 +586,52 @@ export default function DocumentViewer({
             {documentId && !viewingOldVersion && !compareMode && (
               <button
                 onClick={() => setUploadVersionOpen(true)}
-                className="p-2 text-slate-400 hover:text-white hover:bg-slate-700 rounded-lg transition-colors"
+                className="p-2 text-slate-500 hover:text-slate-900 hover:bg-slate-100 rounded-lg transition-colors"
                 title="Ladda upp ny version"
               >
                 <ArrowUpTrayIcon />
               </button>
             )}
 
+            {/* Divider */}
+            {content.type === 'pdf' && <div className="w-px h-6 bg-slate-200 mx-1" />}
+
             {/* Zoom controls for PDF */}
             {content.type === 'pdf' && (
-              <>
+              <div className="flex items-center gap-1 bg-slate-100 rounded-lg p-1">
                 <button
                   onClick={handleZoomOut}
-                  className="p-2 text-slate-400 hover:text-white hover:bg-slate-700 rounded-lg transition-colors"
-                  title="Zooma ut (scroll ner)"
+                  className="p-1.5 text-slate-500 hover:text-slate-900 hover:bg-white rounded transition-colors"
+                  title="Zooma ut (-)"
                 >
                   <ZoomOutIcon />
                 </button>
-                <span className="text-sm text-slate-400 min-w-[60px] text-center">
+                <span className="text-sm text-slate-600 min-w-[50px] text-center font-medium">
                   {Math.round(scale * 100)}%
                 </span>
                 <button
                   onClick={handleZoomIn}
-                  className="p-2 text-slate-400 hover:text-white hover:bg-slate-700 rounded-lg transition-colors"
-                  title="Zooma in (scroll upp)"
+                  className="p-1.5 text-slate-500 hover:text-slate-900 hover:bg-white rounded transition-colors"
+                  title="Zooma in (+)"
                 >
                   <ZoomInIcon />
                 </button>
-                <div className="w-px h-6 bg-slate-700 mx-2" />
-              </>
+                <button
+                  onClick={handleZoomReset}
+                  className="p-1.5 text-slate-500 hover:text-slate-900 hover:bg-white rounded transition-colors"
+                  title="Återställ zoom (0)"
+                >
+                  <ResetIcon />
+                </button>
+              </div>
             )}
+
+            {/* Divider */}
+            <div className="w-px h-6 bg-slate-200 mx-1" />
 
             <button
               onClick={handleDownload}
-              className="flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white rounded-lg transition-colors"
+              className="flex items-center gap-2 px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg transition-colors shadow-sm"
             >
               <DownloadIcon />
               Ladda ner
@@ -556,7 +639,7 @@ export default function DocumentViewer({
 
             <button
               onClick={onClose}
-              className="p-2 text-slate-400 hover:text-white hover:bg-slate-700 rounded-lg transition-colors"
+              className="p-2 text-slate-500 hover:text-slate-900 hover:bg-slate-100 rounded-lg transition-colors"
             >
               <CloseIcon />
             </button>
@@ -566,20 +649,20 @@ export default function DocumentViewer({
         {/* Content area with optional comments panel */}
         <div className="flex-1 flex overflow-hidden">
           {/* Main content */}
-          <div className="flex-1 overflow-auto bg-slate-800 p-4">
+          <div className="flex-1 overflow-auto bg-gradient-to-br from-slate-50 to-slate-100 p-2">
             {content.type === 'loading' && (
             <div className="flex items-center justify-center h-full">
-              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500"></div>
+              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-500"></div>
             </div>
           )}
 
           {content.type === 'error' && (
             <div className="flex flex-col items-center justify-center h-full text-center">
               <ErrorIcon />
-              <p className="mt-4 text-slate-400">{content.message}</p>
+              <p className="mt-4 text-slate-500">{content.message}</p>
               <button
                 onClick={handleDownload}
-                className="mt-4 px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white rounded-lg transition-colors"
+                className="mt-4 px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg transition-colors"
               >
                 Ladda ner fil
               </button>
@@ -589,10 +672,10 @@ export default function DocumentViewer({
           {content.type === 'unsupported' && (
             <div className="flex flex-col items-center justify-center h-full text-center">
               <FileIcon fileType={fileType} fileName={fileName} className="h-16 w-16" />
-              <p className="mt-4 text-slate-400">{content.message}</p>
+              <p className="mt-4 text-slate-500">{content.message}</p>
               <button
                 onClick={handleDownload}
-                className="mt-4 px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white rounded-lg transition-colors"
+                className="mt-4 px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg transition-colors"
               >
                 Ladda ner fil
               </button>
@@ -600,51 +683,69 @@ export default function DocumentViewer({
           )}
 
           {content.type === 'pdf' && !compareMode && (
-            <div ref={pdfContainerRef} className="flex flex-col items-center min-h-full">
+            <div
+              ref={pdfContainerRef}
+              className={`flex flex-col items-center min-h-full select-none ${scale > 1 ? 'cursor-grab' : ''} ${isPanning ? 'cursor-grabbing' : ''}`}
+              onMouseDown={handleMouseDown}
+              onMouseMove={handleMouseMove}
+              onMouseUp={handleMouseUp}
+              onMouseLeave={handleMouseLeave}
+            >
               {/* Old version banner */}
               {viewingOldVersion && (
-                <div className="mb-4 w-full max-w-2xl p-3 bg-amber-900/30 border border-amber-700/50 rounded-lg flex items-center justify-between">
+                <div className="mb-4 w-full max-w-2xl p-3 bg-amber-50 border border-amber-200 rounded-lg flex items-center justify-between">
                   <div className="flex items-center gap-2">
-                    <ClockIcon className="h-5 w-5 text-amber-500" />
-                    <span className="text-amber-300">
+                    <ClockIcon className="h-5 w-5 text-amber-600" />
+                    <span className="text-amber-800">
                       Visar version {viewingOldVersion.version} av {currentVersion}
                     </span>
                   </div>
                   <button
                     onClick={handleReturnToCurrent}
-                    className="px-3 py-1 text-sm bg-amber-600 hover:bg-amber-500 text-white rounded transition-colors"
+                    className="px-3 py-1 text-sm bg-amber-500 hover:bg-amber-400 text-white rounded transition-colors"
                   >
                     Tillbaka till aktuell
                   </button>
                 </div>
               )}
 
-              <Document
-                file={viewingOldVersion?.url || actualFileUrl}
-                onLoadSuccess={onDocumentLoadSuccessWithText}
-                loading={
-                  <div className="flex items-center justify-center h-64">
-                    <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500"></div>
-                  </div>
-                }
-                error={
-                  <div className="flex flex-col items-center justify-center h-64 text-red-400">
-                    <p>Kunde inte ladda PDF-filen</p>
-                  </div>
-                }
+              <div
+                style={{
+                  transform: `translate(${panOffset.x}px, ${panOffset.y}px)`,
+                  transition: isPanning ? 'none' : 'transform 0.1s ease-out'
+                }}
               >
-                <Page
-                  pageNumber={currentPage}
-                  scale={scale}
-                  renderTextLayer={true}
-                  renderAnnotationLayer={false}
-                  className="shadow-lg"
-                />
-              </Document>
+                <Document
+                  file={viewingOldVersion?.url || actualFileUrl}
+                  onLoadSuccess={onDocumentLoadSuccessWithText}
+                  loading={
+                    <div className="flex items-center justify-center h-64">
+                      <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-500"></div>
+                    </div>
+                  }
+                  error={
+                    <div className="flex flex-col items-center justify-center h-64 text-red-500">
+                      <p>Kunde inte ladda PDF-filen</p>
+                    </div>
+                  }
+                >
+                  <Page
+                    pageNumber={currentPage}
+                    scale={scale}
+                    renderTextLayer={true}
+                    renderAnnotationLayer={false}
+                    className="shadow-xl rounded-lg"
+                  />
+                </Document>
+              </div>
 
               {/* Zoom hint tooltip */}
-              <div className="mt-4 text-xs text-slate-500 text-center">
-                Scroll för att zooma • Ctrl+Scroll för att byta sida • Ctrl+F för att söka
+              <div className="mt-4 text-xs text-slate-400 text-center space-x-3">
+                <span><kbd className="px-1.5 py-0.5 bg-slate-200 rounded text-slate-600">Scroll</kbd> zooma</span>
+                <span><kbd className="px-1.5 py-0.5 bg-slate-200 rounded text-slate-600">+/-</kbd> zooma</span>
+                <span><kbd className="px-1.5 py-0.5 bg-slate-200 rounded text-slate-600">0</kbd> återställ</span>
+                <span><kbd className="px-1.5 py-0.5 bg-slate-200 rounded text-slate-600">Ctrl+F</kbd> sök</span>
+                {scale > 1 && <span className="text-indigo-500 font-medium">Dra för att panorera</span>}
               </div>
             </div>
           )}
@@ -653,10 +754,10 @@ export default function DocumentViewer({
           {content.type === 'pdf' && compareMode && (
             <div className="flex flex-col h-full">
               {/* Comparison header */}
-              <div className="flex items-center justify-between p-3 bg-purple-900/30 border-b border-purple-700/50">
+              <div className="flex items-center justify-between p-3 bg-purple-50 border-b border-purple-200">
                 <div className="flex items-center gap-2">
-                  <DocumentDuplicateIcon className="h-5 w-5 text-purple-400" />
-                  <span className="text-purple-300">
+                  <DocumentDuplicateIcon className="h-5 w-5 text-purple-600" />
+                  <span className="text-purple-800">
                     Jämför version {compareMode.v1} med version {compareMode.v2}
                   </span>
                 </div>
@@ -671,17 +772,17 @@ export default function DocumentViewer({
               {/* Side by side PDFs */}
               <div className="flex-1 flex gap-2 p-2 overflow-hidden">
                 {/* Left PDF - Version 1 */}
-                <div className="flex-1 flex flex-col bg-slate-900 rounded-lg overflow-hidden">
-                  <div className="px-3 py-2 bg-slate-800 border-b border-slate-700">
-                    <span className="text-sm font-medium text-slate-300">Version {compareMode.v1}</span>
+                <div className="flex-1 flex flex-col bg-white rounded-lg overflow-hidden border border-slate-200">
+                  <div className="px-3 py-2 bg-slate-50 border-b border-slate-200">
+                    <span className="text-sm font-medium text-slate-700">Version {compareMode.v1}</span>
                   </div>
-                  <div className="flex-1 overflow-auto p-2">
+                  <div className="flex-1 overflow-auto p-2 bg-slate-100">
                     <Document
                       file={compareMode.url1}
                       onLoadSuccess={onDocumentLoadSuccess}
                       loading={
                         <div className="flex items-center justify-center h-64">
-                          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500"></div>
+                          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-500"></div>
                         </div>
                       }
                     >
@@ -697,17 +798,17 @@ export default function DocumentViewer({
                 </div>
 
                 {/* Right PDF - Version 2 */}
-                <div className="flex-1 flex flex-col bg-slate-900 rounded-lg overflow-hidden">
-                  <div className="px-3 py-2 bg-slate-800 border-b border-slate-700">
-                    <span className="text-sm font-medium text-slate-300">Version {compareMode.v2}</span>
+                <div className="flex-1 flex flex-col bg-white rounded-lg overflow-hidden border border-slate-200">
+                  <div className="px-3 py-2 bg-slate-50 border-b border-slate-200">
+                    <span className="text-sm font-medium text-slate-700">Version {compareMode.v2}</span>
                   </div>
-                  <div className="flex-1 overflow-auto p-2">
+                  <div className="flex-1 overflow-auto p-2 bg-slate-100">
                     <Document
                       file={compareMode.url2}
                       onLoadSuccess={onDocumentLoadSuccess}
                       loading={
                         <div className="flex items-center justify-center h-64">
-                          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500"></div>
+                          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-500"></div>
                         </div>
                       }
                     >
@@ -744,12 +845,12 @@ export default function DocumentViewer({
           )}
 
           {content.type === 'table' && (
-            <div className="overflow-auto">
+            <div className="overflow-auto bg-white rounded-lg border border-slate-200">
               <table className="w-full text-sm">
                 <thead>
-                  <tr className="bg-slate-700">
+                  <tr className="bg-slate-50">
                     {content.headers.map((header, i) => (
-                      <th key={i} className="px-4 py-3 text-left font-medium text-white border-b border-slate-600">
+                      <th key={i} className="px-4 py-3 text-left font-medium text-slate-700 border-b border-slate-200">
                         {header || `Kolumn ${i + 1}`}
                       </th>
                     ))}
@@ -757,9 +858,9 @@ export default function DocumentViewer({
                 </thead>
                 <tbody>
                   {content.rows.map((row, rowIndex) => (
-                    <tr key={rowIndex} className="hover:bg-slate-700/50">
+                    <tr key={rowIndex} className="hover:bg-slate-50">
                       {row.map((cell, cellIndex) => (
-                        <td key={cellIndex} className="px-4 py-2 text-slate-300 border-b border-slate-700">
+                        <td key={cellIndex} className="px-4 py-2 text-slate-600 border-b border-slate-100">
                           {cell}
                         </td>
                       ))}
@@ -771,7 +872,7 @@ export default function DocumentViewer({
           )}
 
           {content.type === 'text' && (
-            <pre className="p-4 bg-slate-900 rounded-lg text-slate-300 text-sm overflow-auto whitespace-pre-wrap font-mono">
+            <pre className="p-4 bg-white rounded-lg border border-slate-200 text-slate-700 text-sm overflow-auto whitespace-pre-wrap font-mono shadow-sm">
               {content.content}
             </pre>
           )}
@@ -789,12 +890,12 @@ export default function DocumentViewer({
 
           {/* Version History Panel */}
           {versionsOpen && documentId && (
-            <div className="w-80 border-l border-slate-700 bg-slate-900 flex flex-col">
-              <div className="flex items-center justify-between px-4 py-3 border-b border-slate-700">
-                <h3 className="font-medium text-white">Versioner</h3>
+            <div className="w-80 border-l border-slate-200 bg-white flex flex-col">
+              <div className="flex items-center justify-between px-4 py-3 border-b border-slate-200">
+                <h3 className="font-medium text-slate-900">Versioner</h3>
                 <button
                   onClick={() => setVersionsOpen(false)}
-                  className="p-1 text-slate-400 hover:text-white rounded transition-colors"
+                  className="p-1 text-slate-400 hover:text-slate-900 rounded transition-colors"
                 >
                   <CloseIcon />
                 </button>
@@ -827,21 +928,21 @@ export default function DocumentViewer({
 
         {/* Footer with pagination for PDF */}
         {content.type === 'pdf' && numPages > 1 && (
-          <div className="flex items-center justify-center gap-4 px-6 py-3 border-t border-slate-700">
+          <div className="flex items-center justify-center gap-4 px-6 py-3 border-t border-slate-200 bg-white/50">
             <button
               onClick={handlePrevPage}
               disabled={currentPage <= 1}
-              className="p-2 text-slate-400 hover:text-white hover:bg-slate-700 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              className="p-2 text-slate-500 hover:text-slate-900 hover:bg-slate-100 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
             >
               <ChevronLeftIcon />
             </button>
-            <span className="text-slate-400">
+            <span className="text-slate-600 font-medium">
               Sida {currentPage} av {numPages}
             </span>
             <button
               onClick={handleNextPage}
               disabled={currentPage >= numPages}
-              className="p-2 text-slate-400 hover:text-white hover:bg-slate-700 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              className="p-2 text-slate-500 hover:text-slate-900 hover:bg-slate-100 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
             >
               <ChevronRightIcon />
             </button>
@@ -927,6 +1028,14 @@ function ZoomOutIcon() {
   return (
     <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
       <path strokeLinecap="round" strokeLinejoin="round" d="m21 21-5.197-5.197m0 0A7.5 7.5 0 1 0 5.196 5.196a7.5 7.5 0 0 0 10.607 10.607ZM13.5 10.5h-6" />
+    </svg>
+  )
+}
+
+function ResetIcon() {
+  return (
+    <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+      <path strokeLinecap="round" strokeLinejoin="round" d="M9 9V4.5M9 9H4.5M9 9 3.75 3.75M9 15v4.5M9 15H4.5M9 15l-5.25 5.25M15 9h4.5M15 9V4.5M15 9l5.25-5.25M15 15h4.5M15 15v4.5m0-4.5 5.25 5.25" />
     </svg>
   )
 }
