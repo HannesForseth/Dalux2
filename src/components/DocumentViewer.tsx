@@ -180,6 +180,11 @@ export default function DocumentViewer({
   const [lastPanOffset, setLastPanOffset] = useState({ x: 0, y: 0 })
   const [initialFitDone, setInitialFitDone] = useState(false)
 
+  // Zoom state for smooth animations
+  const [isZooming, setIsZooming] = useState(false)
+  const [showZoomIndicator, setShowZoomIndicator] = useState(false)
+  const animationFrameRef = useRef<number | null>(null)
+
   // Zoom dropdown state
   const [showZoomMenu, setShowZoomMenu] = useState(false)
 
@@ -554,7 +559,7 @@ export default function DocumentViewer({
   const ZOOM_FACTOR = 1.15 // 15% per step - feels natural
   const MIN_SCALE = 0.1
   const MAX_SCALE = 5.0
-  const RENDER_DEBOUNCE_MS = 150 // Debounce PDF re-render for smooth zooming
+  const RENDER_DEBOUNCE_MS = 200 // Debounce PDF re-render for smooth zooming
 
   // Debounced render scale update - prevents white flash during zoom
   // The PDF only re-renders when renderScale changes (debounced),
@@ -562,18 +567,40 @@ export default function DocumentViewer({
   useEffect(() => {
     const timer = setTimeout(() => {
       setRenderScale(scale)
+      setIsZooming(false)
     }, RENDER_DEBOUNCE_MS)
     return () => clearTimeout(timer)
   }, [scale])
+
+  // Show/hide zoom indicator based on zoom state
+  useEffect(() => {
+    if (isZooming) {
+      setShowZoomIndicator(true)
+    } else {
+      const timer = setTimeout(() => setShowZoomIndicator(false), 800)
+      return () => clearTimeout(timer)
+    }
+  }, [isZooming, scale])
+
+  // Cleanup animation frame on unmount
+  useEffect(() => {
+    return () => {
+      if (animationFrameRef.current) {
+        cancelAnimationFrame(animationFrameRef.current)
+      }
+    }
+  }, [])
 
   // Calculate CSS transform scale (instant visual zoom)
   const cssScale = scale / renderScale
 
   const handleZoomIn = () => {
+    setIsZooming(true)
     setScale(prev => Math.min(MAX_SCALE, prev * ZOOM_FACTOR))
   }
 
   const handleZoomOut = () => {
+    setIsZooming(true)
     setScale(prev => Math.max(MIN_SCALE, prev / ZOOM_FACTOR))
   }
 
@@ -701,27 +728,42 @@ export default function DocumentViewer({
   const handleWheel = useCallback((e: WheelEvent) => {
     if (content.type !== 'pdf') return
 
-    // Ctrl + wheel = page navigation
-    if (e.ctrlKey) {
+    // Detect pinch-to-zoom on trackpad (encoded as wheel with ctrlKey in Chrome/Firefox)
+    // or regular Ctrl + wheel for page navigation
+    const isPinchGesture = e.ctrlKey && Math.abs(e.deltaY) < 50 // Pinch gives small deltaY values
+
+    if (e.ctrlKey && !isPinchGesture) {
+      // Ctrl + wheel = page navigation (larger deltaY values)
       e.preventDefault()
       if (e.deltaY > 0) {
-        // Scroll down = next page
         setCurrentPage(prev => Math.min(numPages, prev + 1))
       } else {
-        // Scroll up = previous page
         setCurrentPage(prev => Math.max(1, prev - 1))
       }
-    } else {
-      // Regular wheel = zoom at cursor position (multiplicative for smooth zooming)
-      const target = e.target as HTMLElement
-      const pdfContainer = pdfContainerRef.current
-      if (pdfContainer && pdfContainer.contains(target)) {
-        e.preventDefault()
+      return
+    }
+
+    // Regular wheel or pinch = zoom at cursor position
+    const target = e.target as HTMLElement
+    const pdfContainer = pdfContainerRef.current
+    if (pdfContainer && pdfContainer.contains(target)) {
+      e.preventDefault()
+
+      // Cancel any pending animation frame
+      if (animationFrameRef.current) {
+        cancelAnimationFrame(animationFrameRef.current)
+      }
+
+      // Use requestAnimationFrame for smooth 60fps zoom
+      animationFrameRef.current = requestAnimationFrame(() => {
         const rect = pdfContainer.getBoundingClientRect()
 
         // Calculate cursor position relative to container center
         const cursorX = e.clientX - rect.left - rect.width / 2
         const cursorY = e.clientY - rect.top - rect.height / 2
+
+        // Mark as zooming for GPU acceleration
+        setIsZooming(true)
 
         setScale(prev => {
           // Use multiplicative zoom factor (same as buttons)
@@ -739,7 +781,9 @@ export default function DocumentViewer({
 
           return newScale
         })
-      }
+
+        animationFrameRef.current = null
+      })
     }
   }, [content.type, numPages, lastPanOffset])
 
@@ -787,9 +831,11 @@ export default function DocumentViewer({
       if (content.type === 'pdf' && !searchOpen) {
         if (e.key === '+' || e.key === '=') {
           e.preventDefault()
+          setIsZooming(true)
           setScale(prev => Math.min(MAX_SCALE, prev * ZOOM_FACTOR))
         } else if (e.key === '-') {
           e.preventDefault()
+          setIsZooming(true)
           setScale(prev => Math.max(MIN_SCALE, prev / ZOOM_FACTOR))
         } else if (e.key === '0') {
           e.preventDefault()
@@ -1914,7 +1960,10 @@ export default function DocumentViewer({
                     className="relative origin-center"
                     style={{
                       transform: `scale(${cssScale})`,
-                      transition: 'transform 0.05s ease-out'
+                      transformOrigin: 'center center',
+                      willChange: isZooming ? 'transform' : 'auto',
+                      backfaceVisibility: 'hidden',
+                      transition: isZooming ? 'none' : 'transform 0.05s ease-out'
                     }}
                   >
                     <Page
@@ -1950,6 +1999,16 @@ export default function DocumentViewer({
                   </div>
                 </Document>
               </div>
+
+              {/* Zoom indicator - shows current zoom level during zoom */}
+              {showZoomIndicator && (
+                <div className="absolute bottom-20 left-1/2 -translate-x-1/2 z-50
+                              px-4 py-2 bg-black/75 text-white rounded-full
+                              text-sm font-semibold backdrop-blur-sm shadow-lg
+                              transition-opacity duration-200 pointer-events-none">
+                  {Math.round(scale * 100)}%
+                </div>
+              )}
 
               {/* Zoom hint tooltip */}
               <div className="mt-4 text-xs text-slate-400 text-center space-x-3">
