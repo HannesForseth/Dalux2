@@ -166,19 +166,20 @@ export default function Home() {
           className="max-w-5xl mx-auto text-center relative z-10"
           style={{ y: heroY, opacity: heroOpacity, scale: heroScale }}
         >
-          {/* Badge */}
+          {/* Logo */}
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.5 }}
           >
-            <span className="inline-flex items-center gap-2 px-4 py-2 bg-white/80 backdrop-blur-sm border border-slate-200/50 rounded-full text-sm font-medium text-slate-700 shadow-lg shadow-slate-900/5">
-              <span className="flex h-2 w-2 relative">
-                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
-                <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
-              </span>
-              Nu med AI-assisterad dokumenthantering
-            </span>
+            <Image
+              src="/bloxr-logo.png"
+              alt="Bloxr"
+              width={280}
+              height={80}
+              className="h-16 sm:h-20 md:h-24 w-auto mx-auto"
+              priority
+            />
           </motion.div>
 
           {/* Main Heading */}
