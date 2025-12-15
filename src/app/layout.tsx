@@ -58,10 +58,10 @@ export const metadata: Metadata = {
   },
   icons: {
     icon: [
-      { url: "/favicon.ico", sizes: "any" },
-      { url: "/favicon.svg", type: "image/svg+xml" },
+      { url: "/bloxr-icon.png", type: "image/png" },
     ],
-    apple: [{ url: "/apple-touch-icon.png", sizes: "180x180" }],
+    apple: [{ url: "/bloxr-icon.png", sizes: "180x180" }],
+    shortcut: [{ url: "/bloxr-icon.png" }],
   },
   manifest: "/manifest.json",
   openGraph: {

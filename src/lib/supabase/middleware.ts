@@ -41,9 +41,26 @@ export async function updateSession(request: NextRequest) {
     data: { user },
   } = await supabase.auth.getUser()
 
+  // Public paths that don't require authentication (SEO, static files)
+  const publicPaths = [
+    '/sitemap.xml',
+    '/robots.txt',
+    '/manifest.webmanifest',
+    '/opengraph-image',
+    '/twitter-image',
+    '/apple-icon',
+    '/favicon.ico',
+    '/invite',
+  ]
+
+  const isPublicPath = publicPaths.some(path =>
+    request.nextUrl.pathname === path || request.nextUrl.pathname.startsWith(path)
+  )
+
   // Redirect to login if not authenticated and trying to access protected routes
   if (
     !user &&
+    !isPublicPath &&
     !request.nextUrl.pathname.startsWith('/login') &&
     !request.nextUrl.pathname.startsWith('/register') &&
     !request.nextUrl.pathname.startsWith('/auth') &&
