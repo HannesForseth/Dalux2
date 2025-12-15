@@ -10,6 +10,8 @@ import CommentPanel from './documents/CommentPanel'
 import VersionHistoryPanel from './documents/VersionHistoryPanel'
 import UploadVersionModal from './documents/UploadVersionModal'
 import { getComparisonUrls, getDocumentDownloadUrl } from '@/app/actions/documents'
+import { getDocumentHighlights, createHighlight, updateHighlight, deleteHighlight } from '@/app/actions/documentHighlights'
+import type { DocumentHighlightWithCreator, HighlightColor, CreateHighlightData } from '@/types/database'
 
 // Set up PDF.js worker
 pdfjs.GlobalWorkerOptions.workerSrc = `//unpkg.com/pdfjs-dist@${pdfjs.version}/build/pdf.worker.min.mjs`
@@ -37,6 +39,25 @@ type ViewerContent =
   | { type: 'loading' }
   | { type: 'error'; message: string }
 
+// Enhanced search result with context
+interface DetailedSearchResult {
+  page: number
+  text: string
+  contextBefore: string
+  contextAfter: string
+  index: number
+  offset: number
+}
+
+// Highlight colors configuration
+const HIGHLIGHT_COLORS: { id: HighlightColor; bg: string; text: string; name: string }[] = [
+  { id: 'yellow', bg: 'bg-yellow-300', text: 'text-yellow-800', name: 'Gul' },
+  { id: 'green', bg: 'bg-green-300', text: 'text-green-800', name: 'Grön' },
+  { id: 'blue', bg: 'bg-blue-300', text: 'text-blue-800', name: 'Blå' },
+  { id: 'pink', bg: 'bg-pink-300', text: 'text-pink-800', name: 'Rosa' },
+  { id: 'orange', bg: 'bg-orange-300', text: 'text-orange-800', name: 'Orange' },
+]
+
 export default function DocumentViewer({
   isOpen,
   onClose,
@@ -57,7 +78,24 @@ export default function DocumentViewer({
   const [searchOpen, setSearchOpen] = useState<boolean>(false)
   const [textContent, setTextContent] = useState<string[]>([])
   const [searchResults, setSearchResults] = useState<{ page: number; count: number }[]>([])
+  const [detailedSearchResults, setDetailedSearchResults] = useState<DetailedSearchResult[]>([])
+  const [showSearchResultsPanel, setShowSearchResultsPanel] = useState<boolean>(false)
   const [currentSearchIndex, setCurrentSearchIndex] = useState<number>(0)
+
+  // Highlight state
+  const [highlights, setHighlights] = useState<DocumentHighlightWithCreator[]>([])
+  const [highlightMode, setHighlightMode] = useState<boolean>(false)
+  const [selectedHighlightColor, setSelectedHighlightColor] = useState<HighlightColor>('yellow')
+  const [showHighlightsPanel, setShowHighlightsPanel] = useState<boolean>(false)
+  const [showAddHighlightModal, setShowAddHighlightModal] = useState<boolean>(false)
+  const [pendingHighlight, setPendingHighlight] = useState<{
+    text: string
+    page: number
+    startOffset: number
+    endOffset: number
+  } | null>(null)
+  const [highlightNote, setHighlightNote] = useState<string>('')
+  const [editingHighlight, setEditingHighlight] = useState<DocumentHighlightWithCreator | null>(null)
   const [commentsOpen, setCommentsOpen] = useState<boolean>(false)
   const [versionsOpen, setVersionsOpen] = useState<boolean>(false)
   const [uploadVersionOpen, setUploadVersionOpen] = useState<boolean>(false)
@@ -80,6 +118,20 @@ export default function DocumentViewer({
     setViewingOldVersion(null)
     setCompareMode(null)
   }, [fileUrl, documentId])
+
+  // Load highlights when document opens
+  useEffect(() => {
+    const loadHighlights = async () => {
+      if (!isOpen || !documentId) return
+      try {
+        const data = await getDocumentHighlights(documentId)
+        setHighlights(data)
+      } catch (error) {
+        console.error('Error loading highlights:', error)
+      }
+    }
+    loadHighlights()
+  }, [isOpen, documentId])
 
   const loadContent = useCallback(async () => {
     setContent({ type: 'loading' })
@@ -405,44 +457,196 @@ export default function DocumentViewer({
     return () => window.removeEventListener('keydown', handleKeyDown)
   }, [isOpen, content.type, numPages, searchOpen, onClose])
 
-  // Search functionality
+  // Search functionality with detailed results
   const performSearch = useCallback((text: string) => {
     if (!text.trim() || textContent.length === 0) {
       setSearchResults([])
+      setDetailedSearchResults([])
+      setShowSearchResultsPanel(false)
       return
     }
 
     const searchLower = text.toLowerCase()
     const results: { page: number; count: number }[] = []
+    const detailed: DetailedSearchResult[] = []
+    let globalIndex = 0
 
-    textContent.forEach((pageText, index) => {
-      const matches = (pageText.toLowerCase().match(new RegExp(searchLower, 'g')) || []).length
-      if (matches > 0) {
-        results.push({ page: index + 1, count: matches })
+    textContent.forEach((pageText, pageIndex) => {
+      const pageLower = pageText.toLowerCase()
+      let searchIndex = 0
+      let matchCount = 0
+
+      // Find all occurrences in this page
+      while (true) {
+        const foundAt = pageLower.indexOf(searchLower, searchIndex)
+        if (foundAt === -1) break
+
+        matchCount++
+
+        // Extract context (30 chars before and after)
+        const contextStart = Math.max(0, foundAt - 30)
+        const contextEnd = Math.min(pageText.length, foundAt + text.length + 30)
+        const contextBefore = pageText.slice(contextStart, foundAt)
+        const contextAfter = pageText.slice(foundAt + text.length, contextEnd)
+        const matchedText = pageText.slice(foundAt, foundAt + text.length)
+
+        detailed.push({
+          page: pageIndex + 1,
+          text: matchedText,
+          contextBefore: (contextStart > 0 ? '...' : '') + contextBefore,
+          contextAfter: contextAfter + (contextEnd < pageText.length ? '...' : ''),
+          index: globalIndex,
+          offset: foundAt
+        })
+
+        globalIndex++
+        searchIndex = foundAt + text.length
+      }
+
+      if (matchCount > 0) {
+        results.push({ page: pageIndex + 1, count: matchCount })
       }
     })
 
     setSearchResults(results)
+    setDetailedSearchResults(detailed)
     setCurrentSearchIndex(0)
 
-    // Jump to first result
-    if (results.length > 0) {
-      setCurrentPage(results[0].page)
+    // Show search results panel if we have results
+    if (detailed.length > 0) {
+      setShowSearchResultsPanel(true)
+      setCurrentPage(detailed[0].page)
     }
   }, [textContent])
 
   const goToNextSearchResult = () => {
-    if (searchResults.length === 0) return
-    const nextIndex = (currentSearchIndex + 1) % searchResults.length
+    if (detailedSearchResults.length === 0) return
+    const nextIndex = (currentSearchIndex + 1) % detailedSearchResults.length
     setCurrentSearchIndex(nextIndex)
-    setCurrentPage(searchResults[nextIndex].page)
+    setCurrentPage(detailedSearchResults[nextIndex].page)
   }
 
   const goToPrevSearchResult = () => {
-    if (searchResults.length === 0) return
-    const prevIndex = currentSearchIndex === 0 ? searchResults.length - 1 : currentSearchIndex - 1
+    if (detailedSearchResults.length === 0) return
+    const prevIndex = currentSearchIndex === 0 ? detailedSearchResults.length - 1 : currentSearchIndex - 1
     setCurrentSearchIndex(prevIndex)
-    setCurrentPage(searchResults[prevIndex].page)
+    setCurrentPage(detailedSearchResults[prevIndex].page)
+  }
+
+  const goToSearchResult = (index: number) => {
+    if (index < 0 || index >= detailedSearchResults.length) return
+    setCurrentSearchIndex(index)
+    setCurrentPage(detailedSearchResults[index].page)
+  }
+
+  // Highlight handlers
+  const handleTextSelection = useCallback(() => {
+    if (!highlightMode || content.type !== 'pdf') return
+
+    const selection = window.getSelection()
+    if (!selection || selection.isCollapsed) return
+
+    const text = selection.toString().trim()
+    if (!text || text.length < 2) return
+
+    // Find the page number from the selection
+    const range = selection.getRangeAt(0)
+    const container = range.commonAncestorContainer
+    const pageElement = container instanceof Element
+      ? container.closest('.react-pdf__Page')
+      : container.parentElement?.closest('.react-pdf__Page')
+
+    if (!pageElement) return
+
+    // Get text offset (simplified - in real implementation would need more precise calculation)
+    const startOffset = 0
+    const endOffset = text.length
+
+    setPendingHighlight({
+      text,
+      page: currentPage,
+      startOffset,
+      endOffset
+    })
+    setHighlightNote('')
+    setShowAddHighlightModal(true)
+    selection.removeAllRanges()
+  }, [highlightMode, content.type, currentPage])
+
+  // Add mouseup event listener for text selection in highlight mode
+  useEffect(() => {
+    if (!highlightMode || content.type !== 'pdf') return
+
+    const container = pdfContainerRef.current
+    if (!container) return
+
+    const handleMouseUpForSelection = () => {
+      // Small delay to ensure selection is complete
+      setTimeout(handleTextSelection, 10)
+    }
+
+    container.addEventListener('mouseup', handleMouseUpForSelection)
+    return () => container.removeEventListener('mouseup', handleMouseUpForSelection)
+  }, [highlightMode, content.type, handleTextSelection])
+
+  const handleSaveHighlight = async () => {
+    if (!pendingHighlight || !documentId || !projectId) return
+
+    try {
+      const data: CreateHighlightData = {
+        page_number: pendingHighlight.page,
+        start_offset: pendingHighlight.startOffset,
+        end_offset: pendingHighlight.endOffset,
+        selected_text: pendingHighlight.text,
+        color: selectedHighlightColor,
+        note: highlightNote || undefined
+      }
+
+      await createHighlight(documentId, projectId, data)
+
+      // Reload highlights
+      const updatedHighlights = await getDocumentHighlights(documentId)
+      setHighlights(updatedHighlights)
+
+      setShowAddHighlightModal(false)
+      setPendingHighlight(null)
+      setHighlightNote('')
+    } catch (error) {
+      console.error('Error saving highlight:', error)
+    }
+  }
+
+  const handleUpdateHighlight = async (highlightId: string, newColor?: HighlightColor, newNote?: string) => {
+    try {
+      await updateHighlight(highlightId, { color: newColor, note: newNote })
+
+      // Reload highlights
+      if (documentId) {
+        const updatedHighlights = await getDocumentHighlights(documentId)
+        setHighlights(updatedHighlights)
+      }
+      setEditingHighlight(null)
+    } catch (error) {
+      console.error('Error updating highlight:', error)
+    }
+  }
+
+  const handleDeleteHighlight = async (highlightId: string) => {
+    try {
+      await deleteHighlight(highlightId)
+
+      // Reload highlights
+      if (documentId) {
+        const updatedHighlights = await getDocumentHighlights(documentId)
+        setHighlights(updatedHighlights)
+      }
+    } catch (error) {
+      console.error('Error deleting highlight:', error)
+    }
+  }
+
+  const handleGoToHighlight = (highlight: DocumentHighlightWithCreator) => {
+    setCurrentPage(highlight.page_number)
   }
 
   // Extract text content from PDF for search
@@ -557,6 +761,45 @@ export default function DocumentViewer({
                 title="Sök (Ctrl+F)"
               >
                 <SearchIcon />
+              </button>
+            )}
+
+            {/* Highlight mode toggle for PDF */}
+            {content.type === 'pdf' && projectId && documentId && (
+              <div className="flex items-center gap-1">
+                <button
+                  onClick={() => setHighlightMode(!highlightMode)}
+                  className={`p-2 rounded-lg transition-colors ${highlightMode ? 'text-yellow-600 bg-yellow-50' : 'text-slate-500 hover:text-slate-900 hover:bg-slate-100'}`}
+                  title={highlightMode ? 'Avsluta markeringsläge' : 'Markera text'}
+                >
+                  <HighlighterIcon />
+                </button>
+                {highlightMode && (
+                  <div className="flex items-center gap-1 bg-slate-100 rounded-lg p-1">
+                    {HIGHLIGHT_COLORS.map((color) => (
+                      <button
+                        key={color.id}
+                        onClick={() => setSelectedHighlightColor(color.id)}
+                        className={`w-6 h-6 rounded ${color.bg} ${selectedHighlightColor === color.id ? 'ring-2 ring-slate-600 ring-offset-1' : ''}`}
+                        title={color.name}
+                      />
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* Highlights panel toggle */}
+            {content.type === 'pdf' && projectId && documentId && (
+              <button
+                onClick={() => setShowHighlightsPanel(!showHighlightsPanel)}
+                className={`p-2 rounded-lg transition-colors flex items-center gap-1 ${showHighlightsPanel ? 'text-yellow-600 bg-yellow-50' : 'text-slate-500 hover:text-slate-900 hover:bg-slate-100'}`}
+                title="Visa markeringar"
+              >
+                <ListBulletIcon />
+                {highlights.length > 0 && (
+                  <span className="text-xs font-medium">{highlights.length}</span>
+                )}
               </button>
             )}
 
@@ -888,6 +1131,120 @@ export default function DocumentViewer({
             />
           )}
 
+          {/* Search Results Panel */}
+          {showSearchResultsPanel && detailedSearchResults.length > 0 && (
+            <div className="w-80 border-l border-slate-200 bg-white flex flex-col">
+              <div className="flex items-center justify-between px-4 py-3 border-b border-slate-200">
+                <h3 className="font-medium text-slate-900">
+                  Sökresultat ({detailedSearchResults.length})
+                </h3>
+                <button
+                  onClick={() => setShowSearchResultsPanel(false)}
+                  className="p-1 text-slate-400 hover:text-slate-900 rounded transition-colors"
+                >
+                  <CloseIcon />
+                </button>
+              </div>
+              <div className="flex-1 overflow-y-auto">
+                {detailedSearchResults.map((result, index) => (
+                  <button
+                    key={index}
+                    onClick={() => goToSearchResult(index)}
+                    className={`w-full text-left px-4 py-3 border-b border-slate-100 hover:bg-slate-50 transition-colors ${
+                      currentSearchIndex === index ? 'bg-yellow-50 border-l-2 border-l-yellow-400' : ''
+                    }`}
+                  >
+                    <div className="text-sm text-slate-600 mb-1">
+                      <span className="text-slate-400">{result.contextBefore}</span>
+                      <mark className="bg-yellow-200 text-yellow-900 px-0.5 rounded font-medium">
+                        {result.text}
+                      </mark>
+                      <span className="text-slate-400">{result.contextAfter}</span>
+                    </div>
+                    <div className="text-xs text-slate-400">
+                      Sida {result.page}
+                    </div>
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Highlights Panel */}
+          {showHighlightsPanel && projectId && documentId && (
+            <div className="w-80 border-l border-slate-200 bg-white flex flex-col">
+              <div className="flex items-center justify-between px-4 py-3 border-b border-slate-200">
+                <h3 className="font-medium text-slate-900">
+                  Markeringar ({highlights.length})
+                </h3>
+                <button
+                  onClick={() => setShowHighlightsPanel(false)}
+                  className="p-1 text-slate-400 hover:text-slate-900 rounded transition-colors"
+                >
+                  <CloseIcon />
+                </button>
+              </div>
+              <div className="flex-1 overflow-y-auto">
+                {highlights.length === 0 ? (
+                  <div className="p-4 text-center text-slate-500 text-sm">
+                    <HighlighterIcon className="w-8 h-8 mx-auto mb-2 text-slate-300" />
+                    <p>Inga markeringar ännu</p>
+                    <p className="text-xs mt-1">Aktivera markeringsläge och markera text i dokumentet</p>
+                  </div>
+                ) : (
+                  highlights.map((highlight) => {
+                    const colorConfig = HIGHLIGHT_COLORS.find(c => c.id === highlight.color) || HIGHLIGHT_COLORS[0]
+                    return (
+                      <div
+                        key={highlight.id}
+                        className="border-b border-slate-100 hover:bg-slate-50"
+                      >
+                        <button
+                          onClick={() => handleGoToHighlight(highlight)}
+                          className="w-full text-left px-4 py-3"
+                        >
+                          <div className="flex items-start gap-2">
+                            <span className={`w-3 h-3 rounded-full ${colorConfig.bg} flex-shrink-0 mt-1`} />
+                            <div className="flex-1 min-w-0">
+                              <p className="text-sm text-slate-700 line-clamp-2">
+                                &ldquo;{highlight.selected_text}&rdquo;
+                              </p>
+                              {highlight.note && (
+                                <p className="text-xs text-slate-500 mt-1 line-clamp-2">
+                                  {highlight.note}
+                                </p>
+                              )}
+                              <p className="text-xs text-slate-400 mt-1">
+                                Sida {highlight.page_number} &middot; {highlight.creator?.full_name || 'Okänd'}
+                              </p>
+                            </div>
+                          </div>
+                        </button>
+                        <div className="flex items-center gap-1 px-4 pb-2">
+                          {HIGHLIGHT_COLORS.map((color) => (
+                            <button
+                              key={color.id}
+                              onClick={() => handleUpdateHighlight(highlight.id, color.id)}
+                              className={`w-5 h-5 rounded ${color.bg} ${highlight.color === color.id ? 'ring-1 ring-slate-600' : 'opacity-50 hover:opacity-100'}`}
+                              title={color.name}
+                            />
+                          ))}
+                          <button
+                            onClick={() => handleDeleteHighlight(highlight.id)}
+                            className="ml-auto p-1 text-slate-400 hover:text-red-500 transition-colors"
+                            title="Ta bort"
+                          >
+                            <TrashIcon className="w-4 h-4" />
+                          </button>
+                        </div>
+                      </div>
+                    )
+                  })
+                )}
+              </div>
+            </div>
+          )}
+
           {/* Version History Panel */}
           {versionsOpen && documentId && (
             <div className="w-80 border-l border-slate-200 bg-white flex flex-col">
@@ -924,6 +1281,79 @@ export default function DocumentViewer({
             onClose={() => setUploadVersionOpen(false)}
             onSuccess={handleVersionUploaded}
           />
+        )}
+
+        {/* Add Highlight Modal */}
+        {showAddHighlightModal && pendingHighlight && (
+          <div className="fixed inset-0 z-[60] flex items-center justify-center">
+            <div
+              className="absolute inset-0 bg-black/50"
+              onClick={() => {
+                setShowAddHighlightModal(false)
+                setPendingHighlight(null)
+              }}
+            />
+            <div className="relative bg-white rounded-xl shadow-xl w-full max-w-md p-6">
+              <h3 className="text-lg font-semibold text-slate-900 mb-4">Spara markering</h3>
+
+              {/* Selected text preview */}
+              <div className="mb-4 p-3 bg-slate-50 rounded-lg border border-slate-200">
+                <p className="text-sm text-slate-500 mb-1">Markerad text:</p>
+                <p className="text-sm text-slate-700 line-clamp-3">&ldquo;{pendingHighlight.text}&rdquo;</p>
+                <p className="text-xs text-slate-400 mt-2">Sida {pendingHighlight.page}</p>
+              </div>
+
+              {/* Color picker */}
+              <div className="mb-4">
+                <p className="text-sm text-slate-500 mb-2">Färg:</p>
+                <div className="flex gap-2">
+                  {HIGHLIGHT_COLORS.map((color) => (
+                    <button
+                      key={color.id}
+                      onClick={() => setSelectedHighlightColor(color.id)}
+                      className={`w-8 h-8 rounded-lg ${color.bg} ${
+                        selectedHighlightColor === color.id
+                          ? 'ring-2 ring-slate-600 ring-offset-2'
+                          : 'hover:scale-110'
+                      } transition-transform`}
+                      title={color.name}
+                    />
+                  ))}
+                </div>
+              </div>
+
+              {/* Note input */}
+              <div className="mb-6">
+                <label className="block text-sm text-slate-500 mb-2">Anteckning (valfritt):</label>
+                <textarea
+                  value={highlightNote}
+                  onChange={(e) => setHighlightNote(e.target.value)}
+                  placeholder="Skriv en anteckning..."
+                  className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 resize-none"
+                  rows={3}
+                />
+              </div>
+
+              {/* Actions */}
+              <div className="flex justify-end gap-2">
+                <button
+                  onClick={() => {
+                    setShowAddHighlightModal(false)
+                    setPendingHighlight(null)
+                  }}
+                  className="px-4 py-2 text-sm text-slate-600 hover:text-slate-900 transition-colors"
+                >
+                  Avbryt
+                </button>
+                <button
+                  onClick={handleSaveHighlight}
+                  className="px-4 py-2 text-sm bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg transition-colors"
+                >
+                  Spara markering
+                </button>
+              </div>
+            </div>
+          </div>
         )}
 
         {/* Footer with pagination for PDF */}
@@ -1116,6 +1546,30 @@ function DocumentDuplicateIcon({ className = 'h-5 w-5' }: { className?: string }
   return (
     <svg className={className} fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
       <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 17.25v3.375c0 .621-.504 1.125-1.125 1.125h-9.75a1.125 1.125 0 0 1-1.125-1.125V7.875c0-.621.504-1.125 1.125-1.125H6.75a9.06 9.06 0 0 1 1.5.124m7.5 10.376h3.375c.621 0 1.125-.504 1.125-1.125V11.25c0-4.46-3.243-8.161-7.5-8.876a9.06 9.06 0 0 0-1.5-.124H9.375c-.621 0-1.125.504-1.125 1.125v3.5m7.5 10.375H9.375a1.125 1.125 0 0 1-1.125-1.125v-9.25m12 6.625v-1.875a3.375 3.375 0 0 0-3.375-3.375h-1.5a1.125 1.125 0 0 1-1.125-1.125v-1.5a3.375 3.375 0 0 0-3.375-3.375H9.75" />
+    </svg>
+  )
+}
+
+function HighlighterIcon({ className = 'h-5 w-5' }: { className?: string }) {
+  return (
+    <svg className={className} fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+      <path strokeLinecap="round" strokeLinejoin="round" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
+    </svg>
+  )
+}
+
+function ListBulletIcon() {
+  return (
+    <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+      <path strokeLinecap="round" strokeLinejoin="round" d="M8.25 6.75h12M8.25 12h12m-12 5.25h12M3.75 6.75h.007v.008H3.75V6.75Zm.375 0a.375.375 0 1 1-.75 0 .375.375 0 0 1 .75 0ZM3.75 12h.007v.008H3.75V12Zm.375 0a.375.375 0 1 1-.75 0 .375.375 0 0 1 .75 0Zm-.375 5.25h.007v.008H3.75v-.008Zm.375 0a.375.375 0 1 1-.75 0 .375.375 0 0 1 .75 0Z" />
+    </svg>
+  )
+}
+
+function TrashIcon({ className = 'h-5 w-5' }: { className?: string }) {
+  return (
+    <svg className={className} fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+      <path strokeLinecap="round" strokeLinejoin="round" d="m14.74 9-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 0 1-2.244 2.077H8.084a2.25 2.25 0 0 1-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 0 0-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 0 1 3.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 0 0-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 0 0-7.5 0" />
     </svg>
   )
 }

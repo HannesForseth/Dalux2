@@ -1058,3 +1058,42 @@ export interface UpdateProtocolTemplateData {
   default_end_time?: string | null
   default_notes?: string | null
 }
+
+// ===============================
+// Document Highlight Types
+// ===============================
+
+export type HighlightColor = 'yellow' | 'green' | 'blue' | 'pink' | 'orange'
+
+export interface DocumentHighlight {
+  id: string
+  document_id: string
+  project_id: string
+  created_by: string
+  page_number: number
+  start_offset: number
+  end_offset: number
+  selected_text: string
+  color: HighlightColor
+  note: string | null
+  created_at: string
+  updated_at: string
+}
+
+export interface DocumentHighlightWithCreator extends DocumentHighlight {
+  creator: Profile
+}
+
+export interface CreateHighlightData {
+  page_number: number
+  start_offset: number
+  end_offset: number
+  selected_text: string
+  color?: HighlightColor
+  note?: string
+}
+
+export interface UpdateHighlightData {
+  color?: HighlightColor
+  note?: string | null
+}
