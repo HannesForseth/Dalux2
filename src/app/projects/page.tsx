@@ -8,7 +8,7 @@ import { motion } from 'framer-motion'
 import { createClient } from '@/lib/supabase/client'
 import { getMyProjects } from '@/app/actions/projects'
 import { Button } from '@/components/ui/button'
-import { Building2, Plus, MapPin, FolderOpen, LogOut } from 'lucide-react'
+import { Plus, MapPin, FolderOpen, LogOut } from 'lucide-react'
 import type { User } from '@supabase/supabase-js'
 import type { Project } from '@/types/database'
 
@@ -114,12 +114,12 @@ export default function ProjectSelectorPage() {
       {/* Glassmorphism Header */}
       <header className="sticky top-0 z-50 bg-white/80 backdrop-blur-md border-b border-slate-200/50">
         <div className="max-w-6xl mx-auto px-4 py-4 flex items-center justify-between">
-          <Link href="/" className="flex items-center gap-2 group">
-            <div className="w-10 h-10 bg-gradient-to-br from-indigo-600 to-purple-600 rounded-xl flex items-center justify-center shadow-lg shadow-indigo-500/25 group-hover:shadow-xl group-hover:shadow-indigo-500/30 transition-all duration-300 group-hover:scale-105">
-              <Building2 className="w-5 h-5 text-white" />
+          <Link href="/" className="flex items-center gap-3 group">
+            <div className="w-10 h-10 bg-gradient-to-br from-indigo-500 via-purple-500 to-pink-500 rounded-xl flex items-center justify-center shadow-lg shadow-indigo-500/25 group-hover:shadow-xl group-hover:shadow-indigo-500/30 transition-all duration-300 group-hover:scale-105">
+              <span className="text-white font-bold text-lg">B</span>
             </div>
-            <span className="text-xl font-bold text-slate-900">
-              Bygg<span className="bg-gradient-to-r from-indigo-600 to-purple-600 bg-clip-text text-transparent">Smart</span>
+            <span className="text-xl font-bold bg-gradient-to-r from-indigo-600 via-purple-600 to-pink-500 bg-clip-text text-transparent">
+              Bloxr
             </span>
           </Link>
 

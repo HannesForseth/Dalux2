@@ -7,7 +7,7 @@ import { useRouter, useSearchParams } from 'next/navigation'
 import { motion } from 'framer-motion'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-import { Building2, Mail, Lock, User, ArrowRight, Sparkles, Shield, Zap } from 'lucide-react'
+import { Mail, Lock, User, ArrowRight, Sparkles, Shield, Zap } from 'lucide-react'
 
 function RegisterForm() {
   const [fullName, setFullName] = useState('')
@@ -234,12 +234,12 @@ export default function RegisterPage() {
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.5 }}
         >
-          <Link href="/" className="inline-flex items-center gap-2 group">
-            <div className="w-12 h-12 bg-gradient-to-br from-indigo-600 to-purple-600 rounded-xl flex items-center justify-center shadow-lg shadow-indigo-500/25 group-hover:shadow-xl group-hover:shadow-indigo-500/30 transition-all duration-300 group-hover:scale-105">
-              <Building2 className="w-6 h-6 text-white" />
+          <Link href="/" className="inline-flex items-center gap-3 group">
+            <div className="w-12 h-12 bg-gradient-to-br from-indigo-500 via-purple-500 to-pink-500 rounded-xl flex items-center justify-center shadow-lg shadow-indigo-500/25 group-hover:shadow-xl group-hover:shadow-indigo-500/30 transition-all duration-300 group-hover:scale-105">
+              <span className="text-white font-bold text-xl">B</span>
             </div>
-            <span className="text-2xl font-bold text-slate-900">
-              Bygg<span className="bg-gradient-to-r from-indigo-600 to-purple-600 bg-clip-text text-transparent">Smart</span>
+            <span className="text-2xl font-bold bg-gradient-to-r from-indigo-600 via-purple-600 to-pink-500 bg-clip-text text-transparent">
+              Bloxr
             </span>
           </Link>
           <motion.p
