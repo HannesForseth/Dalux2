@@ -221,6 +221,160 @@ export async function deleteProject(projectId: string): Promise<void> {
   revalidatePath('/dashboard/projects')
 }
 
+export async function uploadProjectImage(
+  projectId: string,
+  formData: FormData
+): Promise<{ success: boolean; url?: string; error?: string }> {
+  const supabase = await createClient()
+
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) {
+    return { success: false, error: 'Inte inloggad' }
+  }
+
+  // Verify user has access to project
+  const { data: member } = await supabase
+    .from('project_members')
+    .select('role_id')
+    .eq('project_id', projectId)
+    .eq('user_id', user.id)
+    .single()
+
+  if (!member) {
+    return { success: false, error: 'Du har inte behörighet till detta projekt' }
+  }
+
+  const file = formData.get('file') as File
+  if (!file) {
+    return { success: false, error: 'Ingen fil vald' }
+  }
+
+  // Validate file type
+  const allowedTypes = ['image/jpeg', 'image/png', 'image/webp', 'image/gif']
+  if (!allowedTypes.includes(file.type)) {
+    return { success: false, error: 'Endast JPG, PNG, WebP och GIF är tillåtna' }
+  }
+
+  // Validate file size (max 5MB)
+  const maxSize = 5 * 1024 * 1024
+  if (file.size > maxSize) {
+    return { success: false, error: 'Bilden får max vara 5MB' }
+  }
+
+  // Get current image URL to delete later
+  const { data: currentProject } = await supabase
+    .from('projects')
+    .select('image_url')
+    .eq('id', projectId)
+    .single()
+
+  // Upload to Supabase Storage
+  const fileExt = file.name.split('.').pop()
+  const fileName = `${projectId}-${Date.now()}.${fileExt}`
+  const filePath = `project-images/${fileName}`
+
+  const { error: uploadError } = await supabase.storage
+    .from('projects')
+    .upload(filePath, file, {
+      cacheControl: '3600',
+      upsert: true
+    })
+
+  if (uploadError) {
+    console.error('Error uploading project image:', uploadError)
+    return { success: false, error: 'Kunde inte ladda upp bilden' }
+  }
+
+  // Get public URL
+  const { data: urlData } = supabase.storage
+    .from('projects')
+    .getPublicUrl(filePath)
+
+  const imageUrl = urlData.publicUrl
+
+  // Update project with new image URL
+  const { error: updateError } = await supabase
+    .from('projects')
+    .update({
+      image_url: imageUrl,
+      updated_at: new Date().toISOString()
+    })
+    .eq('id', projectId)
+
+  if (updateError) {
+    console.error('Error updating project image_url:', updateError)
+    return { success: false, error: 'Kunde inte uppdatera projekt' }
+  }
+
+  // Delete old image if exists
+  if (currentProject?.image_url) {
+    try {
+      const oldUrl = new URL(currentProject.image_url)
+      const pathMatch = oldUrl.pathname.match(/\/project-images\/(.+)$/)
+      if (pathMatch) {
+        await supabase.storage.from('projects').remove([`project-images/${pathMatch[1]}`])
+      }
+    } catch {
+      // Ignore errors when deleting old image
+    }
+  }
+
+  revalidatePath('/projects')
+  revalidatePath(`/dashboard/projects/${projectId}`)
+  revalidatePath(`/dashboard/projects/${projectId}/settings`)
+
+  return { success: true, url: imageUrl }
+}
+
+export async function removeProjectImage(projectId: string): Promise<{ success: boolean; error?: string }> {
+  const supabase = await createClient()
+
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) {
+    return { success: false, error: 'Inte inloggad' }
+  }
+
+  // Get current image URL
+  const { data: project } = await supabase
+    .from('projects')
+    .select('image_url')
+    .eq('id', projectId)
+    .single()
+
+  if (project?.image_url) {
+    // Extract file path and delete from storage
+    try {
+      const url = new URL(project.image_url)
+      const pathMatch = url.pathname.match(/\/project-images\/(.+)$/)
+      if (pathMatch) {
+        await supabase.storage.from('projects').remove([`project-images/${pathMatch[1]}`])
+      }
+    } catch {
+      // Ignore errors when deleting
+    }
+  }
+
+  // Clear image URL in project
+  const { error } = await supabase
+    .from('projects')
+    .update({
+      image_url: null,
+      updated_at: new Date().toISOString()
+    })
+    .eq('id', projectId)
+
+  if (error) {
+    console.error('Error removing project image:', error)
+    return { success: false, error: 'Kunde inte ta bort bilden' }
+  }
+
+  revalidatePath('/projects')
+  revalidatePath(`/dashboard/projects/${projectId}`)
+  revalidatePath(`/dashboard/projects/${projectId}/settings`)
+
+  return { success: true }
+}
+
 export async function getUserRoleInProject(projectId: string): Promise<string | null> {
   try {
     const supabase = await createClient()

@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
+import Image from 'next/image'
 import { useRouter } from 'next/navigation'
 import { motion } from 'framer-motion'
 import { createClient } from '@/lib/supabase/client'
@@ -203,10 +204,27 @@ export default function ProjectSelectorPage() {
               >
                 <Link
                   href={`/dashboard/projects/${project.id}`}
-                  className="group flex flex-col h-52 bg-white/80 backdrop-blur-sm border border-slate-200 rounded-2xl hover:border-indigo-300 hover:bg-white transition-all overflow-hidden shadow-lg shadow-slate-200/50"
+                  className={`group flex flex-col ${project.image_url ? 'h-72' : 'h-52'} bg-white/80 backdrop-blur-sm border border-slate-200 rounded-2xl hover:border-indigo-300 hover:bg-white transition-all overflow-hidden shadow-lg shadow-slate-200/50`}
                 >
-                  {/* Status bar at top */}
-                  <div className={`h-1.5 ${getStatusColor(project.status)}`} />
+                  {/* Project Image */}
+                  {project.image_url ? (
+                    <div className="relative h-28 w-full flex-shrink-0">
+                      <Image
+                        src={project.image_url}
+                        alt={project.name}
+                        fill
+                        className="object-cover group-hover:scale-105 transition-transform duration-300"
+                      />
+                      <div className="absolute inset-0 bg-gradient-to-t from-black/30 to-transparent" />
+                      {/* Status badge on image */}
+                      <div className="absolute top-3 right-3">
+                        <StatusBadge status={project.status} />
+                      </div>
+                    </div>
+                  ) : (
+                    /* Status bar at top when no image */
+                    <div className={`h-1.5 ${getStatusColor(project.status)}`} />
+                  )}
 
                   <div className="flex-1 p-5">
                     <div className="flex items-start justify-between mb-3">
@@ -218,7 +236,8 @@ export default function ProjectSelectorPage() {
                           <p className="text-slate-500 text-sm">#{project.project_number}</p>
                         )}
                       </div>
-                      <StatusBadge status={project.status} />
+                      {/* Only show badge here if no image */}
+                      {!project.image_url && <StatusBadge status={project.status} />}
                     </div>
 
                     <div className="space-y-1.5 text-slate-500 text-sm">

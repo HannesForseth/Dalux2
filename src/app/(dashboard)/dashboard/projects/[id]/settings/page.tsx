@@ -4,8 +4,9 @@ import { useEffect, useState } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { motion } from 'framer-motion'
-import { ArrowLeft, Users, CreditCard, Trash2, Settings, Building2, Save, ExternalLink } from 'lucide-react'
-import { getProject, getUserRoleInProject, updateProject, deleteProject } from '@/app/actions/projects'
+import { ArrowLeft, Users, CreditCard, Trash2, Settings, Building2, Save, ExternalLink, ImageIcon, Upload, X } from 'lucide-react'
+import Image from 'next/image'
+import { getProject, getUserRoleInProject, updateProject, deleteProject, uploadProjectImage, removeProjectImage } from '@/app/actions/projects'
 import { getProjectSubscription } from '@/app/actions/plans'
 import type { Project, RoleName, ProjectPlan } from '@/types/database'
 import { canUpdateProject, canDeleteProject, isOwner } from '@/lib/permissions'
@@ -36,6 +37,10 @@ export default function ProjectSettingsPage() {
   const [successMessage, setSuccessMessage] = useState('')
   const [errorMessage, setErrorMessage] = useState('')
 
+  // Image state
+  const [imageUrl, setImageUrl] = useState<string | null>(null)
+  const [isUploadingImage, setIsUploadingImage] = useState(false)
+
   // Form state
   const [name, setName] = useState('')
   const [description, setDescription] = useState('')
@@ -65,6 +70,7 @@ export default function ProjectSettingsPage() {
         setProjectNumber(projectData.project_number || '')
         setAddress(projectData.address || '')
         setCity(projectData.city || '')
+        setImageUrl(projectData.image_url || null)
       }
     } catch (error) {
       console.error('Failed to load data:', error)
@@ -108,6 +114,56 @@ export default function ProjectSettingsPage() {
     } catch (error) {
       alert(error instanceof Error ? error.message : 'Kunde inte radera projektet')
       setIsDeleting(false)
+    }
+  }
+
+  async function handleImageUpload(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0]
+    if (!file) return
+
+    setIsUploadingImage(true)
+    setErrorMessage('')
+
+    try {
+      const formData = new FormData()
+      formData.append('image', file)
+
+      const result = await uploadProjectImage(projectId, formData)
+
+      if (result.success && result.url) {
+        setImageUrl(result.url)
+        setSuccessMessage('Projektbilden har laddats upp')
+        setTimeout(() => setSuccessMessage(''), 3000)
+      } else {
+        setErrorMessage(result.error || 'Kunde inte ladda upp bilden')
+      }
+    } catch (error) {
+      setErrorMessage(error instanceof Error ? error.message : 'Kunde inte ladda upp bilden')
+    } finally {
+      setIsUploadingImage(false)
+      // Reset input
+      e.target.value = ''
+    }
+  }
+
+  async function handleRemoveImage() {
+    setIsUploadingImage(true)
+    setErrorMessage('')
+
+    try {
+      const result = await removeProjectImage(projectId)
+
+      if (result.success) {
+        setImageUrl(null)
+        setSuccessMessage('Projektbilden har tagits bort')
+        setTimeout(() => setSuccessMessage(''), 3000)
+      } else {
+        setErrorMessage(result.error || 'Kunde inte ta bort bilden')
+      }
+    } catch (error) {
+      setErrorMessage(error instanceof Error ? error.message : 'Kunde inte ta bort bilden')
+    } finally {
+      setIsUploadingImage(false)
     }
   }
 
@@ -268,6 +324,79 @@ export default function ProjectSettingsPage() {
               </div>
             )}
           </form>
+        </motion.div>
+
+        {/* Project Image */}
+        <motion.div
+          variants={itemVariants}
+          className="bg-white/80 backdrop-blur-sm border border-slate-200 rounded-2xl p-6 shadow-sm"
+        >
+          <div className="flex items-center gap-3 mb-6">
+            <div className="w-10 h-10 bg-cyan-100 rounded-xl flex items-center justify-center">
+              <ImageIcon className="w-5 h-5 text-cyan-600" />
+            </div>
+            <div>
+              <h2 className="text-lg font-semibold text-slate-900">Projektbild</h2>
+              <p className="text-sm text-slate-500">Visas i projektlistan</p>
+            </div>
+          </div>
+
+          <div className="flex items-start gap-6">
+            {/* Image Preview */}
+            <div className="relative w-48 h-32 bg-slate-100 rounded-xl overflow-hidden border-2 border-dashed border-slate-200 flex-shrink-0">
+              {imageUrl ? (
+                <>
+                  <Image
+                    src={imageUrl}
+                    alt={project.name}
+                    fill
+                    className="object-cover"
+                  />
+                  {canEdit && (
+                    <button
+                      onClick={handleRemoveImage}
+                      disabled={isUploadingImage}
+                      className="absolute top-2 right-2 p-1.5 bg-red-500 text-white rounded-lg hover:bg-red-600 transition-colors disabled:opacity-50"
+                      title="Ta bort bild"
+                    >
+                      <X className="w-4 h-4" />
+                    </button>
+                  )}
+                </>
+              ) : (
+                <div className="w-full h-full flex flex-col items-center justify-center text-slate-400">
+                  <ImageIcon className="w-8 h-8 mb-1" />
+                  <span className="text-xs">Ingen bild</span>
+                </div>
+              )}
+            </div>
+
+            {/* Upload Controls */}
+            <div className="flex-1">
+              <p className="text-sm text-slate-600 mb-3">
+                Ladda upp en bild som representerar projektet. Bilden visas i projektlistan och hjälper dig att snabbt identifiera projektet.
+              </p>
+
+              {canEdit && (
+                <div className="space-y-3">
+                  <label className="inline-flex items-center gap-2 px-4 py-2.5 bg-slate-100 text-slate-700 rounded-xl font-medium hover:bg-slate-200 transition-colors cursor-pointer">
+                    <Upload className="w-4 h-4" />
+                    {isUploadingImage ? 'Laddar upp...' : (imageUrl ? 'Byt bild' : 'Ladda upp bild')}
+                    <input
+                      type="file"
+                      accept="image/jpeg,image/png,image/webp,image/gif"
+                      onChange={handleImageUpload}
+                      disabled={isUploadingImage}
+                      className="hidden"
+                    />
+                  </label>
+                  <p className="text-xs text-slate-500">
+                    JPG, PNG, WebP eller GIF. Max 5 MB.
+                  </p>
+                </div>
+              )}
+            </div>
+          </div>
         </motion.div>
 
         {/* Plan & Subscription */}
