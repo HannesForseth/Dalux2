@@ -147,12 +147,12 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
       <aside
         data-testid="sidebar"
         className={cn(
-          "fixed inset-y-0 left-0 w-64 z-50 bg-white/70 backdrop-blur-xl border-r border-slate-200/50 shadow-xl",
+          "fixed top-0 left-0 h-full w-64 z-50 bg-white/70 backdrop-blur-xl border-r border-slate-200/50 shadow-xl",
           "transition-transform duration-300 ease-in-out",
           // Mobile: slide in/out based on isOpen
           isOpen ? "translate-x-0" : "-translate-x-full",
-          // Desktop: always visible and positioned statically
-          "lg:!translate-x-0 lg:static"
+          // Desktop: always visible (keep fixed positioning)
+          "lg:translate-x-0"
         )}
       >
         {/* Logo Header */}
