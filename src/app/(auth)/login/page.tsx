@@ -40,7 +40,7 @@ function LoginForm() {
   return (
     <motion.form
       onSubmit={handleLogin}
-      className="relative bg-white/80 backdrop-blur-xl border border-white/20 rounded-3xl p-8 shadow-2xl shadow-indigo-500/10"
+      className="relative bg-white/80 backdrop-blur-xl border border-white/20 rounded-2xl sm:rounded-3xl p-5 sm:p-8 shadow-2xl shadow-indigo-500/10"
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.5, delay: 0.2 }}
@@ -214,7 +214,7 @@ export default function LoginPage() {
 
         {/* Features hint */}
         <motion.div
-          className="mt-8 flex items-center justify-center gap-6 text-sm text-slate-500"
+          className="mt-6 sm:mt-8 flex flex-wrap items-center justify-center gap-3 sm:gap-6 text-xs sm:text-sm text-slate-500"
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           transition={{ delay: 0.5 }}

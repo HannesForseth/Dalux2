@@ -53,7 +53,7 @@ function RegisterForm() {
   return (
     <motion.form
       onSubmit={handleRegister}
-      className="relative bg-white/80 backdrop-blur-xl border border-white/20 rounded-3xl p-8 shadow-2xl shadow-indigo-500/10"
+      className="relative bg-white/80 backdrop-blur-xl border border-white/20 rounded-2xl sm:rounded-3xl p-5 sm:p-8 shadow-2xl shadow-indigo-500/10"
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.5, delay: 0.2 }}
@@ -265,28 +265,28 @@ export default function RegisterPage() {
 
         {/* Features list */}
         <motion.div
-          className="mt-8 grid grid-cols-3 gap-4 text-center"
+          className="mt-6 sm:mt-8 grid grid-cols-3 gap-2 sm:gap-4 text-center"
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           transition={{ delay: 0.5 }}
         >
           <div className="flex flex-col items-center gap-1">
-            <div className="w-10 h-10 bg-indigo-50 rounded-xl flex items-center justify-center">
-              <Sparkles className="w-5 h-5 text-indigo-600" />
+            <div className="w-9 h-9 sm:w-10 sm:h-10 bg-indigo-50 rounded-lg sm:rounded-xl flex items-center justify-center">
+              <Sparkles className="w-4 h-4 sm:w-5 sm:h-5 text-indigo-600" />
             </div>
-            <span className="text-xs text-slate-600">AI-assistans</span>
+            <span className="text-[10px] sm:text-xs text-slate-600">AI-assistans</span>
           </div>
           <div className="flex flex-col items-center gap-1">
-            <div className="w-10 h-10 bg-purple-50 rounded-xl flex items-center justify-center">
-              <Shield className="w-5 h-5 text-purple-600" />
+            <div className="w-9 h-9 sm:w-10 sm:h-10 bg-purple-50 rounded-lg sm:rounded-xl flex items-center justify-center">
+              <Shield className="w-4 h-4 sm:w-5 sm:h-5 text-purple-600" />
             </div>
-            <span className="text-xs text-slate-600">Säkert</span>
+            <span className="text-[10px] sm:text-xs text-slate-600">Säkert</span>
           </div>
           <div className="flex flex-col items-center gap-1">
-            <div className="w-10 h-10 bg-pink-50 rounded-xl flex items-center justify-center">
-              <Zap className="w-5 h-5 text-pink-600" />
+            <div className="w-9 h-9 sm:w-10 sm:h-10 bg-pink-50 rounded-lg sm:rounded-xl flex items-center justify-center">
+              <Zap className="w-4 h-4 sm:w-5 sm:h-5 text-pink-600" />
             </div>
-            <span className="text-xs text-slate-600">Snabbt</span>
+            <span className="text-[10px] sm:text-xs text-slate-600">Snabbt</span>
           </div>
         </motion.div>
       </div>

@@ -4,7 +4,7 @@ import { useParams, useSearchParams, useRouter } from 'next/navigation'
 import { useState, useEffect, useCallback, useMemo, useRef } from 'react'
 import dynamic from 'next/dynamic'
 import { motion, AnimatePresence } from 'framer-motion'
-import { Upload, FolderPlus, Sparkles, Search, List, Grid3X3, ChevronLeft, ChevronRight, X } from 'lucide-react'
+import { Upload, FolderPlus, Folder, Sparkles, Search, List, Grid3X3, ChevronLeft, ChevronRight, X } from 'lucide-react'
 import FileUploader from '@/components/FileUploader'
 import AIFolderWizard from '@/components/AIFolderWizard'
 import FolderTree from '@/components/documents/FolderTree'
@@ -49,7 +49,7 @@ export default function ProjectDocumentsPage() {
   const [searchQuery, setSearchQuery] = useState('')
   const [sortField, setSortField] = useState('name')
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('asc')
-  const [sidebarCollapsed, setSidebarCollapsed] = useState(false)
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(true)
   const [selectedDocIds, setSelectedDocIds] = useState<Set<string>>(new Set())
   const [isMoving, setIsMoving] = useState(false)
   const [subfolderParent, setSubfolderParent] = useState<string | null>(null)
@@ -79,6 +79,13 @@ export default function ProjectDocumentsPage() {
   useEffect(() => {
     loadDocuments()
   }, [loadDocuments])
+
+  // Expand sidebar on desktop by default
+  useEffect(() => {
+    if (typeof window !== 'undefined' && window.innerWidth >= 1024) {
+      setSidebarCollapsed(false)
+    }
+  }, [])
 
   // Handle notification deep links - open document from URL params
   useEffect(() => {
@@ -496,46 +503,58 @@ export default function ProjectDocumentsPage() {
       transition={{ duration: 0.3 }}
     >
       {/* Header bar */}
-      <div className="flex items-center justify-between px-4 py-3 bg-white/80 backdrop-blur-sm border-b border-slate-200 rounded-t-2xl">
-        <div className="flex items-center gap-3">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 px-3 sm:px-4 py-3 bg-white/80 backdrop-blur-sm border-b border-slate-200 rounded-t-2xl">
+        {/* Action buttons */}
+        <div className="flex items-center gap-2 sm:gap-3">
+          {/* Mobile folder toggle */}
+          <button
+            onClick={() => setSidebarCollapsed(!sidebarCollapsed)}
+            className="lg:hidden p-2 bg-slate-100 text-slate-600 rounded-xl hover:bg-slate-200 transition-colors"
+            title={sidebarCollapsed ? 'Visa mappar' : 'Dölj mappar'}
+          >
+            <Folder className="h-4 w-4" />
+          </button>
           <button
             onClick={() => setShowUploader(!showUploader)}
-            className="px-4 py-2 bg-gradient-to-r from-indigo-600 to-purple-600 text-white rounded-xl font-medium hover:from-indigo-500 hover:to-purple-500 transition-all shadow-md shadow-indigo-500/20 flex items-center gap-2 text-sm"
+            className="flex-1 sm:flex-none px-3 sm:px-4 py-2 bg-gradient-to-r from-indigo-600 to-purple-600 text-white rounded-xl font-medium hover:from-indigo-500 hover:to-purple-500 transition-all shadow-md shadow-indigo-500/20 flex items-center justify-center gap-2 text-sm"
           >
             <Upload className="h-4 w-4" />
-            Ladda upp
+            <span className="hidden sm:inline">Ladda upp</span>
+            <span className="sm:hidden">Ladda</span>
           </button>
           <button
             onClick={() => setShowNewFolderModal(true)}
-            className="px-4 py-2 bg-white border border-slate-200 text-slate-700 rounded-xl font-medium hover:bg-slate-50 hover:border-slate-300 transition-all flex items-center gap-2 text-sm"
+            className="hidden sm:flex px-4 py-2 bg-white border border-slate-200 text-slate-700 rounded-xl font-medium hover:bg-slate-50 hover:border-slate-300 transition-all items-center gap-2 text-sm"
           >
             <FolderPlus className="h-4 w-4" />
             Ny mapp
           </button>
           <button
             onClick={() => setShowAIWizard(true)}
-            className="px-4 py-2 bg-gradient-to-r from-purple-600 to-pink-600 text-white rounded-xl font-medium hover:from-purple-500 hover:to-pink-500 transition-all shadow-md shadow-purple-500/20 flex items-center gap-2 text-sm"
+            className="flex-1 sm:flex-none px-3 sm:px-4 py-2 bg-gradient-to-r from-purple-600 to-pink-600 text-white rounded-xl font-medium hover:from-purple-500 hover:to-pink-500 transition-all shadow-md shadow-purple-500/20 flex items-center justify-center gap-2 text-sm"
           >
             <Sparkles className="h-4 w-4" />
-            AI Struktur
+            <span className="hidden sm:inline">AI Struktur</span>
+            <span className="sm:hidden">AI</span>
           </button>
         </div>
 
-        <div className="flex items-center gap-3">
+        {/* Search and view toggle */}
+        <div className="flex items-center gap-2 sm:gap-3">
           {/* Search */}
-          <div className="relative">
+          <div className="relative flex-1 sm:flex-none">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
             <input
               type="text"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               placeholder="Sök..."
-              className="pl-9 pr-4 py-2 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 placeholder-slate-400 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent w-64 transition-all"
+              className="w-full sm:w-48 md:w-64 pl-9 pr-4 py-2 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 placeholder-slate-400 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all"
             />
           </div>
 
           {/* View toggle */}
-          <div className="flex items-center gap-1 bg-slate-100 rounded-xl p-1">
+          <div className="hidden sm:flex items-center gap-1 bg-slate-100 rounded-xl p-1">
             <button className="p-1.5 bg-white text-slate-700 rounded-lg shadow-sm" title="Listvy">
               <List className="h-4 w-4" />
             </button>
@@ -584,31 +603,62 @@ export default function ProjectDocumentsPage() {
       </AnimatePresence>
 
       {/* Main content with split view */}
-      <div className="flex-1 flex overflow-hidden bg-white/60 backdrop-blur-sm rounded-b-2xl border border-t-0 border-slate-200">
-        {/* Left sidebar - Folder tree */}
-        <div
-          className={`${
-            sidebarCollapsed ? 'w-0' : 'w-64'
-          } flex-shrink-0 bg-white/80 border-r border-slate-200 overflow-y-auto transition-all duration-200`}
-        >
+      <div className="flex-1 flex overflow-hidden bg-white/60 backdrop-blur-sm rounded-b-2xl border border-t-0 border-slate-200 relative">
+        {/* Mobile sidebar overlay backdrop */}
+        <AnimatePresence>
           {!sidebarCollapsed && (
-            <FolderTree
-              folders={folders}
-              documentCounts={documentCounts}
-              currentPath={currentPath}
-              onSelectFolder={setCurrentPath}
-              onDropFiles={handleDropFiles}
-              onCreateSubfolder={handleCreateSubfolder}
-              onRenameFolder={handleRenameFolder}
-              onDeleteFolder={handleDeleteFolder}
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="fixed inset-0 bg-black/40 z-30 lg:hidden"
+              onClick={() => setSidebarCollapsed(true)}
             />
           )}
+        </AnimatePresence>
+
+        {/* Left sidebar - Folder tree */}
+        <div
+          className={`
+            ${sidebarCollapsed ? '-translate-x-full lg:translate-x-0 lg:w-0' : 'translate-x-0 lg:w-64'}
+            fixed lg:static inset-y-0 left-0 z-40 lg:z-auto
+            w-64 flex-shrink-0 bg-white lg:bg-white/80 border-r border-slate-200
+            overflow-y-auto transition-all duration-200
+            lg:rounded-bl-2xl
+          `}
+        >
+          {/* Mobile sidebar header */}
+          <div className="lg:hidden flex items-center justify-between p-3 border-b border-slate-200 bg-slate-50">
+            <span className="font-medium text-slate-900">Mappar</span>
+            <button
+              onClick={() => setSidebarCollapsed(true)}
+              className="p-1.5 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-lg transition-colors"
+            >
+              <X className="h-5 w-5" />
+            </button>
+          </div>
+          <FolderTree
+            folders={folders}
+            documentCounts={documentCounts}
+            currentPath={currentPath}
+            onSelectFolder={(path) => {
+              setCurrentPath(path)
+              // Auto-close sidebar on mobile after selection
+              if (window.innerWidth < 1024) {
+                setSidebarCollapsed(true)
+              }
+            }}
+            onDropFiles={handleDropFiles}
+            onCreateSubfolder={handleCreateSubfolder}
+            onRenameFolder={handleRenameFolder}
+            onDeleteFolder={handleDeleteFolder}
+          />
         </div>
 
-        {/* Sidebar toggle */}
+        {/* Sidebar toggle - desktop only */}
         <button
           onClick={() => setSidebarCollapsed(!sidebarCollapsed)}
-          className="flex-shrink-0 w-4 bg-slate-100 hover:bg-slate-200 flex items-center justify-center transition-colors"
+          className="hidden lg:flex flex-shrink-0 w-4 bg-slate-100 hover:bg-slate-200 items-center justify-center transition-colors"
         >
           {sidebarCollapsed ? (
             <ChevronRight className="h-4 w-4 text-slate-400" />
@@ -620,23 +670,23 @@ export default function ProjectDocumentsPage() {
         {/* Right side - Document list */}
         <div className="flex-1 flex flex-col overflow-hidden bg-white/40">
           {/* Breadcrumb */}
-          <div className="flex items-center gap-2 px-4 py-2 bg-slate-50/80 border-b border-slate-100 text-sm">
+          <div className="flex items-center gap-1 sm:gap-2 px-3 sm:px-4 py-2 bg-slate-50/80 border-b border-slate-100 text-sm overflow-x-auto">
             {getBreadcrumbs().map((crumb, index, arr) => (
-              <div key={crumb.path} className="flex items-center gap-2">
+              <div key={crumb.path} className="flex items-center gap-1 sm:gap-2 flex-shrink-0">
                 <button
                   onClick={() => setCurrentPath(crumb.path)}
-                  className={`hover:text-indigo-600 transition-colors ${
+                  className={`hover:text-indigo-600 transition-colors whitespace-nowrap ${
                     index === arr.length - 1 ? 'text-slate-900 font-medium' : 'text-slate-500'
                   }`}
                 >
                   {crumb.name}
                 </button>
                 {index < arr.length - 1 && (
-                  <ChevronRight className="h-4 w-4 text-slate-300" />
+                  <ChevronRight className="h-4 w-4 text-slate-300 flex-shrink-0" />
                 )}
               </div>
             ))}
-            <span className="text-slate-400 ml-auto text-xs">
+            <span className="text-slate-400 ml-auto text-xs whitespace-nowrap flex-shrink-0">
               {currentDocuments.length} {currentDocuments.length === 1 ? 'fil' : 'filer'}
             </span>
           </div>

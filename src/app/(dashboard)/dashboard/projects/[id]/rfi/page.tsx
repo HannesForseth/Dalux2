@@ -128,8 +128,8 @@ export default function ProjectRfiPage() {
       transition={{ duration: 0.3 }}
     >
       {/* Header */}
-      <div className="flex items-center justify-between mb-6">
-        <div className="flex items-center gap-3">
+      <div className="flex items-center justify-between gap-3 mb-4 sm:mb-6">
+        <div className="flex items-center gap-2 sm:gap-3">
           <Link
             href={`/dashboard/projects/${projectId}`}
             className="text-slate-400 hover:text-slate-600 transition-colors"
@@ -138,23 +138,24 @@ export default function ProjectRfiPage() {
               <path strokeLinecap="round" strokeLinejoin="round" d="M10.5 19.5 3 12m0 0 7.5-7.5M3 12h18" />
             </svg>
           </Link>
-          <h1 className="text-2xl font-bold text-slate-900">Frågor & Svar</h1>
+          <h1 className="text-xl sm:text-2xl font-bold text-slate-900">Frågor & Svar</h1>
         </div>
         <motion.button
           onClick={() => setShowCreateModal(true)}
-          className="px-4 py-2 bg-gradient-to-r from-indigo-600 to-purple-600 text-white rounded-xl font-medium hover:from-indigo-700 hover:to-purple-700 transition-all shadow-lg shadow-indigo-500/20 flex items-center gap-2"
+          className="px-3 sm:px-4 py-2 bg-gradient-to-r from-indigo-600 to-purple-600 text-white rounded-xl font-medium hover:from-indigo-700 hover:to-purple-700 transition-all shadow-lg shadow-indigo-500/20 flex items-center gap-2 text-sm sm:text-base"
           whileHover={{ scale: 1.02 }}
           whileTap={{ scale: 0.98 }}
         >
-          <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+          <svg className="h-4 w-4 sm:h-5 sm:w-5" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
             <path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
           </svg>
-          Ny fråga
+          <span className="hidden sm:inline">Ny fråga</span>
+          <span className="sm:hidden">Ny</span>
         </motion.button>
       </div>
 
       {/* Stats */}
-      <div className="grid grid-cols-5 gap-4 mb-6">
+      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-2 sm:gap-4 mb-4 sm:mb-6">
         {[
           { label: 'Totalt', value: stats.total, color: 'text-slate-900' },
           { label: 'Öppna', value: stats.open, color: 'text-amber-600' },
@@ -164,23 +165,23 @@ export default function ProjectRfiPage() {
         ].map((stat, index) => (
           <motion.div
             key={stat.label}
-            className="bg-white/80 backdrop-blur-sm border border-slate-200 rounded-xl p-4 shadow-sm"
+            className="bg-white/80 backdrop-blur-sm border border-slate-200 rounded-xl p-3 sm:p-4 shadow-sm"
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: index * 0.05 }}
           >
-            <div className={`text-2xl font-bold ${stat.color}`}>{stat.value}</div>
-            <div className="text-sm text-slate-500">{stat.label}</div>
+            <div className={`text-xl sm:text-2xl font-bold ${stat.color}`}>{stat.value}</div>
+            <div className="text-xs sm:text-sm text-slate-500">{stat.label}</div>
           </motion.div>
         ))}
       </div>
 
       {/* Filters */}
-      <div className="flex items-center gap-4 mb-6">
+      <div className="flex flex-wrap items-center gap-2 sm:gap-4 mb-4 sm:mb-6">
         <select
           value={statusFilter}
           onChange={(e) => setStatusFilter(e.target.value as RfiStatus | 'all')}
-          className="px-3 py-2 bg-white border border-slate-200 rounded-xl text-slate-900 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+          className="flex-1 sm:flex-none px-3 py-2 bg-white border border-slate-200 rounded-xl text-sm sm:text-base text-slate-900 focus:outline-none focus:ring-2 focus:ring-indigo-500"
         >
           <option value="all">Alla status</option>
           <option value="open">Öppna</option>
@@ -191,7 +192,7 @@ export default function ProjectRfiPage() {
         <select
           value={priorityFilter}
           onChange={(e) => setPriorityFilter(e.target.value as RfiPriority | 'all')}
-          className="px-3 py-2 bg-white border border-slate-200 rounded-xl text-slate-900 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+          className="flex-1 sm:flex-none px-3 py-2 bg-white border border-slate-200 rounded-xl text-sm sm:text-base text-slate-900 focus:outline-none focus:ring-2 focus:ring-indigo-500"
         >
           <option value="all">Alla prioriteter</option>
           <option value="low">Låg</option>
@@ -199,13 +200,27 @@ export default function ProjectRfiPage() {
           <option value="high">Hög</option>
           <option value="urgent">Brådskande</option>
         </select>
+        {/* Mobile: back button when RFI is selected */}
+        {selectedRfi && (
+          <button
+            onClick={() => setSelectedRfi(null)}
+            className="lg:hidden flex items-center gap-1 px-3 py-2 bg-slate-100 text-slate-600 rounded-xl text-sm font-medium hover:bg-slate-200 transition-colors"
+          >
+            <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" d="M10.5 19.5 3 12m0 0 7.5-7.5M3 12h18" />
+            </svg>
+            Tillbaka till lista
+          </button>
+        )}
       </div>
 
       {/* Content */}
-      <div className="flex-1 grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* RFI List */}
+      <div className="flex-1 grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
+        {/* RFI List - Hidden on mobile when an RFI is selected */}
         <motion.div
-          className="bg-white/80 backdrop-blur-sm border border-slate-200 rounded-xl overflow-hidden shadow-sm"
+          className={`bg-white/80 backdrop-blur-sm border border-slate-200 rounded-xl overflow-hidden shadow-sm ${
+            selectedRfi ? 'hidden lg:block' : ''
+          }`}
           initial={{ opacity: 0, x: -20 }}
           animate={{ opacity: 1, x: 0 }}
           transition={{ delay: 0.1 }}
@@ -277,9 +292,11 @@ export default function ProjectRfiPage() {
           </div>
         </motion.div>
 
-        {/* RFI Detail */}
+        {/* RFI Detail - Always visible on desktop, only when selected on mobile */}
         <motion.div
-          className="bg-white/80 backdrop-blur-sm border border-slate-200 rounded-xl overflow-hidden shadow-sm"
+          className={`bg-white/80 backdrop-blur-sm border border-slate-200 rounded-xl overflow-hidden shadow-sm ${
+            !selectedRfi ? 'hidden lg:block' : ''
+          }`}
           initial={{ opacity: 0, x: 20 }}
           animate={{ opacity: 1, x: 0 }}
           transition={{ delay: 0.2 }}
@@ -365,20 +382,20 @@ function RfiDetail({
   return (
     <>
       {/* Header */}
-      <div className="p-4 border-b border-slate-200">
-        <div className="flex items-start justify-between">
-          <div>
+      <div className="p-3 sm:p-4 border-b border-slate-200">
+        <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-3">
+          <div className="flex-1 min-w-0">
             <div className="flex items-center gap-2 mb-1">
               <span className="text-xs text-slate-500 font-mono">RFI-{rfi.rfi_number}</span>
               <span className={`text-xs font-medium ${priority.color}`}>{priority.label}</span>
             </div>
-            <h2 className="font-semibold text-slate-900">{rfi.subject}</h2>
+            <h2 className="font-semibold text-slate-900 text-sm sm:text-base">{rfi.subject}</h2>
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 flex-shrink-0">
             <select
               value={rfi.status}
               onChange={(e) => onStatusChange(rfi.id, e.target.value as RfiStatus)}
-              className="px-2 py-1 bg-white border border-slate-200 rounded-lg text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+              className="px-2 py-1.5 bg-white border border-slate-200 rounded-lg text-xs sm:text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-indigo-500"
             >
               <option value="open">Öppen</option>
               <option value="pending">Väntar</option>
@@ -389,13 +406,13 @@ function RfiDetail({
               onClick={() => onDelete(rfi.id)}
               className="p-2 text-red-500 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
             >
-              <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+              <svg className="h-4 w-4 sm:h-5 sm:w-5" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" d="m14.74 9-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 0 1-2.244 2.077H8.084a2.25 2.25 0 0 1-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 0 0-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 0 1 3.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 0 0-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 0 0-7.5 0" />
               </svg>
             </button>
           </div>
         </div>
-        <div className="flex items-center gap-4 mt-3 text-sm text-slate-500">
+        <div className="flex flex-wrap items-center gap-2 sm:gap-4 mt-3 text-xs sm:text-sm text-slate-500">
           <span className={`px-2 py-1 rounded-lg ${status.bgColor} ${status.color} font-medium`}>
             {status.label}
           </span>
@@ -552,21 +569,21 @@ function CreateRfiModal({
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
-      className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-[100] p-4"
+      className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-end sm:items-center justify-center z-[100] sm:p-4"
       onClick={onClose}
     >
       <motion.div
         initial={{ opacity: 0, scale: 0.95, y: 20 }}
         animate={{ opacity: 1, scale: 1, y: 0 }}
         exit={{ opacity: 0, scale: 0.95, y: 20 }}
-        className="bg-white border border-slate-200 rounded-2xl w-full max-w-lg max-h-[90vh] overflow-y-auto shadow-2xl"
+        className="bg-white border border-slate-200 rounded-t-2xl sm:rounded-2xl w-full sm:max-w-lg h-[90vh] sm:h-auto sm:max-h-[90vh] overflow-y-auto shadow-2xl"
         onClick={(e) => e.stopPropagation()}
       >
-        <div className="p-4 border-b border-slate-200 flex items-center justify-between">
-          <h2 className="text-lg font-semibold text-slate-900">Skapa ny fråga</h2>
+        <div className="p-3 sm:p-4 border-b border-slate-200 flex items-center justify-between sticky top-0 bg-white rounded-t-2xl z-10">
+          <h2 className="text-base sm:text-lg font-semibold text-slate-900">Skapa ny fråga</h2>
           <button
             onClick={onClose}
-            className="p-1 text-slate-400 hover:text-slate-600 transition-colors"
+            className="p-1.5 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-lg transition-colors"
           >
             <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" d="M6 18 18 6M6 6l12 12" />
@@ -574,7 +591,7 @@ function CreateRfiModal({
           </button>
         </div>
 
-        <form onSubmit={handleSubmit} className="p-4 space-y-4">
+        <form onSubmit={handleSubmit} className="p-3 sm:p-4 space-y-3 sm:space-y-4">
           <div>
             <label className="block text-sm font-medium text-slate-700 mb-1">
               Ämne <span className="text-red-500">*</span>
@@ -603,7 +620,7 @@ function CreateRfiModal({
             />
           </div>
 
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
             <div>
               <label className="block text-sm font-medium text-slate-700 mb-1">
                 Prioritet
@@ -611,7 +628,7 @@ function CreateRfiModal({
               <select
                 value={priority}
                 onChange={(e) => setPriority(e.target.value as RfiPriority)}
-                className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl text-slate-900 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl text-sm sm:text-base text-slate-900 focus:outline-none focus:ring-2 focus:ring-indigo-500"
               >
                 <option value="low">Låg</option>
                 <option value="medium">Medium</option>
@@ -628,12 +645,12 @@ function CreateRfiModal({
                 value={category}
                 onChange={(e) => setCategory(e.target.value)}
                 placeholder="t.ex. El, VVS"
-                className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl text-sm sm:text-base text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500"
               />
             </div>
           </div>
 
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
             <div>
               <label className="block text-sm font-medium text-slate-700 mb-1">
                 Tilldela till
@@ -641,7 +658,7 @@ function CreateRfiModal({
               <select
                 value={assignedTo}
                 onChange={(e) => setAssignedTo(e.target.value)}
-                className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl text-slate-900 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl text-sm sm:text-base text-slate-900 focus:outline-none focus:ring-2 focus:ring-indigo-500"
               >
                 <option value="">Ingen tilldelning</option>
                 {members.map((member) => (
@@ -659,23 +676,23 @@ function CreateRfiModal({
                 type="date"
                 value={dueDate}
                 onChange={(e) => setDueDate(e.target.value)}
-                className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl text-slate-900 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl text-sm sm:text-base text-slate-900 focus:outline-none focus:ring-2 focus:ring-indigo-500"
               />
             </div>
           </div>
 
-          <div className="flex justify-end gap-3 pt-4 border-t border-slate-200">
+          <div className="flex flex-col-reverse sm:flex-row justify-end gap-2 sm:gap-3 pt-4 border-t border-slate-200 sticky bottom-0 bg-white pb-safe">
             <button
               type="button"
               onClick={onClose}
-              className="px-4 py-2 text-slate-600 hover:text-slate-900 transition-colors"
+              className="px-4 py-2.5 sm:py-2 text-slate-600 hover:text-slate-900 hover:bg-slate-100 rounded-xl transition-colors text-sm sm:text-base"
             >
               Avbryt
             </button>
             <motion.button
               type="submit"
               disabled={!subject.trim() || !question.trim() || isCreating}
-              className="px-4 py-2 bg-gradient-to-r from-indigo-600 to-purple-600 text-white rounded-xl font-medium hover:from-indigo-700 hover:to-purple-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
+              className="px-4 py-2.5 sm:py-2 bg-gradient-to-r from-indigo-600 to-purple-600 text-white rounded-xl text-sm sm:text-base font-medium hover:from-indigo-700 hover:to-purple-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
               whileHover={{ scale: !subject.trim() || !question.trim() || isCreating ? 1 : 1.02 }}
               whileTap={{ scale: !subject.trim() || !question.trim() || isCreating ? 1 : 0.98 }}
             >

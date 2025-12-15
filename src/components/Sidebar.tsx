@@ -2,8 +2,14 @@
 
 import Link from 'next/link'
 import { usePathname, useParams } from 'next/navigation'
-import { motion } from 'framer-motion'
-import { Building2 } from 'lucide-react'
+import { motion, AnimatePresence } from 'framer-motion'
+import { Building2, X } from 'lucide-react'
+import { cn } from '@/lib/utils'
+
+interface SidebarProps {
+  isOpen: boolean
+  onClose: () => void
+}
 
 // Default navigation (when not in project context)
 const defaultNavigation = [
@@ -103,7 +109,7 @@ function SettingsIcon({ className }: { className?: string }) {
   )
 }
 
-export default function Sidebar() {
+export default function Sidebar({ isOpen, onClose }: SidebarProps) {
   const pathname = usePathname()
   const params = useParams()
 
@@ -114,119 +120,160 @@ export default function Sidebar() {
   // Build the project base path
   const projectBasePath = projectId ? `/dashboard/projects/${projectId}` : ''
 
+  // Close sidebar on navigation (mobile)
+  const handleNavClick = () => {
+    if (window.innerWidth < 1024) {
+      onClose()
+    }
+  }
+
   return (
-    <motion.aside
-      className="fixed inset-y-0 left-0 w-64 z-40 bg-white/70 backdrop-blur-xl border-r border-slate-200/50 shadow-xl"
-      initial={{ x: -20, opacity: 0 }}
-      animate={{ x: 0, opacity: 1 }}
-      transition={{ duration: 0.3 }}
-    >
-      {/* Logo Header */}
-      <div className="flex h-16 items-center px-6 border-b border-slate-200/50">
-        <Link href="/projects" className="flex items-center gap-3 group">
-          <div className="w-9 h-9 bg-gradient-to-br from-indigo-600 via-purple-600 to-pink-500 rounded-xl flex items-center justify-center shadow-lg shadow-indigo-500/25 group-hover:shadow-xl group-hover:shadow-indigo-500/30 transition-all duration-300 group-hover:scale-105">
-            <Building2 className="w-5 h-5 text-white" />
-          </div>
-          <span className="text-xl font-bold">
-            <span className="text-slate-900">Bygg</span>
-            <span className="bg-gradient-to-r from-indigo-600 to-purple-600 bg-clip-text text-transparent">Smart</span>
-          </span>
-        </Link>
-      </div>
+    <>
+      {/* Overlay - only on mobile when open */}
+      <AnimatePresence>
+        {isOpen && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.2 }}
+            className="fixed inset-0 bg-black/50 z-40 lg:hidden"
+            onClick={onClose}
+          />
+        )}
+      </AnimatePresence>
 
-      <nav className="mt-6 px-3 flex flex-col h-[calc(100%-4rem)]">
-        {isInProjectContext ? (
-          <>
-            {/* Project Navigation */}
-            <ul className="space-y-1">
-              {projectNavigation.map((item, index) => {
-                const href = `${projectBasePath}${item.href}`
-                const isActive = item.href === ''
-                  ? pathname === projectBasePath
-                  : pathname === href || pathname?.startsWith(href + '/')
+      {/* Sidebar */}
+      <aside
+        data-testid="sidebar"
+        className={cn(
+          "fixed inset-y-0 left-0 w-64 z-50 bg-white/70 backdrop-blur-xl border-r border-slate-200/50 shadow-xl",
+          "transition-transform duration-300 ease-in-out",
+          // Mobile: slide in/out based on isOpen
+          isOpen ? "translate-x-0" : "-translate-x-full",
+          // Desktop: always visible and positioned statically
+          "lg:!translate-x-0 lg:static"
+        )}
+      >
+        {/* Logo Header */}
+        <div className="flex h-16 items-center justify-between px-6 border-b border-slate-200/50">
+          <Link href="/projects" className="flex items-center gap-3 group" onClick={handleNavClick}>
+            <div className="w-9 h-9 bg-gradient-to-br from-indigo-600 via-purple-600 to-pink-500 rounded-xl flex items-center justify-center shadow-lg shadow-indigo-500/25 group-hover:shadow-xl group-hover:shadow-indigo-500/30 transition-all duration-300 group-hover:scale-105">
+              <Building2 className="w-5 h-5 text-white" />
+            </div>
+            <span className="text-xl font-bold">
+              <span className="text-slate-900">Bygg</span>
+              <span className="bg-gradient-to-r from-indigo-600 to-purple-600 bg-clip-text text-transparent">Smart</span>
+            </span>
+          </Link>
 
-                return (
-                  <motion.li
-                    key={item.name}
-                    initial={{ opacity: 0, x: -10 }}
-                    animate={{ opacity: 1, x: 0 }}
-                    transition={{ delay: index * 0.05 }}
-                  >
-                    <Link
-                      href={href}
-                      className={`flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all duration-200 ${
-                        isActive
-                          ? 'bg-gradient-to-r from-indigo-500/10 to-purple-500/10 text-indigo-700 border-l-2 border-indigo-500 shadow-sm'
-                          : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'
-                      }`}
+          {/* Close button - mobile only */}
+          <button
+            onClick={onClose}
+            className="lg:hidden p-2 -mr-2 text-slate-500 hover:text-slate-700 hover:bg-slate-100 rounded-lg transition-colors"
+          >
+            <X className="w-5 h-5" />
+          </button>
+        </div>
+
+        <nav className="mt-6 px-3 flex flex-col h-[calc(100%-4rem)]">
+          {isInProjectContext ? (
+            <>
+              {/* Project Navigation */}
+              <ul className="space-y-1">
+                {projectNavigation.map((item, index) => {
+                  const href = `${projectBasePath}${item.href}`
+                  const isActive = item.href === ''
+                    ? pathname === projectBasePath
+                    : pathname === href || pathname?.startsWith(href + '/')
+
+                  return (
+                    <motion.li
+                      key={item.name}
+                      initial={{ opacity: 0, x: -10 }}
+                      animate={{ opacity: 1, x: 0 }}
+                      transition={{ delay: index * 0.05 }}
                     >
-                      <item.icon className={`h-5 w-5 ${isActive ? 'text-indigo-600' : ''}`} />
-                      {item.name}
-                    </Link>
-                  </motion.li>
-                )
-              })}
-            </ul>
+                      <Link
+                        href={href}
+                        onClick={handleNavClick}
+                        className={`flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all duration-200 ${
+                          isActive
+                            ? 'bg-gradient-to-r from-indigo-500/10 to-purple-500/10 text-indigo-700 border-l-2 border-indigo-500 shadow-sm'
+                            : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'
+                        }`}
+                      >
+                        <item.icon className={`h-5 w-5 ${isActive ? 'text-indigo-600' : ''}`} />
+                        {item.name}
+                      </Link>
+                    </motion.li>
+                  )
+                })}
+              </ul>
 
-            {/* Divider */}
-            <div className="my-4 border-t border-slate-200/50" />
+              {/* Divider */}
+              <div className="my-4 border-t border-slate-200/50" />
 
-            {/* Back to Projects */}
+              {/* Back to Projects */}
+              <Link
+                href="/projects"
+                onClick={handleNavClick}
+                className="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium text-slate-600 hover:bg-slate-100 hover:text-slate-900 transition-all duration-200"
+              >
+                <ArrowLeftIcon className="h-5 w-5" />
+                Byt projekt
+              </Link>
+            </>
+          ) : (
+            <>
+              {/* Default Navigation */}
+              <ul className="space-y-1">
+                {defaultNavigation.map((item, index) => {
+                  const isActive = pathname === item.href ||
+                    (item.href !== '/dashboard' && pathname?.startsWith(item.href))
+
+                  return (
+                    <motion.li
+                      key={item.name}
+                      initial={{ opacity: 0, x: -10 }}
+                      animate={{ opacity: 1, x: 0 }}
+                      transition={{ delay: index * 0.05 }}
+                    >
+                      <Link
+                        href={item.href}
+                        onClick={handleNavClick}
+                        className={`flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all duration-200 ${
+                          isActive
+                            ? 'bg-gradient-to-r from-indigo-500/10 to-purple-500/10 text-indigo-700 border-l-2 border-indigo-500 shadow-sm'
+                            : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'
+                        }`}
+                      >
+                        <item.icon className={`h-5 w-5 ${isActive ? 'text-indigo-600' : ''}`} />
+                        {item.name}
+                      </Link>
+                    </motion.li>
+                  )
+                })}
+              </ul>
+            </>
+          )}
+
+          {/* Spacer */}
+          <div className="flex-1" />
+
+          {/* Bottom section - Settings */}
+          <div className="pb-4 border-t border-slate-200/50 pt-4 space-y-1">
             <Link
-              href="/projects"
+              href={isInProjectContext ? `${projectBasePath}/settings` : '/dashboard/profile'}
+              onClick={handleNavClick}
               className="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium text-slate-600 hover:bg-slate-100 hover:text-slate-900 transition-all duration-200"
             >
-              <ArrowLeftIcon className="h-5 w-5" />
-              Byt projekt
+              <SettingsIcon className="h-5 w-5" />
+              {isInProjectContext ? 'Projektinställningar' : 'Min profil'}
             </Link>
-          </>
-        ) : (
-          <>
-            {/* Default Navigation */}
-            <ul className="space-y-1">
-              {defaultNavigation.map((item, index) => {
-                const isActive = pathname === item.href ||
-                  (item.href !== '/dashboard' && pathname?.startsWith(item.href))
-
-                return (
-                  <motion.li
-                    key={item.name}
-                    initial={{ opacity: 0, x: -10 }}
-                    animate={{ opacity: 1, x: 0 }}
-                    transition={{ delay: index * 0.05 }}
-                  >
-                    <Link
-                      href={item.href}
-                      className={`flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all duration-200 ${
-                        isActive
-                          ? 'bg-gradient-to-r from-indigo-500/10 to-purple-500/10 text-indigo-700 border-l-2 border-indigo-500 shadow-sm'
-                          : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'
-                      }`}
-                    >
-                      <item.icon className={`h-5 w-5 ${isActive ? 'text-indigo-600' : ''}`} />
-                      {item.name}
-                    </Link>
-                  </motion.li>
-                )
-              })}
-            </ul>
-          </>
-        )}
-
-        {/* Spacer */}
-        <div className="flex-1" />
-
-        {/* Bottom section - Settings */}
-        <div className="pb-4 border-t border-slate-200/50 pt-4 space-y-1">
-          <Link
-            href={isInProjectContext ? `${projectBasePath}/settings` : '/dashboard/profile'}
-            className="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium text-slate-600 hover:bg-slate-100 hover:text-slate-900 transition-all duration-200"
-          >
-            <SettingsIcon className="h-5 w-5" />
-            {isInProjectContext ? 'Projektinställningar' : 'Min profil'}
-          </Link>
-        </div>
-      </nav>
-    </motion.aside>
+          </div>
+        </nav>
+      </aside>
+    </>
   )
 }

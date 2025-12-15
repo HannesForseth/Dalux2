@@ -139,27 +139,27 @@ export default function ProjectSelectorPage() {
       </header>
 
       {/* Main content */}
-      <main className="max-w-6xl mx-auto px-4 py-12 relative z-10">
+      <main className="max-w-6xl mx-auto px-4 py-6 sm:py-12 relative z-10">
         {/* Hero Section */}
         <motion.div
-          className="text-center mb-12"
+          className="text-center mb-8 sm:mb-12"
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.5 }}
         >
-          <h1 className="text-4xl md:text-5xl font-bold text-slate-900 mb-4">
+          <h1 className="text-3xl sm:text-4xl md:text-5xl font-bold text-slate-900 mb-3 sm:mb-4">
             Välj{' '}
             <span className="bg-gradient-to-r from-indigo-600 to-purple-600 bg-clip-text text-transparent">
               projekt
             </span>
           </h1>
-          <p className="text-xl text-slate-600">
+          <p className="text-base sm:text-xl text-slate-600">
             Välj ett befintligt projekt eller skapa ett nytt
           </p>
         </motion.div>
 
         {isLoading ? (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
             {[1, 2, 3].map((i) => (
               <motion.div
                 key={i}
@@ -168,12 +168,12 @@ export default function ProjectSelectorPage() {
                 animate={{ opacity: 1 }}
                 transition={{ delay: i * 0.1 }}
               >
-                <div className="h-52 bg-slate-200/50 rounded-2xl" />
+                <div className="h-44 sm:h-52 bg-slate-200/50 rounded-2xl" />
               </motion.div>
             ))}
           </div>
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
             {/* Create new project card */}
             <motion.div
               initial={{ opacity: 0, y: 20 }}
@@ -183,13 +183,13 @@ export default function ProjectSelectorPage() {
             >
               <Link
                 href="/projects/new"
-                className="group flex flex-col items-center justify-center h-52 bg-white/60 backdrop-blur-sm border-2 border-dashed border-slate-300 rounded-2xl hover:border-indigo-400 hover:bg-white/80 transition-all shadow-lg shadow-slate-200/50"
+                className="group flex flex-col items-center justify-center h-44 sm:h-52 bg-white/60 backdrop-blur-sm border-2 border-dashed border-slate-300 rounded-2xl hover:border-indigo-400 hover:bg-white/80 transition-all shadow-lg shadow-slate-200/50"
               >
-                <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-indigo-500 to-purple-500 flex items-center justify-center mb-4 group-hover:scale-110 transition-transform shadow-lg shadow-indigo-500/25">
-                  <Plus className="w-7 h-7 text-white" />
+                <div className="w-12 h-12 sm:w-14 sm:h-14 rounded-xl sm:rounded-2xl bg-gradient-to-br from-indigo-500 to-purple-500 flex items-center justify-center mb-3 sm:mb-4 group-hover:scale-110 transition-transform shadow-lg shadow-indigo-500/25">
+                  <Plus className="w-6 h-6 sm:w-7 sm:h-7 text-white" />
                 </div>
-                <span className="text-slate-900 font-semibold text-lg">Skapa nytt projekt</span>
-                <span className="text-slate-500 text-sm mt-1">Välj plan och kom igång</span>
+                <span className="text-slate-900 font-semibold text-base sm:text-lg">Skapa nytt projekt</span>
+                <span className="text-slate-500 text-xs sm:text-sm mt-1">Välj plan och kom igång</span>
               </Link>
             </motion.div>
 
@@ -204,7 +204,7 @@ export default function ProjectSelectorPage() {
               >
                 <Link
                   href={`/dashboard/projects/${project.id}`}
-                  className={`group flex flex-col ${project.image_url ? 'h-72' : 'h-52'} bg-white/80 backdrop-blur-sm border border-slate-200 rounded-2xl hover:border-indigo-300 hover:bg-white transition-all overflow-hidden shadow-lg shadow-slate-200/50`}
+                  className={`group flex flex-col ${project.image_url ? 'h-64 sm:h-72' : 'h-44 sm:h-52'} bg-white/80 backdrop-blur-sm border border-slate-200 rounded-2xl hover:border-indigo-300 hover:bg-white transition-all overflow-hidden shadow-lg shadow-slate-200/50`}
                 >
                   {/* Project Image */}
                   {project.image_url ? (
@@ -226,38 +226,38 @@ export default function ProjectSelectorPage() {
                     <div className={`h-1.5 ${getStatusColor(project.status)}`} />
                   )}
 
-                  <div className="flex-1 p-5">
-                    <div className="flex items-start justify-between mb-3">
+                  <div className="flex-1 p-4 sm:p-5">
+                    <div className="flex items-start justify-between mb-2 sm:mb-3">
                       <div className="flex-1 min-w-0">
-                        <h3 className="text-slate-900 font-semibold text-lg truncate group-hover:text-indigo-600 transition-colors">
+                        <h3 className="text-slate-900 font-semibold text-base sm:text-lg truncate group-hover:text-indigo-600 transition-colors">
                           {project.name}
                         </h3>
                         {project.project_number && (
-                          <p className="text-slate-500 text-sm">#{project.project_number}</p>
+                          <p className="text-slate-500 text-xs sm:text-sm">#{project.project_number}</p>
                         )}
                       </div>
                       {/* Only show badge here if no image */}
                       {!project.image_url && <StatusBadge status={project.status} />}
                     </div>
 
-                    <div className="space-y-1.5 text-slate-500 text-sm">
+                    <div className="space-y-1 sm:space-y-1.5 text-slate-500 text-xs sm:text-sm">
                       {project.city && (
                         <div className="flex items-center gap-2">
-                          <MapPin className="w-4 h-4 flex-shrink-0" />
+                          <MapPin className="w-3.5 h-3.5 sm:w-4 sm:h-4 flex-shrink-0" />
                           <span className="truncate">{project.city}</span>
                         </div>
                       )}
                       {project.address && !project.city && (
                         <div className="flex items-center gap-2">
-                          <MapPin className="w-4 h-4 flex-shrink-0" />
+                          <MapPin className="w-3.5 h-3.5 sm:w-4 sm:h-4 flex-shrink-0" />
                           <span className="truncate">{project.address}</span>
                         </div>
                       )}
                     </div>
                   </div>
 
-                  <div className="px-5 py-3 border-t border-slate-100 bg-slate-50/50">
-                    <span className="text-slate-500 text-xs">
+                  <div className="px-4 sm:px-5 py-2.5 sm:py-3 border-t border-slate-100 bg-slate-50/50">
+                    <span className="text-slate-500 text-[10px] sm:text-xs">
                       Skapad {new Date(project.created_at).toLocaleDateString('sv-SE')}
                     </span>
                   </div>

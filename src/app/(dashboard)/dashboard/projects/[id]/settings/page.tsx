@@ -202,16 +202,16 @@ export default function ProjectSettingsPage() {
       className="max-w-4xl mx-auto"
     >
       {/* Header */}
-      <motion.div variants={itemVariants} className="flex items-center gap-4 mb-8">
+      <motion.div variants={itemVariants} className="flex items-center gap-3 sm:gap-4 mb-6 sm:mb-8">
         <Link
           href={`/dashboard/projects/${projectId}`}
           className="p-2 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-xl transition-colors"
         >
           <ArrowLeft className="w-5 h-5" />
         </Link>
-        <div>
-          <h1 className="text-2xl font-bold text-slate-900">Projektinställningar</h1>
-          <p className="text-slate-500">{project.name}</p>
+        <div className="min-w-0 flex-1">
+          <h1 className="text-xl sm:text-2xl font-bold text-slate-900">Projektinställningar</h1>
+          <p className="text-sm sm:text-base text-slate-500 truncate">{project.name}</p>
         </div>
       </motion.div>
 
@@ -219,9 +219,9 @@ export default function ProjectSettingsPage() {
         {/* Project Information */}
         <motion.div
           variants={itemVariants}
-          className="bg-white/80 backdrop-blur-sm border border-slate-200 rounded-2xl p-6 shadow-sm"
+          className="bg-white/80 backdrop-blur-sm border border-slate-200 rounded-2xl p-4 sm:p-6 shadow-sm"
         >
-          <div className="flex items-center gap-3 mb-6">
+          <div className="flex items-center gap-3 mb-4 sm:mb-6">
             <div className="w-10 h-10 bg-indigo-100 rounded-xl flex items-center justify-center">
               <Building2 className="w-5 h-5 text-indigo-600" />
             </div>
@@ -231,8 +231,8 @@ export default function ProjectSettingsPage() {
             </div>
           </div>
 
-          <form onSubmit={handleSaveProject} className="space-y-4">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <form onSubmit={handleSaveProject} className="space-y-3 sm:space-y-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
               <div>
                 <label className="block text-sm font-medium text-slate-700 mb-1">
                   Projektnamn *
@@ -272,7 +272,7 @@ export default function ProjectSettingsPage() {
               />
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
               <div>
                 <label className="block text-sm font-medium text-slate-700 mb-1">
                   Adress
@@ -329,9 +329,9 @@ export default function ProjectSettingsPage() {
         {/* Project Image */}
         <motion.div
           variants={itemVariants}
-          className="bg-white/80 backdrop-blur-sm border border-slate-200 rounded-2xl p-6 shadow-sm"
+          className="bg-white/80 backdrop-blur-sm border border-slate-200 rounded-2xl p-4 sm:p-6 shadow-sm"
         >
-          <div className="flex items-center gap-3 mb-6">
+          <div className="flex items-center gap-3 mb-4 sm:mb-6">
             <div className="w-10 h-10 bg-cyan-100 rounded-xl flex items-center justify-center">
               <ImageIcon className="w-5 h-5 text-cyan-600" />
             </div>
@@ -341,9 +341,9 @@ export default function ProjectSettingsPage() {
             </div>
           </div>
 
-          <div className="flex items-start gap-6">
+          <div className="flex flex-col sm:flex-row sm:items-start gap-4 sm:gap-6">
             {/* Image Preview */}
-            <div className="relative w-48 h-32 bg-slate-100 rounded-xl overflow-hidden border-2 border-dashed border-slate-200 flex-shrink-0">
+            <div className="relative w-full sm:w-48 h-40 sm:h-32 bg-slate-100 rounded-xl overflow-hidden border-2 border-dashed border-slate-200 flex-shrink-0">
               {imageUrl ? (
                 <>
                   <Image
@@ -402,42 +402,41 @@ export default function ProjectSettingsPage() {
         {/* Plan & Subscription */}
         <motion.div
           variants={itemVariants}
-          className="bg-white/80 backdrop-blur-sm border border-slate-200 rounded-2xl p-6 shadow-sm"
+          className="bg-white/80 backdrop-blur-sm border border-slate-200 rounded-2xl p-4 sm:p-6 shadow-sm"
         >
-          <div className="flex items-center justify-between mb-6">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 bg-emerald-100 rounded-xl flex items-center justify-center">
-                <CreditCard className="w-5 h-5 text-emerald-600" />
-              </div>
-              <div>
-                <h2 className="text-lg font-semibold text-slate-900">Projektplan</h2>
-                <p className="text-sm text-slate-500">Hantera din prenumeration</p>
-              </div>
+          <div className="flex items-center gap-3 mb-4 sm:mb-6">
+            <div className="w-10 h-10 bg-emerald-100 rounded-xl flex items-center justify-center">
+              <CreditCard className="w-5 h-5 text-emerald-600" />
+            </div>
+            <div>
+              <h2 className="text-lg font-semibold text-slate-900">Projektplan</h2>
+              <p className="text-sm text-slate-500">Hantera din prenumeration</p>
             </div>
           </div>
 
-          <div className="bg-slate-50 rounded-xl p-4 mb-4">
-            <div className="flex items-center justify-between">
+          <div className="bg-slate-50 rounded-xl p-3 sm:p-4 mb-4">
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-4">
               <div>
                 <p className="text-sm text-slate-500">Nuvarande plan</p>
-                <p className="text-xl font-bold text-slate-900">
+                <p className="text-lg sm:text-xl font-bold text-slate-900">
                   {currentPlan?.display_name || 'Ingen plan'}
                 </p>
                 {currentPlan && (
-                  <p className="text-sm text-slate-600 mt-1">
+                  <p className="text-xs sm:text-sm text-slate-600 mt-1">
                     {currentPlan.base_price_monthly === 0
                       ? 'Gratis'
                       : `${(currentPlan.base_price_monthly / 100).toLocaleString('sv-SE')} kr/mån`}
                     {' • '}
-                    {currentPlan.included_users} användare inkluderade
-                    {currentPlan.storage_mb > 0 && ` • ${currentPlan.storage_mb} MB lagring`}
+                    {currentPlan.included_users} användare
+                    <span className="hidden sm:inline"> inkluderade</span>
+                    {currentPlan.storage_mb > 0 && ` • ${currentPlan.storage_mb} MB`}
                   </p>
                 )}
               </div>
               {isProjectOwner && (
                 <Link
                   href={`/projects/new?upgrade=${projectId}`}
-                  className="px-4 py-2 bg-emerald-600 text-white rounded-xl font-medium hover:bg-emerald-700 transition-colors flex items-center gap-2"
+                  className="w-full sm:w-auto text-center px-4 py-2.5 bg-emerald-600 text-white rounded-xl font-medium hover:bg-emerald-700 transition-colors flex items-center justify-center gap-2"
                 >
                   Ändra plan
                   <ExternalLink className="w-4 h-4" />
@@ -449,7 +448,7 @@ export default function ProjectSettingsPage() {
           {currentPlan?.features && (
             <div className="space-y-2">
               <p className="text-sm font-medium text-slate-700">Inkluderade funktioner:</p>
-              <ul className="grid grid-cols-2 gap-2">
+              <ul className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                 {Object.entries(currentPlan.features).map(([key, value]) => (
                   value && (
                     <li key={key} className="flex items-center gap-2 text-sm text-slate-600">
@@ -468,9 +467,9 @@ export default function ProjectSettingsPage() {
         {/* Quick Links */}
         <motion.div
           variants={itemVariants}
-          className="bg-white/80 backdrop-blur-sm border border-slate-200 rounded-2xl p-6 shadow-sm"
+          className="bg-white/80 backdrop-blur-sm border border-slate-200 rounded-2xl p-4 sm:p-6 shadow-sm"
         >
-          <div className="flex items-center gap-3 mb-6">
+          <div className="flex items-center gap-3 mb-4 sm:mb-6">
             <div className="w-10 h-10 bg-purple-100 rounded-xl flex items-center justify-center">
               <Settings className="w-5 h-5 text-purple-600" />
             </div>
@@ -480,17 +479,17 @@ export default function ProjectSettingsPage() {
             </div>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 gap-3 sm:gap-4">
             <Link
               href={`/dashboard/projects/${projectId}/settings/members`}
-              className="flex items-center gap-4 p-4 bg-slate-50 rounded-xl hover:bg-slate-100 transition-colors group"
+              className="flex items-center gap-3 sm:gap-4 p-3 sm:p-4 bg-slate-50 rounded-xl hover:bg-slate-100 transition-colors group"
             >
-              <div className="w-12 h-12 bg-indigo-100 rounded-xl flex items-center justify-center group-hover:scale-105 transition-transform">
-                <Users className="w-6 h-6 text-indigo-600" />
+              <div className="w-10 sm:w-12 h-10 sm:h-12 bg-indigo-100 rounded-xl flex items-center justify-center group-hover:scale-105 transition-transform flex-shrink-0">
+                <Users className="w-5 sm:w-6 h-5 sm:h-6 text-indigo-600" />
               </div>
-              <div>
+              <div className="min-w-0">
                 <p className="font-medium text-slate-900">Medlemmar</p>
-                <p className="text-sm text-slate-500">Hantera projektmedlemmar och roller</p>
+                <p className="text-sm text-slate-500 truncate">Hantera projektmedlemmar och roller</p>
               </div>
             </Link>
           </div>
@@ -500,9 +499,9 @@ export default function ProjectSettingsPage() {
         {canDelete && (
           <motion.div
             variants={itemVariants}
-            className="bg-white/80 backdrop-blur-sm border border-red-200 rounded-2xl p-6 shadow-sm"
+            className="bg-white/80 backdrop-blur-sm border border-red-200 rounded-2xl p-4 sm:p-6 shadow-sm"
           >
-            <div className="flex items-center gap-3 mb-6">
+            <div className="flex items-center gap-3 mb-4 sm:mb-6">
               <div className="w-10 h-10 bg-red-100 rounded-xl flex items-center justify-center">
                 <Trash2 className="w-5 h-5 text-red-600" />
               </div>
@@ -513,50 +512,50 @@ export default function ProjectSettingsPage() {
             </div>
 
             {!showDeleteConfirm ? (
-              <div className="flex items-center justify-between p-4 bg-red-50 rounded-xl">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-3 sm:p-4 bg-red-50 rounded-xl">
                 <div>
                   <p className="font-medium text-slate-900">Radera projekt</p>
                   <p className="text-sm text-slate-600">
-                    Permanent radering av projektet och all tillhörande data
+                    Permanent radering av projektet och all data
                   </p>
                 </div>
                 <button
                   onClick={() => setShowDeleteConfirm(true)}
-                  className="px-4 py-2 bg-red-600 text-white rounded-xl font-medium hover:bg-red-700 transition-colors"
+                  className="w-full sm:w-auto px-4 py-2.5 bg-red-600 text-white rounded-xl font-medium hover:bg-red-700 transition-colors text-center"
                 >
                   Radera projekt
                 </button>
               </div>
             ) : (
-              <div className="p-4 bg-red-50 border border-red-200 rounded-xl space-y-4">
+              <div className="p-3 sm:p-4 bg-red-50 border border-red-200 rounded-xl space-y-3 sm:space-y-4">
                 <div className="flex items-start gap-3">
-                  <div className="p-2 bg-red-100 rounded-lg">
+                  <div className="p-2 bg-red-100 rounded-lg flex-shrink-0">
                     <Trash2 className="w-5 h-5 text-red-600" />
                   </div>
                   <div>
                     <p className="font-medium text-red-700">Bekräfta radering</p>
-                    <p className="text-sm text-red-600 mt-1">
-                      Detta kommer permanent radera projektet &quot;{project.name}&quot; och all dess data
-                      inklusive dokument, ärenden, avvikelser, protokoll och alla andra poster.
-                      Denna åtgärd kan INTE ångras.
+                    <p className="text-xs sm:text-sm text-red-600 mt-1">
+                      Detta kommer permanent radera projektet &quot;{project.name}&quot; och all dess data.
+                      <span className="hidden sm:inline"> Inklusive dokument, ärenden, avvikelser, protokoll och alla andra poster.</span>
+                      {' '}Denna åtgärd kan INTE ångras.
                     </p>
                   </div>
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-red-700 mb-1">
-                    Skriv projektnamnet för att bekräfta: <span className="font-bold">{project.name}</span>
+                  <label className="block text-xs sm:text-sm font-medium text-red-700 mb-1">
+                    Skriv projektnamnet för att bekräfta: <span className="font-bold break-all">{project.name}</span>
                   </label>
                   <input
                     type="text"
                     value={deleteConfirmText}
                     onChange={(e) => setDeleteConfirmText(e.target.value)}
                     placeholder={project.name}
-                    className="w-full px-4 py-2.5 border border-red-200 rounded-xl text-slate-900 focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent"
+                    className="w-full px-3 sm:px-4 py-2.5 border border-red-200 rounded-xl text-slate-900 focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent text-sm sm:text-base"
                   />
                 </div>
 
-                <div className="flex gap-3">
+                <div className="flex flex-col-reverse sm:flex-row gap-2 sm:gap-3">
                   <button
                     onClick={() => {
                       setShowDeleteConfirm(false)
@@ -583,7 +582,8 @@ export default function ProjectSettingsPage() {
                     ) : (
                       <>
                         <Trash2 className="w-4 h-4" />
-                        Radera permanent
+                        <span className="hidden sm:inline">Radera permanent</span>
+                        <span className="sm:hidden">Radera</span>
                       </>
                     )}
                   </button>

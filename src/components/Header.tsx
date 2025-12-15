@@ -4,7 +4,7 @@ import { useState, useEffect, useRef } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { useRouter } from 'next/navigation'
 import { motion, AnimatePresence } from 'framer-motion'
-import { Search, Bell, ChevronDown, User, Settings, LogOut, X } from 'lucide-react'
+import { Search, Bell, ChevronDown, User, Settings, LogOut, X, Menu } from 'lucide-react'
 import type { User as SupabaseUser } from '@supabase/supabase-js'
 import {
   Notification,
@@ -17,13 +17,18 @@ import {
 import Breadcrumb from './Breadcrumb'
 import ProjectDropdown from './ProjectDropdown'
 
-export default function Header() {
+interface HeaderProps {
+  onMenuToggle: () => void
+}
+
+export default function Header({ onMenuToggle }: HeaderProps) {
   const [user, setUser] = useState<SupabaseUser | null>(null)
   const [showDropdown, setShowDropdown] = useState(false)
   const [notifications, setNotifications] = useState<Notification[]>([])
   const [unreadCount, setUnreadCount] = useState(0)
   const [showNotifications, setShowNotifications] = useState(false)
   const [loadingNotifications, setLoadingNotifications] = useState(false)
+  const [showMobileSearch, setShowMobileSearch] = useState(false)
   const notificationRef = useRef<HTMLDivElement>(null)
   const userDropdownRef = useRef<HTMLDivElement>(null)
   const router = useRouter()
@@ -163,9 +168,18 @@ export default function Header() {
       transition={{ duration: 0.3 }}
     >
       {/* Single Row Header */}
-      <div className="h-14 px-6 flex items-center justify-between gap-4">
-        {/* Left: Project & Breadcrumb */}
-        <div className="flex items-center gap-3 min-w-0">
+      <div className="h-14 px-4 lg:px-6 flex items-center justify-between gap-2 lg:gap-4">
+        {/* Left: Hamburger + Project & Breadcrumb */}
+        <div className="flex items-center gap-2 lg:gap-3 min-w-0">
+          {/* Hamburger menu - mobile only */}
+          <button
+            data-testid="menu-toggle"
+            onClick={onMenuToggle}
+            className="lg:hidden p-2 -ml-2 text-slate-600 hover:text-slate-900 hover:bg-slate-100 rounded-xl transition-colors"
+          >
+            <Menu className="w-5 h-5" />
+          </button>
+
           <ProjectDropdown />
           <div className="h-5 w-px bg-slate-200 hidden md:block" />
           <div className="hidden md:block">
@@ -173,7 +187,7 @@ export default function Header() {
           </div>
         </div>
 
-        {/* Center: Search */}
+        {/* Center: Search - desktop only */}
         <div className="relative flex-1 max-w-md hidden lg:block">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
           <input
@@ -184,7 +198,15 @@ export default function Header() {
         </div>
 
         {/* Right: User Actions */}
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-1 sm:gap-2">
+          {/* Search icon - mobile only */}
+          <button
+            onClick={() => setShowMobileSearch(!showMobileSearch)}
+            className="lg:hidden p-2 text-slate-500 hover:text-slate-700 hover:bg-slate-100 rounded-xl transition-colors"
+          >
+            <Search className="w-5 h-5" />
+          </button>
+
           {/* Notification Bell with Dropdown */}
           <div className="relative" ref={notificationRef}>
             <button
@@ -208,7 +230,7 @@ export default function Header() {
                   animate={{ opacity: 1, y: 0, scale: 1 }}
                   exit={{ opacity: 0, y: -10, scale: 0.95 }}
                   transition={{ duration: 0.15 }}
-                  className="absolute right-0 mt-2 w-96 bg-white border border-slate-200 rounded-2xl shadow-2xl z-[100] overflow-hidden"
+                  className="absolute right-0 mt-2 w-[calc(100vw-2rem)] sm:w-96 max-w-96 bg-white border border-slate-200 rounded-2xl shadow-2xl z-[100] overflow-hidden"
                 >
                   {/* Header */}
                   <div className="px-4 py-3 border-b border-slate-100 flex items-center justify-between">
@@ -290,13 +312,13 @@ export default function Header() {
           <div className="relative" ref={userDropdownRef}>
             <button
               onClick={() => setShowDropdown(!showDropdown)}
-              className="flex items-center gap-3 p-2 rounded-xl hover:bg-slate-100 transition-colors"
+              className="flex items-center gap-2 sm:gap-3 p-2 rounded-xl hover:bg-slate-100 transition-colors"
             >
               <div className="h-8 w-8 bg-gradient-to-br from-indigo-500 to-purple-500 rounded-xl flex items-center justify-center text-sm font-medium text-white shadow-md shadow-indigo-500/20">
                 {userInitials}
               </div>
               <span className="text-sm font-medium text-slate-700 hidden sm:inline">{userName}</span>
-              <ChevronDown className={`w-4 h-4 text-slate-400 transition-transform ${showDropdown ? 'rotate-180' : ''}`} />
+              <ChevronDown className={`w-4 h-4 text-slate-400 transition-transform hidden sm:block ${showDropdown ? 'rotate-180' : ''}`} />
             </button>
 
             <AnimatePresence>
@@ -346,6 +368,37 @@ export default function Header() {
           </div>
         </div>
       </div>
+
+      {/* Mobile Search Bar - expandable */}
+      <AnimatePresence>
+        {showMobileSearch && (
+          <motion.div
+            initial={{ height: 0, opacity: 0 }}
+            animate={{ height: 'auto', opacity: 1 }}
+            exit={{ height: 0, opacity: 0 }}
+            transition={{ duration: 0.2 }}
+            className="lg:hidden overflow-hidden border-t border-slate-200/50"
+          >
+            <div className="p-3">
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                <input
+                  type="text"
+                  placeholder="Sök projekt, dokument..."
+                  autoFocus
+                  className="w-full pl-10 pr-10 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all"
+                />
+                <button
+                  onClick={() => setShowMobileSearch(false)}
+                  className="absolute right-2 top-1/2 -translate-y-1/2 p-1 text-slate-400 hover:text-slate-600"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </motion.header>
   )
 }

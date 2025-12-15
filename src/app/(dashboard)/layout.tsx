@@ -1,5 +1,6 @@
 'use client'
 
+import { useState } from 'react'
 import Sidebar from '@/components/Sidebar'
 import Header from '@/components/Header'
 import Footer from '@/components/Footer'
@@ -10,6 +11,8 @@ export default function DashboardLayout({
 }: {
   children: React.ReactNode
 }) {
+  const [sidebarOpen, setSidebarOpen] = useState(false)
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-indigo-50 overflow-hidden relative">
       {/* Animated Background Blobs - positioned to right to avoid sidebar */}
@@ -78,13 +81,13 @@ export default function DashboardLayout({
         }}
       />
 
-      {/* Sidebar */}
-      <Sidebar />
+      {/* Sidebar - responsive with slide-in on mobile */}
+      <Sidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
 
-      {/* Main Content Area */}
-      <div className="pl-64 relative min-h-screen flex flex-col">
-        <Header />
-        <main className="flex-1 p-6">
+      {/* Main Content Area - no left padding on mobile */}
+      <div className="lg:pl-64 relative min-h-screen flex flex-col">
+        <Header onMenuToggle={() => setSidebarOpen(true)} />
+        <main className="flex-1 p-4 lg:p-6">
           {children}
         </main>
         <Footer />

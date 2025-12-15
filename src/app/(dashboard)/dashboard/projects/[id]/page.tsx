@@ -105,27 +105,28 @@ export default function ProjectDetailPage() {
       animate="visible"
     >
       {/* Header */}
-      <motion.div variants={itemVariants} className="flex items-start justify-between mb-8">
+      <motion.div variants={itemVariants} className="flex flex-col sm:flex-row sm:items-start justify-between gap-4 mb-6 sm:mb-8">
         <div>
-          <div className="flex items-center gap-3 mb-2">
-            <h1 className="text-3xl font-bold bg-gradient-to-r from-slate-900 to-slate-700 bg-clip-text text-transparent">
+          <div className="flex flex-wrap items-center gap-2 sm:gap-3 mb-2">
+            <h1 className="text-2xl sm:text-3xl font-bold bg-gradient-to-r from-slate-900 to-slate-700 bg-clip-text text-transparent">
               {project.name}
             </h1>
-            <span className={`px-3 py-1 text-xs font-medium rounded-full border ${status.color}`}>
+            <span className={`px-2.5 sm:px-3 py-1 text-xs font-medium rounded-full border ${status.color}`}>
               {status.label}
             </span>
           </div>
           {project.project_number && (
-            <p className="text-slate-500">#{project.project_number}</p>
+            <p className="text-slate-500 text-sm sm:text-base">#{project.project_number}</p>
           )}
         </div>
 
         {userRole && canUpdateProject(userRole) && (
           <Link
             href={`/dashboard/projects/${project.id}/settings`}
-            className="px-4 py-2 bg-white/80 text-slate-700 rounded-xl font-medium hover:bg-white hover:shadow-md border border-slate-200 transition-all"
+            className="inline-flex items-center justify-center gap-2 px-3 sm:px-4 py-2 bg-white/80 text-slate-700 rounded-xl font-medium hover:bg-white hover:shadow-md border border-slate-200 transition-all text-sm sm:text-base"
           >
-            Inställningar
+            <SettingsIcon className="w-4 h-4" />
+            <span className="hidden sm:inline">Inställningar</span>
           </Link>
         )}
       </motion.div>
@@ -144,7 +145,7 @@ export default function ProjectDetailPage() {
               <p className="text-slate-600 mb-6">{project.description}</p>
             )}
 
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               {(project.address || project.city) && (
                 <div>
                   <p className="text-sm text-slate-500 mb-1">Plats</p>
@@ -167,7 +168,7 @@ export default function ProjectDetailPage() {
           </motion.div>
 
           {/* Quick actions with real counts */}
-          <motion.div variants={itemVariants} className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
+          <motion.div variants={itemVariants} className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3 sm:gap-4">
             <QuickActionCard
               title="Dokument"
               count={stats?.documentsCount.toString() || '0'}
@@ -411,32 +412,34 @@ function QuickActionCard({
         transition={{ delay: index * 0.05, duration: 0.3 }}
         whileHover={{ y: -4, scale: 1.02 }}
         whileTap={{ scale: 0.98 }}
-        className={`bg-white/80 backdrop-blur-sm border rounded-2xl p-4 transition-all cursor-pointer group shadow-sm ${
+        className={`bg-white/80 backdrop-blur-sm border rounded-xl sm:rounded-2xl p-3 sm:p-4 transition-all cursor-pointer group shadow-sm ${
           highlight
             ? colors.border
             : 'border-slate-200 hover:border-indigo-200 hover:shadow-lg hover:shadow-indigo-100/50'
         }`}
       >
-        <div className="flex items-center gap-3">
-          <div className={`w-10 h-10 rounded-xl flex items-center justify-center transition-all ${
+        <div className="flex items-center gap-2 sm:gap-3">
+          <div className={`w-8 h-8 sm:w-10 sm:h-10 rounded-lg sm:rounded-xl flex items-center justify-center transition-all flex-shrink-0 ${
             highlight
               ? colors.icon
               : 'bg-slate-100 text-slate-500 group-hover:bg-gradient-to-br group-hover:from-indigo-500 group-hover:to-purple-500 group-hover:text-white'
           }`}>
-            {icon}
+            <span className="[&>svg]:w-4 [&>svg]:h-4 sm:[&>svg]:w-5 sm:[&>svg]:h-5">
+              {icon}
+            </span>
           </div>
-          <div>
+          <div className="min-w-0">
             <motion.p
               initial={{ opacity: 0, y: 5 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: index * 0.05 + 0.1 }}
-              className="text-slate-900 font-semibold text-lg"
+              className="text-slate-900 font-semibold text-base sm:text-lg"
             >
               {count}
             </motion.p>
-            <p className="text-slate-500 text-sm">{title}</p>
+            <p className="text-slate-500 text-xs sm:text-sm truncate">{title}</p>
             {subtext && (
-              <p className={`text-xs ${highlight ? colors.text : 'text-slate-400'}`}>{subtext}</p>
+              <p className={`text-xs truncate ${highlight ? colors.text : 'text-slate-400'}`}>{subtext}</p>
             )}
           </div>
         </div>
@@ -666,6 +669,15 @@ function ExpandIcon({ className = "h-4 w-4" }: { className?: string }) {
   return (
     <svg className={className} fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
       <path strokeLinecap="round" strokeLinejoin="round" d="M3.75 3.75v4.5m0-4.5h4.5m-4.5 0L9 9M3.75 20.25v-4.5m0 4.5h4.5m-4.5 0L9 15M20.25 3.75h-4.5m4.5 0v4.5m0-4.5L15 9m5.25 11.25h-4.5m4.5 0v-4.5m0 4.5L15 15" />
+    </svg>
+  )
+}
+
+function SettingsIcon({ className = "h-4 w-4" }: { className?: string }) {
+  return (
+    <svg className={className} fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+      <path strokeLinecap="round" strokeLinejoin="round" d="M9.594 3.94c.09-.542.56-.94 1.11-.94h2.593c.55 0 1.02.398 1.11.94l.213 1.281c.063.374.313.686.645.87.074.04.147.083.22.127.325.196.72.257 1.075.124l1.217-.456a1.125 1.125 0 0 1 1.37.49l1.296 2.247a1.125 1.125 0 0 1-.26 1.431l-1.003.827c-.293.241-.438.613-.43.992a7.723 7.723 0 0 1 0 .255c-.008.378.137.75.43.991l1.004.827c.424.35.534.955.26 1.43l-1.298 2.247a1.125 1.125 0 0 1-1.369.491l-1.217-.456c-.355-.133-.75-.072-1.076.124a6.47 6.47 0 0 1-.22.128c-.331.183-.581.495-.644.869l-.213 1.281c-.09.543-.56.94-1.11.94h-2.594c-.55 0-1.019-.398-1.11-.94l-.213-1.281c-.062-.374-.312-.686-.644-.87a6.52 6.52 0 0 1-.22-.127c-.325-.196-.72-.257-1.076-.124l-1.217.456a1.125 1.125 0 0 1-1.369-.49l-1.297-2.247a1.125 1.125 0 0 1 .26-1.431l1.004-.827c.292-.24.437-.613.43-.991a6.932 6.932 0 0 1 0-.255c.007-.38-.138-.751-.43-.992l-1.004-.827a1.125 1.125 0 0 1-.26-1.43l1.297-2.247a1.125 1.125 0 0 1 1.37-.491l1.216.456c.356.133.751.072 1.076-.124.072-.044.146-.086.22-.128.332-.183.582-.495.644-.869l.214-1.28Z" />
+      <path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z" />
     </svg>
   )
 }

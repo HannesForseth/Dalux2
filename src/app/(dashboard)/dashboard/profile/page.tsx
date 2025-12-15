@@ -152,9 +152,9 @@ export default function ProfilePage() {
       className="max-w-3xl mx-auto"
     >
       {/* Header */}
-      <motion.div variants={itemVariants} className="mb-8">
-        <h1 className="text-2xl font-bold text-slate-900">Min profil</h1>
-        <p className="text-slate-500 mt-1">Hantera din personliga information och inställningar</p>
+      <motion.div variants={itemVariants} className="mb-6 sm:mb-8">
+        <h1 className="text-xl sm:text-2xl font-bold text-slate-900">Min profil</h1>
+        <p className="text-sm sm:text-base text-slate-500 mt-1">Hantera din personliga information</p>
       </motion.div>
 
       {/* Success/Error messages */}
@@ -187,9 +187,9 @@ export default function ProfilePage() {
         {/* Avatar Section */}
         <motion.div
           variants={itemVariants}
-          className="bg-white/80 backdrop-blur-sm border border-slate-200 rounded-2xl p-6 shadow-sm"
+          className="bg-white/80 backdrop-blur-sm border border-slate-200 rounded-2xl p-4 sm:p-6 shadow-sm"
         >
-          <div className="flex items-center gap-3 mb-6">
+          <div className="flex items-center gap-3 mb-4 sm:mb-6">
             <div className="w-10 h-10 bg-indigo-100 rounded-xl flex items-center justify-center">
               <Camera className="w-5 h-5 text-indigo-600" />
             </div>
@@ -199,17 +199,17 @@ export default function ProfilePage() {
             </div>
           </div>
 
-          <div className="flex items-center gap-6">
+          <div className="flex flex-col sm:flex-row items-center gap-4 sm:gap-6">
             {/* Avatar */}
-            <div className="relative">
+            <div className="relative flex-shrink-0">
               {profile?.avatar_url ? (
                 <img
                   src={profile.avatar_url}
                   alt="Profilbild"
-                  className="w-24 h-24 rounded-full object-cover border-2 border-slate-200 shadow-sm"
+                  className="w-20 h-20 sm:w-24 sm:h-24 rounded-full object-cover border-2 border-slate-200 shadow-sm"
                 />
               ) : (
-                <div className="w-24 h-24 rounded-full bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-white text-2xl font-semibold border-2 border-slate-200 shadow-sm">
+                <div className="w-20 h-20 sm:w-24 sm:h-24 rounded-full bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-white text-xl sm:text-2xl font-semibold border-2 border-slate-200 shadow-sm">
                   {getInitials(profile?.full_name, user?.email)}
                 </div>
               )}
@@ -226,8 +226,8 @@ export default function ProfilePage() {
             </div>
 
             {/* Upload buttons */}
-            <div className="space-y-3">
-              <div>
+            <div className="space-y-3 text-center sm:text-left w-full sm:w-auto">
+              <div className="flex flex-col sm:flex-row items-center gap-2">
                 <input
                   ref={fileInputRef}
                   type="file"
@@ -238,23 +238,23 @@ export default function ProfilePage() {
                 />
                 <label
                   htmlFor="avatar-upload"
-                  className="inline-flex items-center gap-2 px-4 py-2.5 bg-indigo-600 text-white rounded-xl font-medium hover:bg-indigo-700 transition-colors cursor-pointer"
+                  className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-4 py-2.5 bg-indigo-600 text-white rounded-xl font-medium hover:bg-indigo-700 transition-colors cursor-pointer text-sm sm:text-base"
                 >
                   <Camera className="w-4 h-4" />
                   {profile?.avatar_url ? 'Byt bild' : 'Ladda upp bild'}
                 </label>
-              </div>
 
-              {profile?.avatar_url && (
-                <button
-                  onClick={handleDeleteAvatar}
-                  disabled={isUploadingAvatar}
-                  className="flex items-center gap-2 text-sm text-slate-500 hover:text-red-500 transition-colors disabled:opacity-50"
-                >
-                  <Trash2 className="w-4 h-4" />
-                  Ta bort bild
-                </button>
-              )}
+                {profile?.avatar_url && (
+                  <button
+                    onClick={handleDeleteAvatar}
+                    disabled={isUploadingAvatar}
+                    className="flex items-center justify-center gap-2 text-sm text-slate-500 hover:text-red-500 transition-colors disabled:opacity-50 px-3 py-2"
+                  >
+                    <Trash2 className="w-4 h-4" />
+                    Ta bort
+                  </button>
+                )}
+              </div>
 
               <p className="text-xs text-slate-500">
                 JPG, PNG, GIF eller WebP. Max 2 MB.
@@ -266,8 +266,8 @@ export default function ProfilePage() {
         {/* Profile Form */}
         <motion.div variants={itemVariants}>
           <form onSubmit={handleSave}>
-            <div className="bg-white/80 backdrop-blur-sm border border-slate-200 rounded-2xl p-6 shadow-sm">
-              <div className="flex items-center gap-3 mb-6">
+            <div className="bg-white/80 backdrop-blur-sm border border-slate-200 rounded-2xl p-4 sm:p-6 shadow-sm">
+              <div className="flex items-center gap-3 mb-4 sm:mb-6">
                 <div className="w-10 h-10 bg-emerald-100 rounded-xl flex items-center justify-center">
                   <User className="w-5 h-5 text-emerald-600" />
                 </div>
@@ -379,9 +379,9 @@ export default function ProfilePage() {
         {/* Account Info */}
         <motion.div
           variants={itemVariants}
-          className="bg-white/80 backdrop-blur-sm border border-slate-200 rounded-2xl p-6 shadow-sm"
+          className="bg-white/80 backdrop-blur-sm border border-slate-200 rounded-2xl p-4 sm:p-6 shadow-sm"
         >
-          <div className="flex items-center gap-3 mb-6">
+          <div className="flex items-center gap-3 mb-4 sm:mb-6">
             <div className="w-10 h-10 bg-purple-100 rounded-xl flex items-center justify-center">
               <Calendar className="w-5 h-5 text-purple-600" />
             </div>
@@ -391,27 +391,27 @@ export default function ProfilePage() {
             </div>
           </div>
 
-          <div className="space-y-3">
-            <div className="flex items-center justify-between p-4 bg-slate-50 rounded-xl">
-              <div className="flex items-center gap-3">
-                <div className="w-8 h-8 bg-slate-200 rounded-lg flex items-center justify-center">
+          <div className="space-y-2 sm:space-y-3">
+            <div className="flex items-center p-3 sm:p-4 bg-slate-50 rounded-xl">
+              <div className="flex items-center gap-3 min-w-0">
+                <div className="w-8 h-8 bg-slate-200 rounded-lg flex items-center justify-center flex-shrink-0">
                   <User className="w-4 h-4 text-slate-600" />
                 </div>
-                <div>
-                  <p className="text-sm text-slate-500">Konto-ID</p>
-                  <p className="text-slate-900 font-mono text-sm">{user?.id?.slice(0, 8)}...</p>
+                <div className="min-w-0">
+                  <p className="text-xs sm:text-sm text-slate-500">Konto-ID</p>
+                  <p className="text-slate-900 font-mono text-xs sm:text-sm truncate">{user?.id?.slice(0, 8)}...</p>
                 </div>
               </div>
             </div>
 
-            <div className="flex items-center justify-between p-4 bg-slate-50 rounded-xl">
-              <div className="flex items-center gap-3">
-                <div className="w-8 h-8 bg-slate-200 rounded-lg flex items-center justify-center">
+            <div className="flex items-center p-3 sm:p-4 bg-slate-50 rounded-xl">
+              <div className="flex items-center gap-3 min-w-0">
+                <div className="w-8 h-8 bg-slate-200 rounded-lg flex items-center justify-center flex-shrink-0">
                   <Calendar className="w-4 h-4 text-slate-600" />
                 </div>
-                <div>
-                  <p className="text-sm text-slate-500">Konto skapat</p>
-                  <p className="text-slate-900">
+                <div className="min-w-0">
+                  <p className="text-xs sm:text-sm text-slate-500">Konto skapat</p>
+                  <p className="text-sm sm:text-base text-slate-900">
                     {user?.created_at
                       ? new Date(user.created_at).toLocaleDateString('sv-SE', {
                           year: 'numeric',
@@ -424,18 +424,18 @@ export default function ProfilePage() {
               </div>
             </div>
 
-            <div className="flex items-center justify-between p-4 bg-slate-50 rounded-xl">
-              <div className="flex items-center gap-3">
-                <div className="w-8 h-8 bg-slate-200 rounded-lg flex items-center justify-center">
+            <div className="flex items-center p-3 sm:p-4 bg-slate-50 rounded-xl">
+              <div className="flex items-center gap-3 min-w-0">
+                <div className="w-8 h-8 bg-slate-200 rounded-lg flex items-center justify-center flex-shrink-0">
                   <Clock className="w-4 h-4 text-slate-600" />
                 </div>
-                <div>
-                  <p className="text-sm text-slate-500">Senast inloggad</p>
-                  <p className="text-slate-900">
+                <div className="min-w-0">
+                  <p className="text-xs sm:text-sm text-slate-500">Senast inloggad</p>
+                  <p className="text-sm sm:text-base text-slate-900">
                     {user?.last_sign_in_at
                       ? new Date(user.last_sign_in_at).toLocaleDateString('sv-SE', {
                           year: 'numeric',
-                          month: 'long',
+                          month: 'short',
                           day: 'numeric',
                           hour: '2-digit',
                           minute: '2-digit'
@@ -447,17 +447,17 @@ export default function ProfilePage() {
             </div>
 
             {profile?.updated_at && (
-              <div className="flex items-center justify-between p-4 bg-slate-50 rounded-xl">
-                <div className="flex items-center gap-3">
-                  <div className="w-8 h-8 bg-slate-200 rounded-lg flex items-center justify-center">
+              <div className="flex items-center p-3 sm:p-4 bg-slate-50 rounded-xl">
+                <div className="flex items-center gap-3 min-w-0">
+                  <div className="w-8 h-8 bg-slate-200 rounded-lg flex items-center justify-center flex-shrink-0">
                     <Save className="w-4 h-4 text-slate-600" />
                   </div>
-                  <div>
-                    <p className="text-sm text-slate-500">Profil uppdaterad</p>
-                    <p className="text-slate-900">
+                  <div className="min-w-0">
+                    <p className="text-xs sm:text-sm text-slate-500">Profil uppdaterad</p>
+                    <p className="text-sm sm:text-base text-slate-900">
                       {new Date(profile.updated_at).toLocaleDateString('sv-SE', {
                         year: 'numeric',
-                        month: 'long',
+                        month: 'short',
                         day: 'numeric',
                         hour: '2-digit',
                         minute: '2-digit'

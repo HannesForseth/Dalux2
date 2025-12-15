@@ -103,7 +103,7 @@ export default function UploadVersionModal({
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center">
+    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center">
       {/* Backdrop */}
       <div
         className="absolute inset-0 bg-black/60 backdrop-blur-sm"
@@ -111,26 +111,31 @@ export default function UploadVersionModal({
       />
 
       {/* Modal */}
-      <div className="relative bg-slate-900 border border-slate-700 rounded-xl shadow-2xl w-full max-w-lg mx-4">
+      <div className="relative bg-white sm:bg-slate-900 border border-slate-200 sm:border-slate-700 rounded-t-2xl sm:rounded-xl shadow-2xl w-full sm:max-w-lg sm:mx-4 max-h-[90vh] overflow-y-auto">
+        {/* Mobile drag handle */}
+        <div className="sm:hidden flex justify-center pt-2 pb-1">
+          <div className="w-10 h-1 bg-slate-300 rounded-full" />
+        </div>
+
         {/* Header */}
-        <div className="flex items-center justify-between px-6 py-4 border-b border-slate-700">
-          <h2 className="text-lg font-semibold text-white">
+        <div className="flex items-center justify-between px-4 sm:px-6 py-3 sm:py-4 border-b border-slate-200 sm:border-slate-700">
+          <h2 className="text-lg font-semibold text-slate-900 sm:text-white">
             Ladda upp ny version
           </h2>
           <button
             onClick={onClose}
-            className="p-1 text-slate-400 hover:text-white rounded transition-colors"
+            className="p-2 text-slate-400 hover:text-slate-600 sm:hover:text-white rounded-lg transition-colors"
           >
             <XMarkIcon className="h-5 w-5" />
           </button>
         </div>
 
         {/* Content */}
-        <div className="px-6 py-4 space-y-4">
+        <div className="px-4 sm:px-6 py-4 space-y-4">
           {/* Current document info */}
-          <div className="p-3 bg-slate-800/50 rounded-lg border border-slate-700/50">
-            <p className="text-sm text-slate-400">Nuvarande dokument:</p>
-            <p className="text-white font-medium">{documentName}</p>
+          <div className="p-3 bg-slate-100 sm:bg-slate-800/50 rounded-lg border border-slate-200 sm:border-slate-700/50">
+            <p className="text-sm text-slate-500 sm:text-slate-400">Nuvarande dokument:</p>
+            <p className="text-slate-900 sm:text-white font-medium">{documentName}</p>
             <p className="text-sm text-slate-500">Version {currentVersion}</p>
           </div>
 
@@ -140,12 +145,12 @@ export default function UploadVersionModal({
             onDragLeave={handleDragLeave}
             onDrop={handleDrop}
             onClick={() => fileInputRef.current?.click()}
-            className={`border-2 border-dashed rounded-lg p-8 text-center cursor-pointer transition-colors ${
+            className={`border-2 border-dashed rounded-xl p-6 sm:p-8 text-center cursor-pointer transition-colors ${
               dragOver
                 ? 'border-blue-500 bg-blue-500/10'
                 : file
-                ? 'border-green-500/50 bg-green-500/10'
-                : 'border-slate-600 hover:border-slate-500 hover:bg-slate-800/50'
+                ? 'border-green-500/50 bg-green-50 sm:bg-green-500/10'
+                : 'border-slate-300 sm:border-slate-600 hover:border-slate-400 sm:hover:border-slate-500 hover:bg-slate-50 sm:hover:bg-slate-800/50'
             }`}
           >
             <input
@@ -157,27 +162,27 @@ export default function UploadVersionModal({
 
             {file ? (
               <div className="flex flex-col items-center gap-2">
-                <DocumentIcon className="h-12 w-12 text-green-500" />
+                <DocumentIcon className="h-10 w-10 sm:h-12 sm:w-12 text-green-500" />
                 <div>
-                  <p className="text-white font-medium">{file.name}</p>
-                  <p className="text-sm text-slate-400">{formatFileSize(file.size)}</p>
+                  <p className="text-slate-900 sm:text-white font-medium text-sm sm:text-base break-all">{file.name}</p>
+                  <p className="text-sm text-slate-500 sm:text-slate-400">{formatFileSize(file.size)}</p>
                 </div>
                 <button
                   onClick={(e) => {
                     e.stopPropagation()
                     setFile(null)
                   }}
-                  className="text-sm text-slate-400 hover:text-red-400 transition-colors"
+                  className="text-sm text-slate-500 sm:text-slate-400 hover:text-red-500 sm:hover:text-red-400 transition-colors py-1"
                 >
                   Ta bort
                 </button>
               </div>
             ) : (
               <div className="flex flex-col items-center gap-2">
-                <CloudArrowUpIcon className="h-12 w-12 text-slate-500" />
+                <CloudArrowUpIcon className="h-10 w-10 sm:h-12 sm:w-12 text-slate-400 sm:text-slate-500" />
                 <div>
-                  <p className="text-white font-medium">Dra fil hit eller klicka</p>
-                  <p className="text-sm text-slate-500">för att välja fil</p>
+                  <p className="text-slate-900 sm:text-white font-medium">Välj fil</p>
+                  <p className="text-sm text-slate-500 hidden sm:block">eller dra och släpp här</p>
                 </div>
               </div>
             )}
@@ -185,7 +190,7 @@ export default function UploadVersionModal({
 
           {/* Change note */}
           <div>
-            <label className="block text-sm font-medium text-slate-300 mb-2">
+            <label className="block text-sm font-medium text-slate-700 sm:text-slate-300 mb-1 sm:mb-2">
               Ändringsnotering (valfritt)
             </label>
             <textarea
@@ -193,31 +198,31 @@ export default function UploadVersionModal({
               onChange={(e) => setChangeNote(e.target.value)}
               placeholder="Beskriv vad som har ändrats..."
               rows={3}
-              className="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none"
+              className="w-full px-3 py-2.5 sm:py-2 bg-slate-50 sm:bg-slate-800 border border-slate-200 sm:border-slate-700 rounded-lg text-slate-900 sm:text-white placeholder-slate-400 sm:placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none"
             />
           </div>
 
           {/* Error message */}
           {error && (
-            <div className="p-3 bg-red-900/20 border border-red-700/50 rounded-lg">
-              <p className="text-sm text-red-400">{error}</p>
+            <div className="p-3 bg-red-50 sm:bg-red-900/20 border border-red-200 sm:border-red-700/50 rounded-lg">
+              <p className="text-sm text-red-600 sm:text-red-400">{error}</p>
             </div>
           )}
         </div>
 
         {/* Footer */}
-        <div className="flex items-center justify-end gap-3 px-6 py-4 border-t border-slate-700">
+        <div className="flex flex-col-reverse sm:flex-row items-center justify-end gap-2 sm:gap-3 px-4 sm:px-6 py-4 border-t border-slate-200 sm:border-slate-700">
           <button
             onClick={onClose}
             disabled={uploading}
-            className="px-4 py-2 text-sm font-medium text-slate-300 hover:text-white transition-colors disabled:opacity-50"
+            className="w-full sm:w-auto px-4 py-2.5 sm:py-2 text-sm font-medium text-slate-600 sm:text-slate-300 hover:text-slate-900 sm:hover:text-white transition-colors disabled:opacity-50 border border-slate-200 sm:border-transparent rounded-lg sm:rounded-none"
           >
             Avbryt
           </button>
           <button
             onClick={handleUpload}
             disabled={!file || uploading}
-            className="px-4 py-2 text-sm font-medium bg-blue-600 hover:bg-blue-500 text-white rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+            className="w-full sm:w-auto px-4 py-2.5 sm:py-2 text-sm font-medium bg-blue-600 hover:bg-blue-500 text-white rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
           >
             {uploading ? (
               <>

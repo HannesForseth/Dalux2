@@ -110,7 +110,7 @@ export default function CreateEventModal({ isOpen, onClose, projectId, initialDa
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         exit={{ opacity: 0 }}
-        className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm"
+        className="fixed inset-0 z-[60] flex items-end sm:items-center justify-center sm:p-4 bg-black/50 backdrop-blur-sm"
         onClick={onClose}
       >
         <motion.div
@@ -118,13 +118,18 @@ export default function CreateEventModal({ isOpen, onClose, projectId, initialDa
           animate={{ opacity: 1, scale: 1, y: 0 }}
           exit={{ opacity: 0, scale: 0.95, y: 20 }}
           transition={{ duration: 0.2 }}
-          className="w-full max-w-lg bg-white rounded-2xl shadow-2xl overflow-hidden"
+          className="w-full sm:max-w-lg max-h-[90vh] bg-white rounded-t-2xl sm:rounded-2xl shadow-2xl overflow-hidden flex flex-col"
           onClick={e => e.stopPropagation()}
         >
+          {/* Mobile drag handle */}
+          <div className="sm:hidden flex justify-center pt-2 pb-1">
+            <div className="w-10 h-1 bg-slate-300 rounded-full" />
+          </div>
+
           {/* Header */}
-          <div className="p-6 border-b border-slate-100">
+          <div className="p-4 sm:p-6 border-b border-slate-100">
             <div className="flex items-center justify-between">
-              <h2 className="text-xl font-bold text-slate-900">Ny händelse</h2>
+              <h2 className="text-lg sm:text-xl font-bold text-slate-900">Ny händelse</h2>
               <button
                 onClick={onClose}
                 className="p-2 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-xl transition-colors"
@@ -135,7 +140,7 @@ export default function CreateEventModal({ isOpen, onClose, projectId, initialDa
           </div>
 
           {/* Form */}
-          <form onSubmit={handleSubmit} className="p-6 space-y-5">
+          <form onSubmit={handleSubmit} className="p-4 sm:p-6 space-y-4 sm:space-y-5 overflow-y-auto flex-1">
             {/* Event Type */}
             <div>
               <label className="block text-sm font-medium text-slate-700 mb-2">Typ</label>
@@ -145,14 +150,14 @@ export default function CreateEventModal({ isOpen, onClose, projectId, initialDa
                     key={option.value}
                     type="button"
                     onClick={() => setFormData(prev => ({ ...prev, event_type: option.value }))}
-                    className={`p-3 rounded-xl border text-left transition-all ${
+                    className={`p-2.5 sm:p-3 rounded-lg sm:rounded-xl border text-left transition-all ${
                       formData.event_type === option.value
                         ? 'border-indigo-300 bg-indigo-50 ring-2 ring-indigo-200'
                         : 'border-slate-200 hover:border-slate-300'
                     }`}
                   >
-                    <p className="font-medium text-slate-900">{option.label}</p>
-                    <p className="text-xs text-slate-500">{option.description}</p>
+                    <p className="font-medium text-sm sm:text-base text-slate-900">{option.label}</p>
+                    <p className="text-xs text-slate-500 hidden sm:block">{option.description}</p>
                   </button>
                 ))}
               </div>
@@ -174,7 +179,7 @@ export default function CreateEventModal({ isOpen, onClose, projectId, initialDa
             </div>
 
             {/* Date and Time */}
-            <div className="grid grid-cols-3 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4">
               <div>
                 <label htmlFor="event_date" className="block text-sm font-medium text-slate-700 mb-1">
                   Datum *
@@ -184,32 +189,34 @@ export default function CreateEventModal({ isOpen, onClose, projectId, initialDa
                   type="date"
                   value={formData.event_date}
                   onChange={e => setFormData(prev => ({ ...prev, event_date: e.target.value }))}
-                  className="w-full px-4 py-2.5 border border-slate-200 rounded-xl text-slate-900 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                  className="w-full px-3 sm:px-4 py-2.5 border border-slate-200 rounded-lg sm:rounded-xl text-slate-900 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
                 />
               </div>
-              <div>
-                <label htmlFor="start_time" className="block text-sm font-medium text-slate-700 mb-1">
-                  Starttid
-                </label>
-                <input
-                  id="start_time"
-                  type="time"
-                  value={formData.start_time}
-                  onChange={e => setFormData(prev => ({ ...prev, start_time: e.target.value }))}
-                  className="w-full px-4 py-2.5 border border-slate-200 rounded-xl text-slate-900 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
-                />
-              </div>
-              <div>
-                <label htmlFor="end_time" className="block text-sm font-medium text-slate-700 mb-1">
-                  Sluttid
-                </label>
-                <input
-                  id="end_time"
-                  type="time"
-                  value={formData.end_time}
-                  onChange={e => setFormData(prev => ({ ...prev, end_time: e.target.value }))}
-                  className="w-full px-4 py-2.5 border border-slate-200 rounded-xl text-slate-900 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
-                />
+              <div className="grid grid-cols-2 gap-3 sm:contents">
+                <div>
+                  <label htmlFor="start_time" className="block text-sm font-medium text-slate-700 mb-1">
+                    Starttid
+                  </label>
+                  <input
+                    id="start_time"
+                    type="time"
+                    value={formData.start_time}
+                    onChange={e => setFormData(prev => ({ ...prev, start_time: e.target.value }))}
+                    className="w-full px-3 sm:px-4 py-2.5 border border-slate-200 rounded-lg sm:rounded-xl text-slate-900 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                  />
+                </div>
+                <div>
+                  <label htmlFor="end_time" className="block text-sm font-medium text-slate-700 mb-1">
+                    Sluttid
+                  </label>
+                  <input
+                    id="end_time"
+                    type="time"
+                    value={formData.end_time}
+                    onChange={e => setFormData(prev => ({ ...prev, end_time: e.target.value }))}
+                    className="w-full px-3 sm:px-4 py-2.5 border border-slate-200 rounded-lg sm:rounded-xl text-slate-900 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                  />
+                </div>
               </div>
             </div>
 
@@ -271,18 +278,18 @@ export default function CreateEventModal({ isOpen, onClose, projectId, initialDa
             )}
 
             {/* Actions */}
-            <div className="flex gap-3 pt-2">
+            <div className="flex flex-col-reverse sm:flex-row gap-2 sm:gap-3 pt-2">
               <button
                 type="button"
                 onClick={onClose}
-                className="flex-1 px-4 py-2.5 border border-slate-200 text-slate-700 rounded-xl font-medium hover:bg-slate-50 transition-colors"
+                className="flex-1 px-4 py-2.5 border border-slate-200 text-slate-700 rounded-lg sm:rounded-xl font-medium hover:bg-slate-50 transition-colors"
               >
                 Avbryt
               </button>
               <button
                 type="submit"
                 disabled={isSubmitting}
-                className="flex-1 px-4 py-2.5 bg-indigo-600 text-white rounded-xl font-medium hover:bg-indigo-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                className="flex-1 px-4 py-2.5 bg-indigo-600 text-white rounded-lg sm:rounded-xl font-medium hover:bg-indigo-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
               >
                 {isSubmitting ? (
                   <>

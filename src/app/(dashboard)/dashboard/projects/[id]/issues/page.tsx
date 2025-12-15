@@ -823,8 +823,8 @@ export default function ProjectIssuesPage() {
 
   return (
     <div>
-      <div className="flex items-center justify-between mb-6">
-        <div className="flex items-center gap-3">
+      <div className="flex items-center justify-between gap-4 mb-4 sm:mb-6">
+        <div className="flex items-center gap-2 sm:gap-3">
           <Link
             href={`/dashboard/projects/${projectId}`}
             className="text-slate-400 hover:text-slate-600 transition-colors"
@@ -833,71 +833,72 @@ export default function ProjectIssuesPage() {
               <path strokeLinecap="round" strokeLinejoin="round" d="M10.5 19.5 3 12m0 0 7.5-7.5M3 12h18" />
             </svg>
           </Link>
-          <h1 className="text-2xl font-bold text-slate-900">Ärenden</h1>
+          <h1 className="text-xl sm:text-2xl font-bold text-slate-900">Ärenden</h1>
         </div>
         <button
           onClick={() => setShowCreateModal(true)}
-          className="px-4 py-2 bg-gradient-to-r from-indigo-600 to-purple-600 text-white rounded-xl font-medium hover:from-indigo-500 hover:to-purple-500 transition-all shadow-md shadow-indigo-500/20 flex items-center gap-2"
+          className="px-3 sm:px-4 py-2 bg-gradient-to-r from-indigo-600 to-purple-600 text-white rounded-xl font-medium hover:from-indigo-500 hover:to-purple-500 transition-all shadow-md shadow-indigo-500/20 flex items-center gap-2 text-sm sm:text-base"
         >
           <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
             <path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
           </svg>
-          Nytt ärende
+          <span className="hidden sm:inline">Nytt ärende</span>
+          <span className="sm:hidden">Nytt</span>
         </button>
       </div>
 
       {/* Stats Cards */}
-      <div className="grid grid-cols-2 md:grid-cols-5 gap-4 mb-6">
+      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-2 sm:gap-4 mb-4 sm:mb-6">
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
-          className="bg-white/80 backdrop-blur-sm border border-slate-200 rounded-xl p-4 shadow-sm"
+          className="bg-white/80 backdrop-blur-sm border border-slate-200 rounded-xl p-3 sm:p-4 shadow-sm"
         >
-          <p className="text-slate-500 text-sm">Totalt</p>
-          <p className="text-2xl font-bold text-slate-900">{stats.total}</p>
+          <p className="text-slate-500 text-xs sm:text-sm">Totalt</p>
+          <p className="text-xl sm:text-2xl font-bold text-slate-900">{stats.total}</p>
         </motion.div>
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.05 }}
-          className="bg-white/80 backdrop-blur-sm border border-slate-200 rounded-xl p-4 shadow-sm"
+          className="bg-white/80 backdrop-blur-sm border border-slate-200 rounded-xl p-3 sm:p-4 shadow-sm"
         >
-          <p className="text-amber-600 text-sm">Öppna</p>
-          <p className="text-2xl font-bold text-slate-900">{stats.open}</p>
+          <p className="text-amber-600 text-xs sm:text-sm">Öppna</p>
+          <p className="text-xl sm:text-2xl font-bold text-slate-900">{stats.open}</p>
         </motion.div>
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.1 }}
-          className="bg-white/80 backdrop-blur-sm border border-slate-200 rounded-xl p-4 shadow-sm"
+          className="bg-white/80 backdrop-blur-sm border border-slate-200 rounded-xl p-3 sm:p-4 shadow-sm"
         >
-          <p className="text-blue-600 text-sm">Pågående</p>
-          <p className="text-2xl font-bold text-slate-900">{stats.inProgress}</p>
+          <p className="text-blue-600 text-xs sm:text-sm">Pågående</p>
+          <p className="text-xl sm:text-2xl font-bold text-slate-900">{stats.inProgress}</p>
         </motion.div>
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.15 }}
-          className="bg-white/80 backdrop-blur-sm border border-slate-200 rounded-xl p-4 shadow-sm"
+          className="bg-white/80 backdrop-blur-sm border border-slate-200 rounded-xl p-3 sm:p-4 shadow-sm"
         >
-          <p className="text-green-600 text-sm">Lösta</p>
-          <p className="text-2xl font-bold text-slate-900">{stats.resolved}</p>
+          <p className="text-green-600 text-xs sm:text-sm">Lösta</p>
+          <p className="text-xl sm:text-2xl font-bold text-slate-900">{stats.resolved}</p>
         </motion.div>
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.2 }}
-          className="bg-white/80 backdrop-blur-sm border border-slate-200 rounded-xl p-4 shadow-sm"
+          className="bg-white/80 backdrop-blur-sm border border-slate-200 rounded-xl p-3 sm:p-4 shadow-sm col-span-2 sm:col-span-1"
         >
-          <p className="text-slate-500 text-sm">Stängda</p>
-          <p className="text-2xl font-bold text-slate-900">{stats.closed}</p>
+          <p className="text-slate-500 text-xs sm:text-sm">Stängda</p>
+          <p className="text-xl sm:text-2xl font-bold text-slate-900">{stats.closed}</p>
         </motion.div>
       </div>
 
       {/* Search, Filters & Export */}
-      <div className="flex flex-wrap items-center gap-4 mb-6">
+      <div className="space-y-3 sm:space-y-0 sm:flex sm:flex-wrap sm:items-center sm:gap-3 mb-4 sm:mb-6">
         {/* Search */}
-        <div className="relative flex-1 min-w-[200px] max-w-md">
+        <div className="relative flex-1 min-w-0 sm:min-w-[200px] sm:max-w-md">
           <svg className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
             <path strokeLinecap="round" strokeLinejoin="round" d="m21 21-5.197-5.197m0 0A7.5 7.5 0 1 0 5.196 5.196a7.5 7.5 0 0 0 10.607 10.607Z" />
           </svg>
@@ -906,7 +907,7 @@ export default function ProjectIssuesPage() {
             placeholder="Sök ärenden..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full pl-10 pr-4 py-2 bg-white border border-slate-200 rounded-xl text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+            className="w-full pl-10 pr-4 py-2 bg-white border border-slate-200 rounded-xl text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent text-sm sm:text-base"
           />
           {searchQuery && (
             <button
@@ -918,39 +919,43 @@ export default function ProjectIssuesPage() {
           )}
         </div>
 
-        <select
-          value={statusFilter}
-          onChange={(e) => setStatusFilter(e.target.value as IssueStatus | 'all')}
-          className="px-3 py-2 bg-white border border-slate-200 rounded-xl text-slate-900 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
-        >
-          <option value="all">Alla statusar</option>
-          {Object.entries(statusConfig).map(([key, { label }]) => (
-            <option key={key} value={key}>{label}</option>
-          ))}
-        </select>
+        {/* Filters row on mobile */}
+        <div className="flex flex-wrap items-center gap-2 sm:gap-3">
+          <select
+            value={statusFilter}
+            onChange={(e) => setStatusFilter(e.target.value as IssueStatus | 'all')}
+            className="flex-1 sm:flex-none px-3 py-2 bg-white border border-slate-200 rounded-xl text-slate-900 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent text-sm"
+          >
+            <option value="all">Alla statusar</option>
+            {Object.entries(statusConfig).map(([key, { label }]) => (
+              <option key={key} value={key}>{label}</option>
+            ))}
+          </select>
 
-        <select
-          value={priorityFilter}
-          onChange={(e) => setPriorityFilter(e.target.value as IssuePriority | 'all')}
-          className="px-3 py-2 bg-white border border-slate-200 rounded-xl text-slate-900 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
-        >
-          <option value="all">Alla prioriteter</option>
-          {Object.entries(priorityConfig).map(([key, { label }]) => (
-            <option key={key} value={key}>{label}</option>
-          ))}
-        </select>
+          <select
+            value={priorityFilter}
+            onChange={(e) => setPriorityFilter(e.target.value as IssuePriority | 'all')}
+            className="flex-1 sm:flex-none px-3 py-2 bg-white border border-slate-200 rounded-xl text-slate-900 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent text-sm"
+          >
+            <option value="all">Alla prioriteter</option>
+            {Object.entries(priorityConfig).map(([key, { label }]) => (
+              <option key={key} value={key}>{label}</option>
+            ))}
+          </select>
 
-        {/* Export PDF Button */}
-        <button
-          onClick={exportToPDF}
-          disabled={filteredIssues.length === 0}
-          className="px-4 py-2 bg-white border border-slate-200 text-slate-700 rounded-xl hover:bg-slate-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
-        >
-          <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
-            <path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5v2.25A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75V16.5m-13.5-9L12 3m0 0 4.5 4.5M12 3v13.5" />
-          </svg>
-          Exportera PDF
-        </button>
+          {/* Export PDF Button */}
+          <button
+            onClick={exportToPDF}
+            disabled={filteredIssues.length === 0}
+            className="px-3 py-2 bg-white border border-slate-200 text-slate-700 rounded-xl hover:bg-slate-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2 text-sm"
+          >
+            <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5v2.25A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75V16.5m-13.5-9L12 3m0 0 4.5 4.5M12 3v13.5" />
+            </svg>
+            <span className="hidden sm:inline">Exportera PDF</span>
+            <span className="sm:hidden">PDF</span>
+          </button>
+        </div>
       </div>
 
       {/* Search results info */}
@@ -991,14 +996,14 @@ export default function ProjectIssuesPage() {
           )}
         </motion.div>
       ) : (
-        <div className="space-y-4">
+        <div className="space-y-3 sm:space-y-4">
           {paginatedIssues.map((issue, index) => (
             <motion.div
               key={issue.id}
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: index * 0.05 }}
-              className="bg-white/80 backdrop-blur-sm border border-slate-200 rounded-xl p-5 hover:border-indigo-200 hover:shadow-md transition-all cursor-pointer"
+              className="bg-white/80 backdrop-blur-sm border border-slate-200 rounded-xl p-4 sm:p-5 hover:border-indigo-200 hover:shadow-md transition-all cursor-pointer"
               onClick={() => setSelectedIssue(issue)}
             >
               <div className="flex items-start justify-between gap-4">
@@ -1078,39 +1083,51 @@ export default function ProjectIssuesPage() {
 
           {/* Pagination */}
           {totalPages > 1 && (
-            <div className="flex items-center justify-between pt-4 border-t border-slate-200">
-              <p className="text-sm text-slate-600">
+            <div className="flex flex-col sm:flex-row items-center justify-between gap-3 pt-4 border-t border-slate-200">
+              <p className="text-xs sm:text-sm text-slate-600 order-2 sm:order-1">
                 Visar {((currentPage - 1) * ITEMS_PER_PAGE) + 1}-{Math.min(currentPage * ITEMS_PER_PAGE, filteredIssues.length)} av {filteredIssues.length}
               </p>
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-1 sm:gap-2 order-1 sm:order-2">
                 <button
                   onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
                   disabled={currentPage === 1}
-                  className="px-3 py-1.5 bg-white border border-slate-200 rounded-lg text-slate-700 hover:bg-slate-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                  className="px-2 sm:px-3 py-1.5 bg-white border border-slate-200 rounded-lg text-slate-700 hover:bg-slate-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                 >
                   <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
                     <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 19.5 8.25 12l7.5-7.5" />
                   </svg>
                 </button>
                 <div className="flex items-center gap-1">
-                  {Array.from({ length: totalPages }, (_, i) => i + 1).map(page => (
-                    <button
-                      key={page}
-                      onClick={() => setCurrentPage(page)}
-                      className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${
-                        currentPage === page
-                          ? 'bg-gradient-to-r from-indigo-600 to-purple-600 text-white shadow-md shadow-indigo-500/20'
-                          : 'bg-white border border-slate-200 text-slate-600 hover:bg-slate-50'
-                      }`}
-                    >
-                      {page}
-                    </button>
-                  ))}
+                  {Array.from({ length: Math.min(3, totalPages) }, (_, i) => {
+                    let pageNum: number
+                    if (totalPages <= 3) {
+                      pageNum = i + 1
+                    } else if (currentPage === 1) {
+                      pageNum = i + 1
+                    } else if (currentPage === totalPages) {
+                      pageNum = totalPages - 2 + i
+                    } else {
+                      pageNum = currentPage - 1 + i
+                    }
+                    return (
+                      <button
+                        key={pageNum}
+                        onClick={() => setCurrentPage(pageNum)}
+                        className={`px-2.5 sm:px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${
+                          currentPage === pageNum
+                            ? 'bg-gradient-to-r from-indigo-600 to-purple-600 text-white shadow-md shadow-indigo-500/20'
+                            : 'bg-white border border-slate-200 text-slate-600 hover:bg-slate-50'
+                        }`}
+                      >
+                        {pageNum}
+                      </button>
+                    )
+                  })}
                 </div>
                 <button
                   onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
                   disabled={currentPage === totalPages}
-                  className="px-3 py-1.5 bg-white border border-slate-200 rounded-lg text-slate-700 hover:bg-slate-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                  className="px-2 sm:px-3 py-1.5 bg-white border border-slate-200 rounded-lg text-slate-700 hover:bg-slate-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                 >
                   <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
                     <path strokeLinecap="round" strokeLinejoin="round" d="m8.25 4.5 7.5 7.5-7.5 7.5" />

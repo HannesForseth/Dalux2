@@ -219,16 +219,16 @@ function CreateProtocolModal({ isOpen, onClose, onCreate, members, existingProto
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
-      className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-[100] p-4"
+      className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-end sm:items-center justify-center z-[100] sm:p-4"
     >
       <motion.div
         initial={{ opacity: 0, scale: 0.95, y: 20 }}
         animate={{ opacity: 1, scale: 1, y: 0 }}
         exit={{ opacity: 0, scale: 0.95, y: 20 }}
         transition={{ duration: 0.2 }}
-        className="bg-white border border-slate-200 rounded-2xl shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto"
+        className="bg-white border border-slate-200 rounded-t-2xl sm:rounded-2xl shadow-2xl w-full sm:max-w-2xl h-[90vh] sm:h-auto sm:max-h-[90vh] overflow-y-auto"
       >
-        <div className="flex items-center justify-between px-6 py-4 border-b border-slate-200 sticky top-0 bg-white rounded-t-2xl">
+        <div className="flex items-center justify-between px-4 sm:px-6 py-3 sm:py-4 border-b border-slate-200 sticky top-0 bg-white rounded-t-2xl z-10">
           <div className="flex items-center gap-3">
             {((step === 'type') || (step === 'details' && !preselectedType)) && (
               <button onClick={handleBack} className="text-slate-400 hover:text-slate-600 transition-colors">
@@ -247,7 +247,7 @@ function CreateProtocolModal({ isOpen, onClose, onCreate, members, existingProto
         </div>
 
         {step === 'template' ? (
-          <div className="p-6">
+          <div className="p-4 sm:p-6">
             {isLoadingTemplate ? (
               <div className="flex items-center justify-center py-12">
                 <motion.div
@@ -258,18 +258,18 @@ function CreateProtocolModal({ isOpen, onClose, onCreate, members, existingProto
               </div>
             ) : (
               <>
-                <p className="text-slate-600 mb-6">Använd en mall för att snabbt komma igång med fördefinierade inställningar:</p>
+                <p className="text-slate-600 mb-4 sm:mb-6 text-sm sm:text-base">Använd en mall för att snabbt komma igång med fördefinierade inställningar:</p>
 
                 {/* System Templates */}
                 {systemTemplates.length > 0 && (
-                  <div className="mb-6">
+                  <div className="mb-4 sm:mb-6">
                     <h3 className="text-sm font-medium text-slate-700 mb-3 flex items-center gap-2">
                       <svg className="h-4 w-4 text-indigo-500" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
                         <path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75 11.25 15 15 9.75m-3-7.036A11.959 11.959 0 0 1 3.598 6 11.99 11.99 0 0 0 3 9.749c0 5.592 3.824 10.29 9 11.623 5.176-1.332 9-6.03 9-11.622 0-1.31-.21-2.571-.598-3.751h-.152c-3.196 0-6.1-1.248-8.25-3.285Z" />
                       </svg>
                       Färdiga mallar
                     </h3>
-                    <div className="grid grid-cols-2 gap-3">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 sm:gap-3">
                       {systemTemplates.map((template) => {
                         const typeConfig = meetingTypeConfig[template.meeting_type as ProtocolMeetingType]
                         return (
@@ -306,14 +306,14 @@ function CreateProtocolModal({ isOpen, onClose, onCreate, members, existingProto
 
                 {/* User Templates */}
                 {userTemplates.length > 0 && (
-                  <div className="mb-6">
+                  <div className="mb-4 sm:mb-6">
                     <h3 className="text-sm font-medium text-slate-700 mb-3 flex items-center gap-2">
                       <svg className="h-4 w-4 text-purple-500" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
                         <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 6a3.75 3.75 0 1 1-7.5 0 3.75 3.75 0 0 1 7.5 0ZM4.501 20.118a7.5 7.5 0 0 1 14.998 0A17.933 17.933 0 0 1 12 21.75c-2.676 0-5.216-.584-7.499-1.632Z" />
                       </svg>
                       Mina mallar
                     </h3>
-                    <div className="grid grid-cols-2 gap-3">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 sm:gap-3">
                       {userTemplates.map((template) => {
                         const typeConfig = meetingTypeConfig[template.meeting_type as ProtocolMeetingType]
                         return (
@@ -357,9 +357,9 @@ function CreateProtocolModal({ isOpen, onClose, onCreate, members, existingProto
             )}
           </div>
         ) : step === 'type' ? (
-          <div className="p-6">
-            <p className="text-slate-600 mb-6">Välj vilken typ av möte du vill protokollföra:</p>
-            <div className="grid grid-cols-2 gap-4">
+          <div className="p-4 sm:p-6">
+            <p className="text-slate-600 mb-4 sm:mb-6 text-sm sm:text-base">Välj vilken typ av möte du vill protokollföra:</p>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 sm:gap-4">
               {Object.entries(meetingTypeConfig).map(([key, config]) => (
                 <button
                   key={key}
@@ -378,11 +378,11 @@ function CreateProtocolModal({ isOpen, onClose, onCreate, members, existingProto
             </div>
           </div>
         ) : (
-          <form onSubmit={handleSubmit} className="p-6 space-y-4">
+          <form onSubmit={handleSubmit} className="p-4 sm:p-6 space-y-4">
             {/* Selected type badge */}
             <div className={`inline-flex items-center gap-2 px-3 py-1.5 rounded-full ${meetingTypeConfig[meetingType].bg} border border-slate-200`}>
               <span>{meetingTypeConfig[meetingType].icon}</span>
-              <span className={meetingTypeConfig[meetingType].color}>{meetingTypeConfig[meetingType].label}</span>
+              <span className={`text-sm ${meetingTypeConfig[meetingType].color}`}>{meetingTypeConfig[meetingType].label}</span>
             </div>
 
             <div>
@@ -393,14 +393,14 @@ function CreateProtocolModal({ isOpen, onClose, onCreate, members, existingProto
                 type="text"
                 value={title}
                 onChange={(e) => setTitle(e.target.value)}
-                className="w-full px-3 py-2 bg-white border border-slate-200 rounded-lg text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                className="w-full px-3 py-2 bg-white border border-slate-200 rounded-lg text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent text-sm sm:text-base"
                 placeholder="t.ex. Byggmöte #12"
                 required
               />
             </div>
 
-            <div className="grid grid-cols-3 gap-4">
-              <div className="col-span-1">
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 sm:gap-4">
+              <div className="col-span-2 sm:col-span-1">
                 <label className="block text-sm font-medium text-slate-700 mb-1">
                   Datum
                 </label>
@@ -408,7 +408,7 @@ function CreateProtocolModal({ isOpen, onClose, onCreate, members, existingProto
                   type="date"
                   value={meetingDate}
                   onChange={(e) => setMeetingDate(e.target.value)}
-                  className="w-full px-3 py-2 bg-white border border-slate-200 rounded-lg text-slate-900 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                  className="w-full px-3 py-2 bg-white border border-slate-200 rounded-lg text-slate-900 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent text-sm"
                   required
                 />
               </div>
@@ -421,7 +421,7 @@ function CreateProtocolModal({ isOpen, onClose, onCreate, members, existingProto
                   type="time"
                   value={startTime}
                   onChange={(e) => setStartTime(e.target.value)}
-                  className="w-full px-3 py-2 bg-white border border-slate-200 rounded-lg text-slate-900 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                  className="w-full px-3 py-2 bg-white border border-slate-200 rounded-lg text-slate-900 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent text-sm"
                 />
               </div>
 
@@ -433,7 +433,7 @@ function CreateProtocolModal({ isOpen, onClose, onCreate, members, existingProto
                   type="time"
                   value={endTime}
                   onChange={(e) => setEndTime(e.target.value)}
-                  className="w-full px-3 py-2 bg-white border border-slate-200 rounded-lg text-slate-900 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                  className="w-full px-3 py-2 bg-white border border-slate-200 rounded-lg text-slate-900 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent text-sm"
                 />
               </div>
             </div>
@@ -446,7 +446,7 @@ function CreateProtocolModal({ isOpen, onClose, onCreate, members, existingProto
                 type="text"
                 value={location}
                 onChange={(e) => setLocation(e.target.value)}
-                className="w-full px-3 py-2 bg-white border border-slate-200 rounded-lg text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                className="w-full px-3 py-2 bg-white border border-slate-200 rounded-lg text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent text-sm sm:text-base"
                 placeholder="t.ex. Byggplatskontoret, Teams, etc."
               />
             </div>
@@ -459,7 +459,7 @@ function CreateProtocolModal({ isOpen, onClose, onCreate, members, existingProto
                 <select
                   value={previousProtocolId}
                   onChange={(e) => setPreviousProtocolId(e.target.value)}
-                  className="w-full px-3 py-2 bg-white border border-slate-200 rounded-lg text-slate-900 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                  className="w-full px-3 py-2 bg-white border border-slate-200 rounded-lg text-slate-900 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent text-sm"
                 >
                   <option value="">Inget valt</option>
                   {existingProtocols.map((protocol) => (
@@ -471,18 +471,18 @@ function CreateProtocolModal({ isOpen, onClose, onCreate, members, existingProto
               </div>
             )}
 
-            <div className="flex justify-end gap-3 pt-4">
+            <div className="flex flex-col-reverse sm:flex-row justify-end gap-2 sm:gap-3 pt-4 border-t border-slate-200 sm:border-0">
               <button
                 type="button"
                 onClick={handleClose}
-                className="px-4 py-2 text-slate-600 hover:text-slate-900 transition-colors"
+                className="px-4 py-2.5 sm:py-2 text-slate-600 hover:text-slate-900 transition-colors text-sm"
               >
                 Avbryt
               </button>
               <button
                 type="submit"
                 disabled={!title.trim() || !meetingDate || isSubmitting}
-                className="px-4 py-2 bg-gradient-to-r from-indigo-600 to-purple-600 text-white rounded-lg font-medium hover:from-indigo-500 hover:to-purple-500 transition-all shadow-md shadow-indigo-500/25 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+                className="px-4 py-2.5 sm:py-2 bg-gradient-to-r from-indigo-600 to-purple-600 text-white rounded-lg font-medium hover:from-indigo-500 hover:to-purple-500 transition-all shadow-md shadow-indigo-500/25 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 text-sm"
               >
                 {isSubmitting ? (
                   <>
@@ -685,8 +685,8 @@ export default function ProjectProtocolsPage() {
       transition={{ duration: 0.3 }}
     >
       {/* Header */}
-      <div className="flex items-center justify-between mb-6">
-        <div className="flex items-center gap-3">
+      <div className="flex items-center justify-between gap-3 mb-4 sm:mb-6">
+        <div className="flex items-center gap-2 sm:gap-3">
           <Link
             href={`/dashboard/projects/${projectId}`}
             className="text-slate-400 hover:text-slate-600 transition-colors"
@@ -695,17 +695,18 @@ export default function ProjectProtocolsPage() {
               <path strokeLinecap="round" strokeLinejoin="round" d="M10.5 19.5 3 12m0 0 7.5-7.5M3 12h18" />
             </svg>
           </Link>
-          <h1 className="text-2xl font-bold text-slate-900">Protokoll</h1>
+          <h1 className="text-xl sm:text-2xl font-bold text-slate-900">Protokoll</h1>
         </div>
         <button
           onClick={() => {
             setPreselectedType(undefined)
             setShowCreateModal(true)
           }}
-          className="px-4 py-2 bg-gradient-to-r from-indigo-600 to-purple-600 text-white rounded-xl font-medium hover:from-indigo-500 hover:to-purple-500 transition-all shadow-md shadow-indigo-500/25 flex items-center gap-2"
+          className="px-3 sm:px-4 py-2 bg-gradient-to-r from-indigo-600 to-purple-600 text-white rounded-xl font-medium hover:from-indigo-500 hover:to-purple-500 transition-all shadow-md shadow-indigo-500/25 flex items-center gap-2 text-sm sm:text-base"
         >
-          <PlusIcon className="h-5 w-5" />
-          Nytt protokoll
+          <PlusIcon className="h-4 w-4 sm:h-5 sm:w-5" />
+          <span className="hidden sm:inline">Nytt protokoll</span>
+          <span className="sm:hidden">Nytt</span>
         </button>
       </div>
 
@@ -738,12 +739,12 @@ export default function ProjectProtocolsPage() {
       )}
 
       {/* Stats Cards */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-2 sm:gap-4 mb-4 sm:mb-6">
         {[
           { key: 'all' as const, label: 'Totalt', value: stats.total, icon: '📋', color: 'text-slate-600', hoverColor: 'hover:border-slate-300' },
           { key: 'draft' as const, label: 'Utkast', value: stats.draft, icon: '📝', color: 'text-amber-600', hoverColor: 'hover:border-amber-300' },
           { key: 'finalized' as const, label: 'Slutförda', value: stats.finalized, icon: '✅', color: 'text-green-600', hoverColor: 'hover:border-green-300' },
-          { key: 'actions' as const, label: 'Pågående åtgärder', value: stats.pendingActions, icon: '⏳', color: 'text-orange-600', hoverColor: '' },
+          { key: 'actions' as const, label: 'Pågående', shortLabel: 'Pågående', value: stats.pendingActions, icon: '⏳', color: 'text-orange-600', hoverColor: '' },
         ].map((stat, index) => (
           <motion.div
             key={stat.key}
@@ -751,21 +752,21 @@ export default function ProjectProtocolsPage() {
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: index * 0.05 }}
             onClick={() => stat.key !== 'actions' && setStatusFilter(stat.key === 'all' ? 'all' : stat.key)}
-            className={`bg-white/80 backdrop-blur-sm border border-slate-200 rounded-xl p-4 ${stat.hoverColor} transition-all ${stat.key !== 'actions' ? 'cursor-pointer' : ''}`}
+            className={`bg-white/80 backdrop-blur-sm border border-slate-200 rounded-xl p-3 sm:p-4 ${stat.hoverColor} transition-all ${stat.key !== 'actions' ? 'cursor-pointer' : ''}`}
           >
             <div className="flex items-center justify-between">
-              <p className={`${stat.color} text-sm font-medium`}>{stat.label}</p>
-              <span className="text-xl">{stat.icon}</span>
+              <p className={`${stat.color} text-xs sm:text-sm font-medium truncate`}>{stat.label}</p>
+              <span className="text-lg sm:text-xl">{stat.icon}</span>
             </div>
-            <p className="text-2xl font-bold text-slate-900 mt-1">{stat.value}</p>
+            <p className="text-xl sm:text-2xl font-bold text-slate-900 mt-1">{stat.value}</p>
           </motion.div>
         ))}
       </div>
 
       {/* Search, Filters & View Toggle */}
-      <div className="flex flex-wrap items-center gap-4 mb-6">
+      <div className="flex flex-col sm:flex-row flex-wrap gap-2 sm:gap-4 mb-4 sm:mb-6">
         {/* Search */}
-        <div className="relative flex-1 min-w-[200px] max-w-md">
+        <div className="relative flex-1 min-w-0 sm:min-w-[200px] sm:max-w-md">
           <svg className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
             <path strokeLinecap="round" strokeLinejoin="round" d="m21 21-5.197-5.197m0 0A7.5 7.5 0 1 0 5.196 5.196a7.5 7.5 0 0 0 10.607 10.607Z" />
           </svg>
@@ -774,7 +775,7 @@ export default function ProjectProtocolsPage() {
             placeholder="Sök protokoll..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full pl-10 pr-4 py-2 bg-white border border-slate-200 rounded-xl text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+            className="w-full pl-10 pr-4 py-2 bg-white border border-slate-200 rounded-xl text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent text-sm sm:text-base"
           />
           {searchQuery && (
             <button
@@ -786,59 +787,62 @@ export default function ProjectProtocolsPage() {
           )}
         </div>
 
-        <select
-          value={statusFilter}
-          onChange={(e) => setStatusFilter(e.target.value as ProtocolStatus | 'all')}
-          className="px-3 py-2 bg-white border border-slate-200 rounded-xl text-slate-900 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
-        >
-          <option value="all">Alla statusar</option>
-          {Object.entries(statusConfig).map(([key, { label }]) => (
-            <option key={key} value={key}>{label}</option>
-          ))}
-        </select>
+        {/* Filters Row */}
+        <div className="flex flex-wrap items-center gap-2 sm:gap-4">
+          <select
+            value={statusFilter}
+            onChange={(e) => setStatusFilter(e.target.value as ProtocolStatus | 'all')}
+            className="flex-1 sm:flex-none px-3 py-2 bg-white border border-slate-200 rounded-xl text-slate-900 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent text-sm"
+          >
+            <option value="all">Alla statusar</option>
+            {Object.entries(statusConfig).map(([key, { label }]) => (
+              <option key={key} value={key}>{label}</option>
+            ))}
+          </select>
 
-        <select
-          value={meetingTypeFilter}
-          onChange={(e) => setMeetingTypeFilter(e.target.value as ProtocolMeetingType | 'all')}
-          className="px-3 py-2 bg-white border border-slate-200 rounded-xl text-slate-900 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
-        >
-          <option value="all">Alla mötestyper</option>
-          {Object.entries(meetingTypeConfig).map(([key, { label }]) => (
-            <option key={key} value={key}>{label}</option>
-          ))}
-        </select>
+          <select
+            value={meetingTypeFilter}
+            onChange={(e) => setMeetingTypeFilter(e.target.value as ProtocolMeetingType | 'all')}
+            className="flex-1 sm:flex-none px-3 py-2 bg-white border border-slate-200 rounded-xl text-slate-900 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent text-sm"
+          >
+            <option value="all">Alla typer</option>
+            {Object.entries(meetingTypeConfig).map(([key, { label }]) => (
+              <option key={key} value={key}>{label}</option>
+            ))}
+          </select>
 
-        {/* View Toggle */}
-        <div className="flex bg-white border border-slate-200 rounded-xl p-1">
+          {/* View Toggle - Hidden on mobile */}
+          <div className="hidden sm:flex bg-white border border-slate-200 rounded-xl p-1">
+            <button
+              onClick={() => setViewMode('cards')}
+              className={`px-3 py-1.5 rounded-lg transition-colors ${viewMode === 'cards' ? 'bg-indigo-100 text-indigo-600' : 'text-slate-400 hover:text-slate-600'}`}
+            >
+              <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M3.75 6A2.25 2.25 0 0 1 6 3.75h2.25A2.25 2.25 0 0 1 10.5 6v2.25a2.25 2.25 0 0 1-2.25 2.25H6a2.25 2.25 0 0 1-2.25-2.25V6ZM3.75 15.75A2.25 2.25 0 0 1 6 13.5h2.25a2.25 2.25 0 0 1 2.25 2.25V18a2.25 2.25 0 0 1-2.25 2.25H6A2.25 2.25 0 0 1 3.75 18v-2.25ZM13.5 6a2.25 2.25 0 0 1 2.25-2.25H18A2.25 2.25 0 0 1 20.25 6v2.25A2.25 2.25 0 0 1 18 10.5h-2.25a2.25 2.25 0 0 1-2.25-2.25V6ZM13.5 15.75a2.25 2.25 0 0 1 2.25-2.25H18a2.25 2.25 0 0 1 2.25 2.25V18A2.25 2.25 0 0 1 18 20.25h-2.25A2.25 2.25 0 0 1 13.5 18v-2.25Z" />
+              </svg>
+            </button>
+            <button
+              onClick={() => setViewMode('list')}
+              className={`px-3 py-1.5 rounded-lg transition-colors ${viewMode === 'list' ? 'bg-indigo-100 text-indigo-600' : 'text-slate-400 hover:text-slate-600'}`}
+            >
+              <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M8.25 6.75h12M8.25 12h12m-12 5.25h12M3.75 6.75h.007v.008H3.75V6.75Zm.375 0a.375.375 0 1 1-.75 0 .375.375 0 0 1 .75 0ZM3.75 12h.007v.008H3.75V12Zm.375 0a.375.375 0 1 1-.75 0 .375.375 0 0 1 .75 0Zm-.375 5.25h.007v.008H3.75v-.008Zm.375 0a.375.375 0 1 1-.75 0 .375.375 0 0 1 .75 0Z" />
+              </svg>
+            </button>
+          </div>
+
+          {/* Export PDF Button */}
           <button
-            onClick={() => setViewMode('cards')}
-            className={`px-3 py-1.5 rounded-lg transition-colors ${viewMode === 'cards' ? 'bg-indigo-100 text-indigo-600' : 'text-slate-400 hover:text-slate-600'}`}
+            onClick={exportToPDF}
+            disabled={filteredProtocols.length === 0}
+            className="px-3 sm:px-4 py-2 bg-white border border-slate-200 text-slate-700 rounded-xl hover:bg-slate-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2 text-sm"
           >
             <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" d="M3.75 6A2.25 2.25 0 0 1 6 3.75h2.25A2.25 2.25 0 0 1 10.5 6v2.25a2.25 2.25 0 0 1-2.25 2.25H6a2.25 2.25 0 0 1-2.25-2.25V6ZM3.75 15.75A2.25 2.25 0 0 1 6 13.5h2.25a2.25 2.25 0 0 1 2.25 2.25V18a2.25 2.25 0 0 1-2.25 2.25H6A2.25 2.25 0 0 1 3.75 18v-2.25ZM13.5 6a2.25 2.25 0 0 1 2.25-2.25H18A2.25 2.25 0 0 1 20.25 6v2.25A2.25 2.25 0 0 1 18 10.5h-2.25a2.25 2.25 0 0 1-2.25-2.25V6ZM13.5 15.75a2.25 2.25 0 0 1 2.25-2.25H18a2.25 2.25 0 0 1 2.25 2.25V18A2.25 2.25 0 0 1 18 20.25h-2.25A2.25 2.25 0 0 1 13.5 18v-2.25Z" />
+              <path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5v2.25A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75V16.5m-13.5-9L12 3m0 0 4.5 4.5M12 3v13.5" />
             </svg>
-          </button>
-          <button
-            onClick={() => setViewMode('list')}
-            className={`px-3 py-1.5 rounded-lg transition-colors ${viewMode === 'list' ? 'bg-indigo-100 text-indigo-600' : 'text-slate-400 hover:text-slate-600'}`}
-          >
-            <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" d="M8.25 6.75h12M8.25 12h12m-12 5.25h12M3.75 6.75h.007v.008H3.75V6.75Zm.375 0a.375.375 0 1 1-.75 0 .375.375 0 0 1 .75 0ZM3.75 12h.007v.008H3.75V12Zm.375 0a.375.375 0 1 1-.75 0 .375.375 0 0 1 .75 0Zm-.375 5.25h.007v.008H3.75v-.008Zm.375 0a.375.375 0 1 1-.75 0 .375.375 0 0 1 .75 0Z" />
-            </svg>
+            <span className="hidden sm:inline">Exportera</span> PDF
           </button>
         </div>
-
-        {/* Export PDF Button */}
-        <button
-          onClick={exportToPDF}
-          disabled={filteredProtocols.length === 0}
-          className="px-4 py-2 bg-white border border-slate-200 text-slate-700 rounded-xl hover:bg-slate-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
-        >
-          <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
-            <path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5v2.25A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75V16.5m-13.5-9L12 3m0 0 4.5 4.5M12 3v13.5" />
-          </svg>
-          Exportera PDF
-        </button>
       </div>
 
       {/* Search results info */}
@@ -1038,39 +1042,98 @@ export default function ProjectProtocolsPage() {
 
       {/* Pagination */}
       {totalPages > 1 && (
-        <div className="flex items-center justify-between pt-6 border-t border-slate-200 mt-6">
-          <p className="text-sm text-slate-500">
+        <div className="flex flex-col sm:flex-row items-center justify-between gap-3 pt-4 sm:pt-6 border-t border-slate-200 mt-4 sm:mt-6">
+          <p className="text-xs sm:text-sm text-slate-500 order-2 sm:order-1">
             Visar {((currentPage - 1) * ITEMS_PER_PAGE) + 1}-{Math.min(currentPage * ITEMS_PER_PAGE, filteredProtocols.length)} av {filteredProtocols.length}
           </p>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-1 sm:gap-2 order-1 sm:order-2">
             <button
               onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
               disabled={currentPage === 1}
-              className="px-3 py-1.5 bg-white border border-slate-200 rounded-lg text-slate-700 hover:bg-slate-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+              className="p-2 sm:px-3 sm:py-1.5 bg-white border border-slate-200 rounded-lg text-slate-700 hover:bg-slate-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
             >
               <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 19.5 8.25 12l7.5-7.5" />
               </svg>
             </button>
             <div className="flex items-center gap-1">
-              {Array.from({ length: totalPages }, (_, i) => i + 1).map(page => (
-                <button
-                  key={page}
-                  onClick={() => setCurrentPage(page)}
-                  className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${
-                    currentPage === page
-                      ? 'bg-indigo-600 text-white'
-                      : 'bg-white border border-slate-200 text-slate-600 hover:bg-slate-50'
-                  }`}
-                >
-                  {page}
-                </button>
-              ))}
+              {/* Smart pagination - show max 3 page numbers on mobile */}
+              {(() => {
+                const pages = Array.from({ length: totalPages }, (_, i) => i + 1)
+                let visiblePages = pages
+
+                // On mobile, show only 3 pages centered on current page
+                if (totalPages > 3) {
+                  let start = Math.max(1, currentPage - 1)
+                  let end = Math.min(totalPages, start + 2)
+                  if (end === totalPages) start = Math.max(1, end - 2)
+                  visiblePages = pages.filter(p => p >= start && p <= end)
+                }
+
+                return (
+                  <>
+                    {/* Mobile: limited pages */}
+                    <div className="flex sm:hidden items-center gap-1">
+                      {visiblePages[0] > 1 && (
+                        <>
+                          <button
+                            onClick={() => setCurrentPage(1)}
+                            className="px-2.5 py-1.5 rounded-lg text-xs font-medium bg-white border border-slate-200 text-slate-600 hover:bg-slate-50"
+                          >
+                            1
+                          </button>
+                          {visiblePages[0] > 2 && <span className="text-slate-400 px-1">...</span>}
+                        </>
+                      )}
+                      {visiblePages.map(page => (
+                        <button
+                          key={page}
+                          onClick={() => setCurrentPage(page)}
+                          className={`px-2.5 py-1.5 rounded-lg text-xs font-medium transition-colors ${
+                            currentPage === page
+                              ? 'bg-indigo-600 text-white'
+                              : 'bg-white border border-slate-200 text-slate-600 hover:bg-slate-50'
+                          }`}
+                        >
+                          {page}
+                        </button>
+                      ))}
+                      {visiblePages[visiblePages.length - 1] < totalPages && (
+                        <>
+                          {visiblePages[visiblePages.length - 1] < totalPages - 1 && <span className="text-slate-400 px-1">...</span>}
+                          <button
+                            onClick={() => setCurrentPage(totalPages)}
+                            className="px-2.5 py-1.5 rounded-lg text-xs font-medium bg-white border border-slate-200 text-slate-600 hover:bg-slate-50"
+                          >
+                            {totalPages}
+                          </button>
+                        </>
+                      )}
+                    </div>
+                    {/* Desktop: all pages */}
+                    <div className="hidden sm:flex items-center gap-1">
+                      {pages.map(page => (
+                        <button
+                          key={page}
+                          onClick={() => setCurrentPage(page)}
+                          className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${
+                            currentPage === page
+                              ? 'bg-indigo-600 text-white'
+                              : 'bg-white border border-slate-200 text-slate-600 hover:bg-slate-50'
+                          }`}
+                        >
+                          {page}
+                        </button>
+                      ))}
+                    </div>
+                  </>
+                )
+              })()}
             </div>
             <button
               onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
               disabled={currentPage === totalPages}
-              className="px-3 py-1.5 bg-white border border-slate-200 rounded-lg text-slate-700 hover:bg-slate-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+              className="p-2 sm:px-3 sm:py-1.5 bg-white border border-slate-200 rounded-lg text-slate-700 hover:bg-slate-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
             >
               <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" d="m8.25 4.5 7.5 7.5-7.5 7.5" />

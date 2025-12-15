@@ -193,7 +193,7 @@ export default function CalendarModal({ isOpen, onClose, projectId, onEventCreat
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         exit={{ opacity: 0 }}
-        className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm"
+        className="fixed inset-0 z-50 flex items-end md:items-center justify-center md:p-4 bg-black/50 backdrop-blur-sm"
         onClick={onClose}
       >
         <motion.div
@@ -201,47 +201,52 @@ export default function CalendarModal({ isOpen, onClose, projectId, onEventCreat
           animate={{ opacity: 1, scale: 1, y: 0 }}
           exit={{ opacity: 0, scale: 0.95, y: 20 }}
           transition={{ duration: 0.2 }}
-          className="w-full max-w-6xl max-h-[90vh] bg-white rounded-3xl shadow-2xl overflow-hidden flex flex-col"
+          className="w-full md:max-w-6xl h-[95vh] md:max-h-[90vh] bg-white rounded-t-2xl md:rounded-3xl shadow-2xl overflow-hidden flex flex-col"
           onClick={e => e.stopPropagation()}
         >
+          {/* Mobile drag handle */}
+          <div className="md:hidden flex justify-center pt-2 pb-1">
+            <div className="w-10 h-1 bg-slate-300 rounded-full" />
+          </div>
+
           {/* Header */}
-          <div className="p-6 border-b border-slate-100 flex items-center justify-between">
-            <div className="flex items-center gap-4">
-              <div className="w-12 h-12 bg-gradient-to-br from-indigo-500 to-purple-500 rounded-2xl flex items-center justify-center">
-                <CalendarIcon className="w-6 h-6 text-white" />
+          <div className="p-3 sm:p-4 md:p-6 border-b border-slate-100 flex items-center justify-between">
+            <div className="flex items-center gap-2 sm:gap-4">
+              <div className="w-9 h-9 sm:w-12 sm:h-12 bg-gradient-to-br from-indigo-500 to-purple-500 rounded-xl sm:rounded-2xl flex items-center justify-center">
+                <CalendarIcon className="w-5 h-5 sm:w-6 sm:h-6 text-white" />
               </div>
               <div>
-                <h2 className="text-2xl font-bold text-slate-900">Projektkalender</h2>
-                <p className="text-slate-500 text-sm">{filteredEvents.length} händelser denna månad</p>
+                <h2 className="text-lg sm:text-2xl font-bold text-slate-900">Projektkalender</h2>
+                <p className="text-slate-500 text-xs sm:text-sm">{filteredEvents.length} händelser denna månad</p>
               </div>
             </div>
-            <div className="flex items-center gap-3">
+            <div className="flex items-center gap-2 sm:gap-3">
               <button
                 onClick={handleCreateEvent}
-                className="px-4 py-2 bg-indigo-600 text-white rounded-xl font-medium hover:bg-indigo-700 transition-colors flex items-center gap-2"
+                className="p-2 sm:px-4 sm:py-2 bg-indigo-600 text-white rounded-lg sm:rounded-xl font-medium hover:bg-indigo-700 transition-colors flex items-center gap-2"
               >
                 <PlusIcon className="w-5 h-5" />
-                Ny händelse
+                <span className="hidden sm:inline">Ny händelse</span>
               </button>
               <button
                 onClick={onClose}
                 className="p-2 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-xl transition-colors"
               >
-                <XIcon className="w-6 h-6" />
+                <XIcon className="w-5 h-5 sm:w-6 sm:h-6" />
               </button>
             </div>
           </div>
 
           {/* Controls */}
-          <div className="px-6 py-4 border-b border-slate-100 flex items-center justify-between gap-4 flex-wrap">
-            <div className="flex items-center gap-2">
+          <div className="px-3 sm:px-4 md:px-6 py-3 sm:py-4 border-b border-slate-100 flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4">
+            <div className="flex items-center justify-between sm:justify-start gap-2">
               <button
                 onClick={prevMonth}
                 className="p-2 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-xl transition-colors"
               >
                 <ChevronLeftIcon className="w-5 h-5" />
               </button>
-              <h3 className="text-lg font-semibold text-slate-900 min-w-[180px] text-center capitalize">
+              <h3 className="text-base sm:text-lg font-semibold text-slate-900 min-w-[140px] sm:min-w-[180px] text-center capitalize">
                 {MONTHS[month]} {year}
               </h3>
               <button
@@ -252,13 +257,13 @@ export default function CalendarModal({ isOpen, onClose, projectId, onEventCreat
               </button>
               <button
                 onClick={goToToday}
-                className="ml-2 px-3 py-1.5 text-sm text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors"
+                className="ml-2 px-2.5 sm:px-3 py-1 sm:py-1.5 text-xs sm:text-sm text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors"
               >
                 Idag
               </button>
             </div>
 
-            <div className="flex items-center gap-2 flex-wrap">
+            <div className="flex items-center gap-1.5 sm:gap-2 overflow-x-auto pb-1 sm:pb-0 -mx-1 px-1 sm:mx-0 sm:px-0 sm:flex-wrap">
               {(Object.keys(EVENT_TYPE_LABELS) as EventTypeFilter[]).map(type => {
                 const colors = getEventTypeColor(type)
                 const isActive = filters.has(type)
@@ -266,13 +271,13 @@ export default function CalendarModal({ isOpen, onClose, projectId, onEventCreat
                   <button
                     key={type}
                     onClick={() => toggleFilter(type)}
-                    className={`px-3 py-1.5 text-sm rounded-lg transition-all flex items-center gap-1.5 ${
+                    className={`px-2 sm:px-3 py-1 sm:py-1.5 text-xs sm:text-sm rounded-lg transition-all flex items-center gap-1 sm:gap-1.5 whitespace-nowrap flex-shrink-0 ${
                       isActive
                         ? `${colors.bg} ${colors.text} font-medium`
                         : 'bg-slate-100 text-slate-400'
                     }`}
                   >
-                    <span className={`w-2 h-2 rounded-full ${isActive ? colors.dot : 'bg-slate-300'}`} />
+                    <span className={`w-1.5 h-1.5 sm:w-2 sm:h-2 rounded-full ${isActive ? colors.dot : 'bg-slate-300'}`} />
                     {EVENT_TYPE_LABELS[type]}
                   </button>
                 )
@@ -281,23 +286,23 @@ export default function CalendarModal({ isOpen, onClose, projectId, onEventCreat
           </div>
 
           {/* Main content */}
-          <div className="flex-1 overflow-hidden flex">
+          <div className="flex-1 overflow-hidden flex flex-col md:flex-row">
             {/* Calendar grid */}
-            <div className="flex-1 p-6 overflow-auto">
+            <div className="flex-1 p-3 sm:p-4 md:p-6 overflow-auto">
               {/* Weekday headers */}
-              <div className="grid grid-cols-7 gap-2 mb-2">
+              <div className="grid grid-cols-7 gap-1 sm:gap-2 mb-1 sm:mb-2">
                 {WEEKDAYS_SHORT.map(day => (
-                  <div key={day} className="text-center text-sm font-medium text-slate-400 py-2">
+                  <div key={day} className="text-center text-xs sm:text-sm font-medium text-slate-400 py-1 sm:py-2">
                     {day}
                   </div>
                 ))}
               </div>
 
               {/* Calendar grid */}
-              <div className="grid grid-cols-7 gap-2">
+              <div className="grid grid-cols-7 gap-1 sm:gap-2">
                 {days.map((day, index) => {
                   if (day === null) {
-                    return <div key={`empty-${index}`} className="h-24" />
+                    return <div key={`empty-${index}`} className="h-14 sm:h-20 md:h-24" />
                   }
 
                   const dayEvents = getEventsForDay(day)
@@ -310,9 +315,8 @@ export default function CalendarModal({ isOpen, onClose, projectId, onEventCreat
                       key={day}
                       onClick={() => handleDayClick(day)}
                       onDoubleClick={() => handleDayDoubleClick(day)}
-                      whileHover={{ scale: 1.02 }}
                       whileTap={{ scale: 0.98 }}
-                      className={`h-24 p-2 rounded-xl border text-left transition-all flex flex-col ${
+                      className={`h-14 sm:h-20 md:h-24 p-1 sm:p-2 rounded-lg sm:rounded-xl border text-left transition-all flex flex-col ${
                         today
                           ? 'bg-indigo-50 border-indigo-200'
                           : isSelected
@@ -320,10 +324,11 @@ export default function CalendarModal({ isOpen, onClose, projectId, onEventCreat
                           : 'bg-white border-slate-200 hover:border-slate-300 hover:shadow-sm'
                       }`}
                     >
-                      <span className={`text-sm font-medium ${today ? 'text-indigo-600' : 'text-slate-700'}`}>
+                      <span className={`text-xs sm:text-sm font-medium ${today ? 'text-indigo-600' : 'text-slate-700'}`}>
                         {day}
                       </span>
-                      <div className="flex-1 mt-1 space-y-0.5 overflow-hidden">
+                      {/* Desktop: show event titles */}
+                      <div className="hidden sm:flex flex-1 mt-1 flex-col space-y-0.5 overflow-hidden">
                         {dayEvents.slice(0, 3).map(event => {
                           const colors = getEventTypeColor(event.type)
                           return (
@@ -341,14 +346,26 @@ export default function CalendarModal({ isOpen, onClose, projectId, onEventCreat
                           </div>
                         )}
                       </div>
+                      {/* Mobile: show dots only */}
+                      {dayEvents.length > 0 && (
+                        <div className="sm:hidden flex gap-0.5 mt-auto">
+                          {dayEvents.slice(0, 3).map((event, i) => {
+                            const colors = getEventTypeColor(event.type)
+                            return <div key={i} className={`w-1.5 h-1.5 rounded-full ${colors.dot}`} />
+                          })}
+                          {dayEvents.length > 3 && (
+                            <span className="text-[8px] text-slate-400 ml-0.5">+{dayEvents.length - 3}</span>
+                          )}
+                        </div>
+                      )}
                     </motion.button>
                   )
                 })}
               </div>
             </div>
 
-            {/* Sidebar - Events list */}
-            <div className="w-80 border-l border-slate-100 bg-slate-50/50 flex flex-col">
+            {/* Sidebar - Events list - hidden on mobile when no date selected */}
+            <div className={`${selectedDate ? 'flex' : 'hidden md:flex'} md:w-80 border-t md:border-t-0 md:border-l border-slate-100 bg-slate-50/50 flex-col max-h-[40vh] md:max-h-none`}>
               <div className="p-4 border-b border-slate-100">
                 <h3 className="font-semibold text-slate-900">
                   {selectedDate

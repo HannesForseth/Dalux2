@@ -88,16 +88,21 @@ export default function InviteMemberModal({
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center">
+    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center">
       <div className="absolute inset-0 bg-black/60" onClick={onClose} />
 
-      <div className="relative bg-slate-900 border border-slate-700 rounded-xl w-full max-w-md mx-4">
-        <div className="p-6">
-          <div className="flex items-center justify-between mb-6">
-            <h2 className="text-xl font-semibold text-white">Bjud in medlem</h2>
+      <div className="relative bg-white sm:bg-slate-900 border border-slate-200 sm:border-slate-700 rounded-t-2xl sm:rounded-xl w-full sm:max-w-md sm:mx-4 max-h-[90vh] overflow-y-auto">
+        <div className="p-4 sm:p-6">
+          {/* Mobile drag handle */}
+          <div className="sm:hidden flex justify-center mb-3">
+            <div className="w-10 h-1 bg-slate-300 rounded-full" />
+          </div>
+
+          <div className="flex items-center justify-between mb-4 sm:mb-6">
+            <h2 className="text-lg sm:text-xl font-semibold text-slate-900 sm:text-white">Bjud in medlem</h2>
             <button
               onClick={onClose}
-              className="text-slate-400 hover:text-white transition-colors"
+              className="text-slate-400 hover:text-slate-600 sm:hover:text-white transition-colors"
             >
               <XIcon />
             </button>
@@ -117,7 +122,7 @@ export default function InviteMemberModal({
 
           <form onSubmit={handleSubmit} className="space-y-4">
             <div>
-              <label htmlFor="email" className="block text-sm font-medium text-slate-300 mb-1">
+              <label htmlFor="email" className="block text-sm font-medium text-slate-700 sm:text-slate-300 mb-1">
                 E-postadress
               </label>
               <input
@@ -125,13 +130,13 @@ export default function InviteMemberModal({
                 id="email"
                 name="email"
                 required
-                className="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                className="w-full px-3 py-2.5 sm:py-2 bg-slate-50 sm:bg-slate-800 border border-slate-200 sm:border-slate-700 rounded-lg text-slate-900 sm:text-white placeholder-slate-400 sm:placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                 placeholder="namn@foretag.se"
               />
             </div>
 
             <div>
-              <label htmlFor="role_id" className="block text-sm font-medium text-slate-300 mb-1">
+              <label htmlFor="role_id" className="block text-sm font-medium text-slate-700 sm:text-slate-300 mb-1">
                 Roll
               </label>
               <select
@@ -140,7 +145,7 @@ export default function InviteMemberModal({
                 required
                 value={selectedRoleId}
                 onChange={(e) => setSelectedRoleId(e.target.value)}
-                className="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                className="w-full px-3 py-2.5 sm:py-2 bg-slate-50 sm:bg-slate-800 border border-slate-200 sm:border-slate-700 rounded-lg text-slate-900 sm:text-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
               >
                 {assignableRoles.map((role) => (
                   <option key={role.id} value={role.id}>
@@ -155,18 +160,18 @@ export default function InviteMemberModal({
               )}
             </div>
 
-            <div className="flex justify-end gap-3 pt-4">
+            <div className="flex flex-col-reverse sm:flex-row justify-end gap-2 sm:gap-3 pt-4">
               <button
                 type="button"
                 onClick={onClose}
-                className="px-4 py-2 text-slate-300 hover:text-white transition-colors"
+                className="w-full sm:w-auto px-4 py-2.5 sm:py-2 text-slate-600 sm:text-slate-300 hover:text-slate-900 sm:hover:text-white transition-colors border border-slate-200 sm:border-transparent rounded-lg sm:rounded-none"
               >
                 Avbryt
               </button>
               <button
                 type="submit"
                 disabled={isLoading}
-                className="px-4 py-2 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                className="w-full sm:w-auto px-4 py-2.5 sm:py-2 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 {isLoading ? 'Skickar...' : 'Bjud in'}
               </button>
