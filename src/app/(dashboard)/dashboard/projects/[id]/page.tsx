@@ -168,7 +168,7 @@ export default function ProjectDetailPage() {
           </motion.div>
 
           {/* Quick actions with real counts */}
-          <motion.div variants={itemVariants} className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3 sm:gap-4">
+          <motion.div variants={itemVariants} className="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-6 gap-3 sm:gap-4">
             <QuickActionCard
               title="Dokument"
               count={stats?.documentsCount.toString() || '0'}
