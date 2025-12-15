@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48" fill="none">
+  <!-- Single color version for print -->
+
+  <!-- Hexagonal B icon -->
+  <path d="M24 2 L44 13 L44 35 L24 46 L4 35 L4 13 Z" fill="#1E1B4B"/>
+
+  <!-- Arrow/play shape inside -->
+  <path d="M18 15 L18 33 L34 24 Z" fill="white"/>
+</svg>

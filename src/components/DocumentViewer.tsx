@@ -1078,14 +1078,33 @@ export default function DocumentViewer({
   // Measurement handlers
   // ==============================
 
-  // Get relative coordinates from click event
+  // Get relative coordinates from click event, accounting for CSS transform scale
   const getRelativeCoords = useCallback((e: React.MouseEvent, element: HTMLElement): MeasurementPoint => {
     const rect = element.getBoundingClientRect()
-    return {
-      x: ((e.clientX - rect.left) / rect.width) * 100,
-      y: ((e.clientY - rect.top) / rect.height) * 100
+
+    // Guard against invalid state
+    if (pageDimensions.width === 0 || pageDimensions.height === 0) {
+      return {
+        x: ((e.clientX - rect.left) / rect.width) * 100,
+        y: ((e.clientY - rect.top) / rect.height) * 100
+      }
     }
-  }, [])
+
+    // Click position relative to the visual (post-transform) element top-left
+    const visualX = e.clientX - rect.left
+    const visualY = e.clientY - rect.top
+
+    // Convert from visual space to pre-transform space by dividing by cssScale
+    const effectiveCssScale = cssScale || 1
+    const preTransformX = visualX / effectiveCssScale
+    const preTransformY = visualY / effectiveCssScale
+
+    // Convert to percentage using pre-transform dimensions (pageDimensions)
+    return {
+      x: (preTransformX / pageDimensions.width) * 100,
+      y: (preTransformY / pageDimensions.height) * 100
+    }
+  }, [cssScale, pageDimensions.width, pageDimensions.height])
 
   // Handle click on PDF in measurement mode
   const handleMeasurementModeClick = useCallback((e: React.MouseEvent) => {

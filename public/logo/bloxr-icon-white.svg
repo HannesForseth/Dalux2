@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48" fill="none">
+  <!-- White version for dark backgrounds -->
+
+  <!-- Hexagonal B icon -->
+  <path d="M24 2 L44 13 L44 35 L24 46 L4 35 L4 13 Z" fill="white"/>
+
+  <!-- Inner B cutout - top part -->
+  <path d="M16 14 L24 9 L32 14 L32 22 L24 27 L16 22 Z" fill="none" stroke="white" stroke-width="0"/>
+
+  <!-- Arrow/play shape inside -->
+  <path d="M20 18 L28 24 L20 30 Z" fill="#1E1B4B"/>
+</svg>
