@@ -125,3 +125,29 @@ body {
     @apply bg-background text-foreground;
   }
 }
+
+/* PDF Document Highlight Colors */
+.custom-highlight {
+  border-radius: 2px;
+  transition: background-color 0.2s;
+}
+
+.highlight-yellow {
+  background-color: rgba(253, 224, 71, 0.5) !important;
+}
+
+.highlight-green {
+  background-color: rgba(134, 239, 172, 0.5) !important;
+}
+
+.highlight-blue {
+  background-color: rgba(147, 197, 253, 0.5) !important;
+}
+
+.highlight-pink {
+  background-color: rgba(249, 168, 212, 0.5) !important;
+}
+
+.highlight-orange {
+  background-color: rgba(253, 186, 116, 0.5) !important;
+}

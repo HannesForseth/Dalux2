@@ -262,7 +262,11 @@ export async function createDocumentComment(
     }
   }
 
-  revalidatePath(`/dashboard/projects/${projectId}/documents`)
+  try {
+    revalidatePath(`/dashboard/projects/${projectId}/documents`)
+  } catch (e) {
+    console.warn('revalidatePath failed:', e)
+  }
   return comment
 }
 
@@ -330,7 +334,11 @@ export async function updateDocumentComment(
     }
   }
 
-  revalidatePath(`/dashboard/projects/${existing.project_id}/documents`)
+  try {
+    revalidatePath(`/dashboard/projects/${existing.project_id}/documents`)
+  } catch (e) {
+    console.warn('revalidatePath failed:', e)
+  }
   return comment
 }
 
@@ -367,7 +375,11 @@ export async function deleteDocumentComment(commentId: string): Promise<void> {
     throw new Error('Kunde inte radera kommentaren')
   }
 
-  revalidatePath(`/dashboard/projects/${existing.project_id}/documents`)
+  try {
+    revalidatePath(`/dashboard/projects/${existing.project_id}/documents`)
+  } catch (e) {
+    console.warn('revalidatePath failed:', e)
+  }
 }
 
 export async function resolveDocumentComment(
@@ -409,7 +421,11 @@ export async function resolveDocumentComment(
     throw new Error('Kunde inte uppdatera kommentaren')
   }
 
-  revalidatePath(`/dashboard/projects/${existing.project_id}/documents`)
+  try {
+    revalidatePath(`/dashboard/projects/${existing.project_id}/documents`)
+  } catch (e) {
+    console.warn('revalidatePath failed:', e)
+  }
   return comment
 }
 

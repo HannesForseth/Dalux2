@@ -111,6 +111,7 @@ export default function DocumentViewer({
 
   const pdfContainerRef = useRef<HTMLDivElement>(null)
   const searchInputRef = useRef<HTMLInputElement>(null)
+  const pageRef = useRef<HTMLDivElement>(null)
 
   // Reset viewing state when document changes
   useEffect(() => {
@@ -658,6 +659,79 @@ export default function DocumentViewer({
     setCurrentPage(highlight.page_number)
   }
 
+  // Apply highlights to PDF text layer
+  const applyHighlightsToTextLayer = useCallback((textLayer: HTMLElement) => {
+    // Clear previous highlights
+    textLayer.querySelectorAll('.custom-highlight').forEach(el => {
+      el.classList.remove('custom-highlight', 'highlight-yellow', 'highlight-green',
+                          'highlight-blue', 'highlight-pink', 'highlight-orange')
+    })
+
+    // Get highlights for current page
+    const pageHighlights = highlights.filter(h => h.page_number === currentPage)
+    if (pageHighlights.length === 0) return
+
+    // Find all text spans in text layer
+    const textSpans = textLayer.querySelectorAll('span')
+
+    // For each highlight, find matching text and apply style
+    pageHighlights.forEach(highlight => {
+      const searchText = highlight.selected_text.toLowerCase().trim()
+      if (!searchText) return
+
+      // Build up text from spans to find matches
+      let accumulatedText = ''
+      const spanInfos: { span: Element; start: number; end: number; text: string }[] = []
+
+      textSpans.forEach(span => {
+        const spanText = span.textContent || ''
+        const start = accumulatedText.length
+        accumulatedText += spanText
+        spanInfos.push({ span, start, end: accumulatedText.length, text: spanText })
+      })
+
+      // Find all occurrences of the highlight text
+      const lowerAccumulated = accumulatedText.toLowerCase()
+      let searchIndex = 0
+
+      while (true) {
+        const foundAt = lowerAccumulated.indexOf(searchText, searchIndex)
+        if (foundAt === -1) break
+
+        const foundEnd = foundAt + searchText.length
+
+        // Find spans that overlap with this match
+        spanInfos.forEach(({ span, start, end }) => {
+          if (start < foundEnd && end > foundAt) {
+            span.classList.add('custom-highlight', `highlight-${highlight.color}`)
+          }
+        })
+
+        searchIndex = foundAt + 1
+      }
+    })
+  }, [highlights, currentPage])
+
+  // Callback when page has rendered
+  const handlePageRenderSuccess = useCallback(() => {
+    if (!pageRef.current) return
+
+    const textLayer = pageRef.current.querySelector('.react-pdf__Page__textContent')
+    if (!textLayer) return
+
+    applyHighlightsToTextLayer(textLayer as HTMLElement)
+  }, [applyHighlightsToTextLayer])
+
+  // Re-apply highlights when highlights change or page changes
+  useEffect(() => {
+    if (pageRef.current && content.type === 'pdf') {
+      const textLayer = pageRef.current.querySelector('.react-pdf__Page__textContent')
+      if (textLayer) {
+        applyHighlightsToTextLayer(textLayer as HTMLElement)
+      }
+    }
+  }, [highlights, currentPage, content.type, applyHighlightsToTextLayer])
+
   // Extract text content from PDF for search
   const onDocumentLoadSuccessWithText = async ({ numPages: pages }: { numPages: number }) => {
     setNumPages(pages)
@@ -982,13 +1056,16 @@ export default function DocumentViewer({
                     </div>
                   }
                 >
-                  <Page
-                    pageNumber={currentPage}
-                    scale={scale}
-                    renderTextLayer={true}
-                    renderAnnotationLayer={false}
-                    className="shadow-xl rounded-lg"
-                  />
+                  <div ref={pageRef}>
+                    <Page
+                      pageNumber={currentPage}
+                      scale={scale}
+                      renderTextLayer={true}
+                      renderAnnotationLayer={false}
+                      className="shadow-xl rounded-lg"
+                      onRenderSuccess={handlePageRenderSuccess}
+                    />
+                  </div>
                 </Document>
               </div>
 
