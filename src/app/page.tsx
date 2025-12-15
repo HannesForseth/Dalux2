@@ -226,7 +226,7 @@ export default function Home() {
             transition={{ duration: 0.6, delay: 0.2 }}
           >
             Samla dokument, ritningar och avvikelser på ett ställe.
-            <span className="text-slate-900 font-medium"> Med AI som gör jobbet åt dig.</span>
+            <span className="text-slate-900 font-medium"> Med AI som hjälper dig med jobbet.</span>
           </motion.p>
 
           {/* CTA Buttons */}
