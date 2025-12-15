@@ -9,9 +9,27 @@ import mammoth from 'mammoth'
 import CommentPanel from './documents/CommentPanel'
 import VersionHistoryPanel from './documents/VersionHistoryPanel'
 import UploadVersionModal from './documents/UploadVersionModal'
+import MeasurementOverlay from './documents/MeasurementOverlay'
 import { getComparisonUrls, getDocumentDownloadUrl } from '@/app/actions/documents'
 import { getDocumentHighlights, createHighlight, updateHighlight, deleteHighlight } from '@/app/actions/documentHighlights'
+import {
+  getDocumentMeasurements,
+  getMeasurementsByPage,
+  createMeasurement,
+  deleteMeasurement,
+  getScaleCalibration,
+  setScaleCalibration
+} from '@/app/actions/documentMeasurements'
 import type { DocumentHighlightWithCreator, HighlightColor, CreateHighlightData } from '@/types/database'
+import type {
+  DocumentMeasurementWithCreator,
+  MeasurementType,
+  MeasurementPoint,
+  MeasurementColor,
+  MeasurementUnit,
+  ScaleCalibration,
+  CreateMeasurementData
+} from '@/types/database'
 
 // Set up PDF.js worker
 pdfjs.GlobalWorkerOptions.workerSrc = `//unpkg.com/pdfjs-dist@${pdfjs.version}/build/pdf.worker.min.mjs`
@@ -56,6 +74,23 @@ const HIGHLIGHT_COLORS: { id: HighlightColor; bg: string; text: string; name: st
   { id: 'blue', bg: 'bg-blue-300', text: 'text-blue-800', name: 'Blå' },
   { id: 'pink', bg: 'bg-pink-300', text: 'text-pink-800', name: 'Rosa' },
   { id: 'orange', bg: 'bg-orange-300', text: 'text-orange-800', name: 'Orange' },
+]
+
+// Measurement colors configuration
+const MEASUREMENT_COLORS: { id: MeasurementColor; bg: string; stroke: string; name: string }[] = [
+  { id: 'blue', bg: 'bg-blue-500', stroke: '#3b82f6', name: 'Blå' },
+  { id: 'red', bg: 'bg-red-500', stroke: '#ef4444', name: 'Röd' },
+  { id: 'green', bg: 'bg-green-500', stroke: '#22c55e', name: 'Grön' },
+  { id: 'orange', bg: 'bg-orange-500', stroke: '#f97316', name: 'Orange' },
+  { id: 'purple', bg: 'bg-purple-500', stroke: '#a855f7', name: 'Lila' },
+]
+
+// Measurement tools configuration
+const MEASUREMENT_TOOLS: { id: MeasurementType; icon: string; name: string; shortcut: string }[] = [
+  { id: 'length', icon: '📏', name: 'Längd', shortcut: 'L' },
+  { id: 'area', icon: '📐', name: 'Area', shortcut: 'A' },
+  { id: 'polyline', icon: '〰️', name: 'Polylinje', shortcut: 'P' },
+  { id: 'count', icon: '🔢', name: 'Räkna', shortcut: 'C' },
 ]
 
 export default function DocumentViewer({
@@ -103,6 +138,28 @@ export default function DocumentViewer({
   const [compareMode, setCompareMode] = useState<{ url1: string; url2: string; v1: number; v2: number } | null>(null)
   const [actualFileUrl, setActualFileUrl] = useState<string>(fileUrl)
 
+  // Measurement state
+  const [measurements, setMeasurements] = useState<DocumentMeasurementWithCreator[]>([])
+  const [measurementMode, setMeasurementMode] = useState<MeasurementType | null>(null)
+  const [drawingPoints, setDrawingPoints] = useState<MeasurementPoint[]>([])
+  const [mousePosition, setMousePosition] = useState<MeasurementPoint | null>(null)
+  const [selectedMeasurementColor, setSelectedMeasurementColor] = useState<MeasurementColor>('blue')
+  const [selectedMeasurementId, setSelectedMeasurementId] = useState<string | null>(null)
+  const [showMeasurementToolbar, setShowMeasurementToolbar] = useState<boolean>(false)
+  const [showMeasurementModal, setShowMeasurementModal] = useState<boolean>(false)
+  const [pendingMeasurement, setPendingMeasurement] = useState<CreateMeasurementData | null>(null)
+  const [measurementName, setMeasurementName] = useState<string>('')
+  const [measurementNote, setMeasurementNote] = useState<string>('')
+  // Calibration state
+  const [calibration, setCalibration] = useState<ScaleCalibration | null>(null)
+  const [isCalibrating, setIsCalibrating] = useState<boolean>(false)
+  const [calibrationPoints, setCalibrationPoints] = useState<MeasurementPoint[]>([])
+  const [showCalibrationModal, setShowCalibrationModal] = useState<boolean>(false)
+  const [calibrationDistance, setCalibrationDistance] = useState<string>('')
+  const [calibrationUnit, setCalibrationUnit] = useState<MeasurementUnit>('m')
+  // Page dimensions for measurements
+  const [pageDimensions, setPageDimensions] = useState<{ width: number; height: number }>({ width: 0, height: 0 })
+
   // Pan/drag state
   const [isPanning, setIsPanning] = useState(false)
   const [panStart, setPanStart] = useState({ x: 0, y: 0 })
@@ -133,6 +190,34 @@ export default function DocumentViewer({
     }
     loadHighlights()
   }, [isOpen, documentId])
+
+  // Load measurements when document opens
+  useEffect(() => {
+    const loadMeasurements = async () => {
+      if (!isOpen || !documentId) return
+      try {
+        const data = await getDocumentMeasurements(documentId)
+        setMeasurements(data)
+      } catch (error) {
+        console.error('Error loading measurements:', error)
+      }
+    }
+    loadMeasurements()
+  }, [isOpen, documentId])
+
+  // Load calibration when page changes
+  useEffect(() => {
+    const loadCalibration = async () => {
+      if (!isOpen || !documentId) return
+      try {
+        const cal = await getScaleCalibration(documentId, currentPage)
+        setCalibration(cal)
+      } catch (error) {
+        console.error('Error loading calibration:', error)
+      }
+    }
+    loadCalibration()
+  }, [isOpen, documentId, currentPage])
 
   const loadContent = useCallback(async () => {
     setContent({ type: 'loading' })
@@ -659,6 +744,205 @@ export default function DocumentViewer({
     setCurrentPage(highlight.page_number)
   }
 
+  // ==============================
+  // Measurement handlers
+  // ==============================
+
+  // Get relative coordinates from click event
+  const getRelativeCoords = useCallback((e: React.MouseEvent, element: HTMLElement): MeasurementPoint => {
+    const rect = element.getBoundingClientRect()
+    return {
+      x: ((e.clientX - rect.left) / rect.width) * 100,
+      y: ((e.clientY - rect.top) / rect.height) * 100
+    }
+  }, [])
+
+  // Handle click on PDF in measurement mode
+  const handleMeasurementModeClick = useCallback((e: React.MouseEvent) => {
+    if (!pageRef.current) return
+    const pageElement = pageRef.current.querySelector('.react-pdf__Page')
+    if (!pageElement) return
+
+    const coords = getRelativeCoords(e, pageElement as HTMLElement)
+
+    if (isCalibrating) {
+      // Calibration mode
+      if (calibrationPoints.length === 0) {
+        setCalibrationPoints([coords])
+      } else if (calibrationPoints.length === 1) {
+        setCalibrationPoints([calibrationPoints[0], coords])
+        setShowCalibrationModal(true)
+      }
+      return
+    }
+
+    if (!measurementMode) return
+
+    if (measurementMode === 'length') {
+      if (drawingPoints.length === 0) {
+        setDrawingPoints([coords])
+      } else {
+        // Complete length measurement
+        const points = [drawingPoints[0], coords]
+        setPendingMeasurement({
+          type: 'length',
+          page_number: currentPage,
+          points,
+          color: selectedMeasurementColor
+        })
+        setDrawingPoints([])
+        setShowMeasurementModal(true)
+      }
+    } else if (measurementMode === 'count') {
+      // Each click adds a count marker
+      setDrawingPoints(prev => [...prev, coords])
+    }
+    // area and polyline are handled with double-click to finish
+    else if (measurementMode === 'area' || measurementMode === 'polyline') {
+      setDrawingPoints(prev => [...prev, coords])
+    }
+  }, [measurementMode, isCalibrating, drawingPoints, calibrationPoints, currentPage, selectedMeasurementColor, getRelativeCoords])
+
+  // Handle double-click to finish polygon/polyline
+  const handleMeasurementModeDoubleClick = useCallback((e: React.MouseEvent) => {
+    if (!measurementMode || measurementMode === 'length' || measurementMode === 'count') return
+
+    if (measurementMode === 'area' && drawingPoints.length >= 3) {
+      // Complete area measurement
+      setPendingMeasurement({
+        type: 'area',
+        page_number: currentPage,
+        points: drawingPoints,
+        color: selectedMeasurementColor
+      })
+      setDrawingPoints([])
+      setShowMeasurementModal(true)
+    } else if (measurementMode === 'polyline' && drawingPoints.length >= 2) {
+      // Complete polyline measurement
+      setPendingMeasurement({
+        type: 'polyline',
+        page_number: currentPage,
+        points: drawingPoints,
+        color: selectedMeasurementColor
+      })
+      setDrawingPoints([])
+      setShowMeasurementModal(true)
+    }
+  }, [measurementMode, drawingPoints, currentPage, selectedMeasurementColor])
+
+  // Complete count measurement
+  const handleCompleteCountMeasurement = useCallback(() => {
+    if (measurementMode !== 'count' || drawingPoints.length === 0) return
+
+    setPendingMeasurement({
+      type: 'count',
+      page_number: currentPage,
+      points: drawingPoints,
+      color: selectedMeasurementColor
+    })
+    setDrawingPoints([])
+    setShowMeasurementModal(true)
+  }, [measurementMode, drawingPoints, currentPage, selectedMeasurementColor])
+
+  // Track mouse position for preview
+  const handleMeasurementMouseMove = useCallback((e: React.MouseEvent) => {
+    if (!measurementMode && !isCalibrating) return
+    if (!pageRef.current) return
+
+    const pageElement = pageRef.current.querySelector('.react-pdf__Page')
+    if (!pageElement) return
+
+    const coords = getRelativeCoords(e, pageElement as HTMLElement)
+    setMousePosition(coords)
+  }, [measurementMode, isCalibrating, getRelativeCoords])
+
+  // Cancel measurement mode
+  const handleCancelMeasurement = useCallback(() => {
+    setMeasurementMode(null)
+    setDrawingPoints([])
+    setMousePosition(null)
+    setIsCalibrating(false)
+    setCalibrationPoints([])
+  }, [])
+
+  // Save measurement
+  const handleSaveMeasurement = async () => {
+    if (!pendingMeasurement || !documentId || !projectId) return
+
+    try {
+      const data: CreateMeasurementData = {
+        ...pendingMeasurement,
+        name: measurementName || undefined,
+        note: measurementNote || undefined
+      }
+
+      await createMeasurement(documentId, projectId, data)
+
+      // Reload measurements
+      const updatedMeasurements = await getDocumentMeasurements(documentId)
+      setMeasurements(updatedMeasurements)
+
+      setShowMeasurementModal(false)
+      setPendingMeasurement(null)
+      setMeasurementName('')
+      setMeasurementNote('')
+    } catch (error) {
+      console.error('Error saving measurement:', error)
+    }
+  }
+
+  // Delete measurement
+  const handleDeleteMeasurement = async (measurementId: string) => {
+    try {
+      await deleteMeasurement(measurementId)
+
+      // Reload measurements
+      if (documentId) {
+        const updatedMeasurements = await getDocumentMeasurements(documentId)
+        setMeasurements(updatedMeasurements)
+      }
+      setSelectedMeasurementId(null)
+    } catch (error) {
+      console.error('Error deleting measurement:', error)
+    }
+  }
+
+  // Save calibration
+  const handleSaveCalibration = async () => {
+    if (!documentId || !projectId || calibrationPoints.length < 2) return
+
+    const distance = parseFloat(calibrationDistance)
+    if (isNaN(distance) || distance <= 0) return
+
+    try {
+      await setScaleCalibration(documentId, projectId, {
+        page_number: currentPage,
+        point1_x: calibrationPoints[0].x,
+        point1_y: calibrationPoints[0].y,
+        point2_x: calibrationPoints[1].x,
+        point2_y: calibrationPoints[1].y,
+        known_distance: distance,
+        unit: calibrationUnit
+      })
+
+      // Reload calibration
+      const cal = await getScaleCalibration(documentId, currentPage)
+      setCalibration(cal)
+
+      setShowCalibrationModal(false)
+      setCalibrationPoints([])
+      setCalibrationDistance('')
+      setIsCalibrating(false)
+    } catch (error) {
+      console.error('Error saving calibration:', error)
+    }
+  }
+
+  // Handle measurement selection
+  const handleMeasurementSelect = useCallback((id: string) => {
+    setSelectedMeasurementId(prev => prev === id ? null : id)
+  }, [])
+
   // Apply highlights to PDF text layer
   const applyHighlightsToTextLayer = useCallback((textLayer: HTMLElement) => {
     // Clear previous highlights
@@ -886,6 +1170,127 @@ export default function DocumentViewer({
               </button>
             )}
 
+            {/* Measurement tools for PDF */}
+            {content.type === 'pdf' && projectId && documentId && (
+              <div className="relative flex items-center gap-1">
+                {/* Measurement tool toggle */}
+                <button
+                  onClick={() => setShowMeasurementToolbar(!showMeasurementToolbar)}
+                  className={`p-2 rounded-lg transition-colors flex items-center gap-1 ${
+                    measurementMode || showMeasurementToolbar
+                      ? 'text-blue-600 bg-blue-50'
+                      : 'text-slate-500 hover:text-slate-900 hover:bg-slate-100'
+                  }`}
+                  title="Mätverktyg"
+                >
+                  <RulerIcon />
+                </button>
+
+                {/* Measurement toolbar dropdown */}
+                {showMeasurementToolbar && (
+                  <div className="absolute top-full left-0 mt-2 bg-white border border-slate-200 rounded-lg shadow-lg p-2 z-50 min-w-[200px]">
+                    {/* Tools */}
+                    <div className="mb-2">
+                      <p className="text-xs text-slate-400 uppercase px-2 mb-1">Verktyg</p>
+                      {MEASUREMENT_TOOLS.map((tool) => (
+                        <button
+                          key={tool.id}
+                          onClick={() => {
+                            setMeasurementMode(tool.id)
+                            setHighlightMode(false)
+                            setShowMeasurementToolbar(false)
+                          }}
+                          className={`w-full flex items-center gap-2 px-2 py-1.5 rounded text-left text-sm ${
+                            measurementMode === tool.id
+                              ? 'bg-blue-50 text-blue-700'
+                              : 'hover:bg-slate-50 text-slate-700'
+                          }`}
+                        >
+                          <span>{tool.icon}</span>
+                          <span>{tool.name}</span>
+                          <span className="ml-auto text-xs text-slate-400">{tool.shortcut}</span>
+                        </button>
+                      ))}
+                    </div>
+
+                    {/* Divider */}
+                    <div className="border-t border-slate-200 my-2" />
+
+                    {/* Calibration */}
+                    <button
+                      onClick={() => {
+                        setIsCalibrating(true)
+                        setMeasurementMode(null)
+                        setHighlightMode(false)
+                        setShowMeasurementToolbar(false)
+                      }}
+                      className={`w-full flex items-center gap-2 px-2 py-1.5 rounded text-left text-sm ${
+                        isCalibrating
+                          ? 'bg-amber-50 text-amber-700'
+                          : 'hover:bg-slate-50 text-slate-700'
+                      }`}
+                    >
+                      <span>🔧</span>
+                      <span>Kalibrera skala</span>
+                      <span className="ml-auto text-xs text-slate-400">K</span>
+                    </button>
+
+                    {/* Calibration status */}
+                    {calibration && (
+                      <p className="text-xs text-green-600 px-2 mt-2">
+                        Kalibrerad: 1 {calibration.unit} = {calibration.pixels_per_unit.toFixed(2)}%
+                      </p>
+                    )}
+
+                    {/* Color picker */}
+                    <div className="border-t border-slate-200 mt-2 pt-2">
+                      <p className="text-xs text-slate-400 uppercase px-2 mb-1">Färg</p>
+                      <div className="flex gap-1 px-2">
+                        {MEASUREMENT_COLORS.map((color) => (
+                          <button
+                            key={color.id}
+                            onClick={() => setSelectedMeasurementColor(color.id)}
+                            className={`w-6 h-6 rounded ${color.bg} ${
+                              selectedMeasurementColor === color.id
+                                ? 'ring-2 ring-slate-600 ring-offset-1'
+                                : ''
+                            }`}
+                            title={color.name}
+                          />
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* Active tool indicator */}
+                {(measurementMode || isCalibrating) && (
+                  <div className="flex items-center gap-1 bg-blue-100 rounded-lg px-2 py-1">
+                    <span className="text-xs text-blue-700">
+                      {isCalibrating ? 'Kalibrering' : MEASUREMENT_TOOLS.find(t => t.id === measurementMode)?.name}
+                    </span>
+                    <button
+                      onClick={handleCancelMeasurement}
+                      className="p-0.5 text-blue-500 hover:text-blue-700"
+                      title="Avbryt (Esc)"
+                    >
+                      <CloseIcon />
+                    </button>
+                  </div>
+                )}
+
+                {/* Complete count button */}
+                {measurementMode === 'count' && drawingPoints.length > 0 && (
+                  <button
+                    onClick={handleCompleteCountMeasurement}
+                    className="px-2 py-1 text-xs bg-green-500 hover:bg-green-400 text-white rounded transition-colors"
+                  >
+                    Slutför ({drawingPoints.length} st)
+                  </button>
+                )}
+              </div>
+            )}
+
             {/* Comments button for PDF */}
             {content.type === 'pdf' && projectId && documentId && (
               <button
@@ -1011,12 +1416,21 @@ export default function DocumentViewer({
           {content.type === 'pdf' && !compareMode && (
             <div
               ref={pdfContainerRef}
-              className={`flex flex-col items-center min-h-full select-text ${isPanning ? 'cursor-grabbing' : ''} ${highlightMode ? 'cursor-text' : ''}`}
+              className={`flex flex-col items-center min-h-full select-text ${isPanning ? 'cursor-grabbing' : ''} ${highlightMode ? 'cursor-text' : ''} ${measurementMode || isCalibrating ? 'cursor-crosshair' : ''}`}
               onMouseDown={handleMouseDown}
-              onMouseMove={handleMouseMove}
+              onMouseMove={(e) => {
+                handleMouseMove(e)
+                handleMeasurementMouseMove(e)
+              }}
               onMouseUp={handleMouseUp}
               onMouseLeave={handleMouseLeave}
               onContextMenu={handleContextMenu}
+              onClick={(e) => {
+                if (measurementMode || isCalibrating) {
+                  handleMeasurementModeClick(e)
+                }
+              }}
+              onDoubleClick={handleMeasurementModeDoubleClick}
             >
               {/* Old version banner */}
               {viewingOldVersion && (
@@ -1056,14 +1470,37 @@ export default function DocumentViewer({
                     </div>
                   }
                 >
-                  <div ref={pageRef}>
+                  <div ref={pageRef} className="relative">
                     <Page
                       pageNumber={currentPage}
                       scale={scale}
                       renderTextLayer={true}
                       renderAnnotationLayer={false}
                       className="shadow-xl rounded-lg"
-                      onRenderSuccess={handlePageRenderSuccess}
+                      onRenderSuccess={(page) => {
+                        handlePageRenderSuccess()
+                        // Update page dimensions for measurement calculations
+                        setPageDimensions({
+                          width: page.width,
+                          height: page.height
+                        })
+                      }}
+                    />
+                    {/* Measurement overlay */}
+                    <MeasurementOverlay
+                      measurements={measurements}
+                      currentPage={currentPage}
+                      pageWidth={pageDimensions.width}
+                      pageHeight={pageDimensions.height}
+                      scale={scale}
+                      measurementMode={measurementMode}
+                      drawingPoints={drawingPoints}
+                      mousePosition={mousePosition}
+                      selectedColor={selectedMeasurementColor}
+                      isCalibrating={isCalibrating}
+                      calibrationPoints={calibrationPoints}
+                      selectedMeasurementId={selectedMeasurementId}
+                      onMeasurementClick={handleMeasurementSelect}
                     />
                   </div>
                 </Document>
@@ -1443,6 +1880,195 @@ export default function DocumentViewer({
           </div>
         )}
 
+        {/* Measurement Save Modal */}
+        {showMeasurementModal && pendingMeasurement && (
+          <div className="fixed inset-0 z-[60] flex items-center justify-center">
+            <div
+              className="absolute inset-0 bg-black/50"
+              onClick={() => {
+                setShowMeasurementModal(false)
+                setPendingMeasurement(null)
+                setMeasurementName('')
+                setMeasurementNote('')
+              }}
+            />
+            <div className="relative bg-white rounded-xl shadow-xl w-full max-w-md p-6">
+              <h3 className="text-lg font-semibold text-slate-900 mb-4">Spara mätning</h3>
+
+              {/* Measurement info */}
+              <div className="mb-4 p-3 bg-slate-50 rounded-lg border border-slate-200">
+                <div className="flex items-center gap-2 mb-2">
+                  <span className="text-lg">
+                    {MEASUREMENT_TOOLS.find(t => t.id === pendingMeasurement.type)?.icon}
+                  </span>
+                  <span className="font-medium text-slate-700">
+                    {MEASUREMENT_TOOLS.find(t => t.id === pendingMeasurement.type)?.name}
+                  </span>
+                </div>
+                <p className="text-xs text-slate-400">Sida {pendingMeasurement.page_number}</p>
+                {pendingMeasurement.type === 'count' && (
+                  <p className="text-sm text-slate-600 mt-1">Antal: {pendingMeasurement.points.length} st</p>
+                )}
+                {!calibration && pendingMeasurement.type !== 'count' && (
+                  <p className="text-xs text-amber-600 mt-2">
+                    Skalan är inte kalibrerad. Kalibrera för att få verkliga mått.
+                  </p>
+                )}
+              </div>
+
+              {/* Name input */}
+              <div className="mb-4">
+                <label className="block text-sm text-slate-500 mb-2">Namn:</label>
+                <input
+                  type="text"
+                  value={measurementName}
+                  onChange={(e) => setMeasurementName(e.target.value)}
+                  placeholder="T.ex. Vägg kök, Golv sovrum..."
+                  className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
+              </div>
+
+              {/* Color picker */}
+              <div className="mb-4">
+                <p className="text-sm text-slate-500 mb-2">Färg:</p>
+                <div className="flex gap-2">
+                  {MEASUREMENT_COLORS.map((color) => (
+                    <button
+                      key={color.id}
+                      onClick={() => {
+                        setSelectedMeasurementColor(color.id)
+                        setPendingMeasurement({
+                          ...pendingMeasurement,
+                          color: color.id
+                        })
+                      }}
+                      className={`w-8 h-8 rounded-lg ${color.bg} ${
+                        pendingMeasurement.color === color.id
+                          ? 'ring-2 ring-slate-600 ring-offset-2'
+                          : 'hover:scale-110'
+                      } transition-transform`}
+                      title={color.name}
+                    />
+                  ))}
+                </div>
+              </div>
+
+              {/* Note input */}
+              <div className="mb-6">
+                <label className="block text-sm text-slate-500 mb-2">Anteckning (valfritt):</label>
+                <textarea
+                  value={measurementNote}
+                  onChange={(e) => setMeasurementNote(e.target.value)}
+                  placeholder="Skriv en anteckning..."
+                  className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
+                  rows={3}
+                />
+              </div>
+
+              {/* Actions */}
+              <div className="flex justify-end gap-2">
+                <button
+                  onClick={() => {
+                    setShowMeasurementModal(false)
+                    setPendingMeasurement(null)
+                    setMeasurementName('')
+                    setMeasurementNote('')
+                  }}
+                  className="px-4 py-2 text-sm text-slate-600 hover:text-slate-900 transition-colors"
+                >
+                  Avbryt
+                </button>
+                <button
+                  onClick={handleSaveMeasurement}
+                  className="px-4 py-2 text-sm bg-blue-600 hover:bg-blue-500 text-white rounded-lg transition-colors"
+                >
+                  Spara mätning
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Calibration Modal */}
+        {showCalibrationModal && calibrationPoints.length === 2 && (
+          <div className="fixed inset-0 z-[60] flex items-center justify-center">
+            <div
+              className="absolute inset-0 bg-black/50"
+              onClick={() => {
+                setShowCalibrationModal(false)
+                setCalibrationPoints([])
+                setCalibrationDistance('')
+                setIsCalibrating(false)
+              }}
+            />
+            <div className="relative bg-white rounded-xl shadow-xl w-full max-w-md p-6">
+              <h3 className="text-lg font-semibold text-slate-900 mb-4">Kalibrera skala</h3>
+
+              {/* Instructions */}
+              <div className="mb-4 p-3 bg-amber-50 rounded-lg border border-amber-200">
+                <p className="text-sm text-amber-800">
+                  Du har ritat en kalibreringslinje. Ange det verkliga måttet som denna linje representerar.
+                </p>
+              </div>
+
+              {/* Distance input */}
+              <div className="mb-4">
+                <label className="block text-sm text-slate-500 mb-2">Verkligt mått:</label>
+                <div className="flex gap-2">
+                  <input
+                    type="number"
+                    step="0.01"
+                    min="0"
+                    value={calibrationDistance}
+                    onChange={(e) => setCalibrationDistance(e.target.value)}
+                    placeholder="T.ex. 1, 5, 10..."
+                    className="flex-1 px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-amber-500"
+                    autoFocus
+                  />
+                  <select
+                    value={calibrationUnit}
+                    onChange={(e) => setCalibrationUnit(e.target.value as MeasurementUnit)}
+                    className="px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-amber-500"
+                  >
+                    <option value="mm">mm</option>
+                    <option value="cm">cm</option>
+                    <option value="m">m</option>
+                    <option value="in">tum</option>
+                    <option value="ft">fot</option>
+                  </select>
+                </div>
+              </div>
+
+              {/* Hint */}
+              <p className="text-xs text-slate-400 mb-6">
+                Tips: Rita kalibreringslinje över ett känt mått på ritningen, t.ex. en måttlinje eller en dörröppning (vanligtvis 0.9m).
+              </p>
+
+              {/* Actions */}
+              <div className="flex justify-end gap-2">
+                <button
+                  onClick={() => {
+                    setShowCalibrationModal(false)
+                    setCalibrationPoints([])
+                    setCalibrationDistance('')
+                    setIsCalibrating(false)
+                  }}
+                  className="px-4 py-2 text-sm text-slate-600 hover:text-slate-900 transition-colors"
+                >
+                  Avbryt
+                </button>
+                <button
+                  onClick={handleSaveCalibration}
+                  disabled={!calibrationDistance || parseFloat(calibrationDistance) <= 0}
+                  className="px-4 py-2 text-sm bg-amber-600 hover:bg-amber-500 text-white rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  Spara kalibrering
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* Footer with pagination for PDF */}
         {content.type === 'pdf' && numPages > 1 && (
           <div className="flex items-center justify-center gap-4 px-6 py-3 border-t border-slate-200 bg-white/50">
@@ -1657,6 +2283,14 @@ function TrashIcon({ className = 'h-5 w-5' }: { className?: string }) {
   return (
     <svg className={className} fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
       <path strokeLinecap="round" strokeLinejoin="round" d="m14.74 9-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 0 1-2.244 2.077H8.084a2.25 2.25 0 0 1-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 0 0-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 0 1 3.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 0 0-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 0 0-7.5 0" />
+    </svg>
+  )
+}
+
+function RulerIcon({ className = 'h-5 w-5' }: { className?: string }) {
+  return (
+    <svg className={className} fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+      <path strokeLinecap="round" strokeLinejoin="round" d="M10.5 6h9.75M10.5 6a1.5 1.5 0 1 1-3 0m3 0a1.5 1.5 0 1 0-3 0M3.75 6H7.5m3 12h9.75m-9.75 0a1.5 1.5 0 0 1-3 0m3 0a1.5 1.5 0 0 0-3 0m-3.75 0H7.5m9-6h3.75m-3.75 0a1.5 1.5 0 0 1-3 0m3 0a1.5 1.5 0 0 0-3 0m-9.75 0h9.75" />
     </svg>
   )
 }

@@ -1097,3 +1097,78 @@ export interface UpdateHighlightData {
   color?: HighlightColor
   note?: string | null
 }
+
+// ===============================
+// Document Measurement Types
+// ===============================
+
+export type MeasurementType = 'length' | 'area' | 'polyline' | 'count'
+export type MeasurementUnit = 'mm' | 'cm' | 'm' | 'in' | 'ft'
+export type MeasurementColor = 'blue' | 'red' | 'green' | 'orange' | 'purple'
+
+export interface MeasurementPoint {
+  x: number  // % of page width (0-100)
+  y: number  // % of page height (0-100)
+}
+
+export interface DocumentMeasurement {
+  id: string
+  document_id: string
+  project_id: string
+  created_by: string
+  type: MeasurementType
+  name: string | null
+  page_number: number
+  points: MeasurementPoint[]
+  scale_ratio: number | null
+  scale_unit: MeasurementUnit | null
+  measured_value: number | null
+  color: MeasurementColor
+  note: string | null
+  created_at: string
+  updated_at: string
+}
+
+export interface DocumentMeasurementWithCreator extends DocumentMeasurement {
+  creator: Profile
+}
+
+export interface ScaleCalibration {
+  id: string
+  document_id: string
+  page_number: number
+  created_by: string
+  point1_x: number
+  point1_y: number
+  point2_x: number
+  point2_y: number
+  known_distance: number
+  unit: MeasurementUnit
+  pixels_per_unit: number
+  created_at: string
+}
+
+export interface CreateMeasurementData {
+  type: MeasurementType
+  name?: string
+  page_number: number
+  points: MeasurementPoint[]
+  color?: MeasurementColor
+  note?: string
+}
+
+export interface UpdateMeasurementData {
+  name?: string | null
+  color?: MeasurementColor
+  note?: string | null
+}
+
+export interface CreateCalibrationData {
+  page_number: number
+  point1_x: number
+  point1_y: number
+  point2_x: number
+  point2_y: number
+  known_distance: number
+  unit: MeasurementUnit
+}
