@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { createCalendarEvent, type CreateCalendarEventData } from '@/app/actions/calendar'
 
@@ -45,11 +45,11 @@ export default function CreateEventModal({ isOpen, onClose, projectId, initialDa
   const [error, setError] = useState<string | null>(null)
 
   // Update date when initialDate changes
-  useState(() => {
+  useEffect(() => {
     if (initialDate) {
       setFormData(prev => ({ ...prev, event_date: initialDate }))
     }
-  })
+  }, [initialDate])
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
