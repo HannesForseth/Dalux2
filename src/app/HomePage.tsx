@@ -118,14 +118,28 @@ export default function Home() {
               </Link>
 
               <div className="hidden md:flex items-center gap-1">
-                {["Funktioner", "Priser", "Om oss"].map((item) => (
-                  <a
-                    key={item}
-                    href={`#${item.toLowerCase()}`}
-                    className="px-4 py-2 text-sm text-slate-600 hover:text-slate-900 hover:bg-slate-100 rounded-lg transition-all"
-                  >
-                    {item}
-                  </a>
+                {[
+                  { label: "Funktioner", href: "#funktioner" },
+                  { label: "Priser", href: "#priser" },
+                  { label: "Om oss", href: "/om-oss" },
+                ].map((item) => (
+                  item.href.startsWith('/') ? (
+                    <Link
+                      key={item.label}
+                      href={item.href}
+                      className="px-4 py-2 text-sm text-slate-600 hover:text-slate-900 hover:bg-slate-100 rounded-lg transition-all"
+                    >
+                      {item.label}
+                    </Link>
+                  ) : (
+                    <a
+                      key={item.label}
+                      href={item.href}
+                      className="px-4 py-2 text-sm text-slate-600 hover:text-slate-900 hover:bg-slate-100 rounded-lg transition-all"
+                    >
+                      {item.label}
+                    </a>
+                  )
                 ))}
               </div>
 

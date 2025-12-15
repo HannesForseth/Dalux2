@@ -41,7 +41,7 @@ export async function updateSession(request: NextRequest) {
     data: { user },
   } = await supabase.auth.getUser()
 
-  // Public paths that don't require authentication (SEO, static files)
+  // Public paths that don't require authentication (SEO, static files, public pages)
   const publicPaths = [
     '/sitemap.xml',
     '/robots.txt',
@@ -51,6 +51,7 @@ export async function updateSession(request: NextRequest) {
     '/apple-icon',
     '/favicon.ico',
     '/invite',
+    '/om-oss',
   ]
 
   const isPublicPath = publicPaths.some(path =>
