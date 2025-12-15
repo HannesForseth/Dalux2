@@ -183,7 +183,11 @@ export default function DocumentViewer({
   // Zoom state for smooth animations
   const [isZooming, setIsZooming] = useState(false)
   const [showZoomIndicator, setShowZoomIndicator] = useState(false)
+  const [isRendering, setIsRendering] = useState(false)
+  const [snapshotUrl, setSnapshotUrl] = useState<string | null>(null)
   const animationFrameRef = useRef<number | null>(null)
+  const prevRenderScaleRef = useRef<number>(1.0)
+  const prevPageDimensionsRef = useRef<{ width: number; height: number }>({ width: 0, height: 0 })
 
   // Zoom dropdown state
   const [showZoomMenu, setShowZoomMenu] = useState(false)
@@ -566,11 +570,32 @@ export default function DocumentViewer({
   // but visual zoom is instant via CSS transform
   useEffect(() => {
     const timer = setTimeout(() => {
-      setRenderScale(scale)
+      // Only update renderScale if it's significantly different
+      if (Math.abs(scale - renderScale) > 0.01) {
+        // Capture current canvas as snapshot before re-render
+        const pageWrapper = pageRef.current
+        if (pageWrapper) {
+          const canvas = pageWrapper.querySelector('canvas')
+          if (canvas) {
+            try {
+              const dataUrl = canvas.toDataURL('image/png')
+              setSnapshotUrl(dataUrl)
+              prevRenderScaleRef.current = renderScale
+              prevPageDimensionsRef.current = { ...pageDimensions }
+            } catch (e) {
+              // Canvas might be tainted, ignore
+              console.warn('Could not capture canvas snapshot:', e)
+            }
+          }
+        }
+
+        setIsRendering(true)
+        setRenderScale(scale)
+      }
       setIsZooming(false)
     }, RENDER_DEBOUNCE_MS)
     return () => clearTimeout(timer)
-  }, [scale])
+  }, [scale, renderScale, pageDimensions])
 
   // Show/hide zoom indicator based on zoom state
   useEffect(() => {
@@ -1966,6 +1991,22 @@ export default function DocumentViewer({
                       transition: isZooming ? 'none' : 'transform 0.05s ease-out'
                     }}
                   >
+                    {/* Snapshot layer - shown during re-render to prevent white flash */}
+                    {snapshotUrl && isRendering && (
+                      <img
+                        src={snapshotUrl}
+                        alt=""
+                        className="absolute top-0 left-0 pointer-events-none"
+                        style={{
+                          width: '100%',
+                          height: '100%',
+                          objectFit: 'fill',
+                          zIndex: 5, // Below measurement overlay but above canvas
+                          opacity: 0.99,
+                          transition: 'opacity 100ms ease-out'
+                        }}
+                      />
+                    )}
                     <Page
                       pageNumber={currentPage}
                       scale={renderScale}
@@ -1974,11 +2015,22 @@ export default function DocumentViewer({
                       className="shadow-xl rounded-lg"
                       onRenderSuccess={(page) => {
                         handlePageRenderSuccess()
+
                         // Update page dimensions for measurement calculations (at render scale)
                         setPageDimensions({
                           width: page.width,
                           height: page.height
                         })
+
+                        // Clear snapshot after a brief delay for smooth transition
+                        if (snapshotUrl) {
+                          setTimeout(() => {
+                            setSnapshotUrl(null)
+                            setIsRendering(false)
+                          }, 50)
+                        } else {
+                          setIsRendering(false)
+                        }
                       }}
                     />
                     {/* Measurement overlay */}
