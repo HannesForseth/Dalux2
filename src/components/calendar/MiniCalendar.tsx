@@ -7,6 +7,7 @@ import { getCalendarEvents, getUpcomingEvents, type CalendarEvent } from '@/app/
 interface MiniCalendarProps {
   projectId: string
   onExpandClick: () => void
+  refreshKey?: number  // Increment this to trigger a reload
 }
 
 const WEEKDAYS = ['må', 'ti', 'on', 'to', 'fr', 'lö', 'sö']
@@ -15,7 +16,7 @@ const MONTHS = [
   'juli', 'augusti', 'september', 'oktober', 'november', 'december'
 ]
 
-export default function MiniCalendar({ projectId, onExpandClick }: MiniCalendarProps) {
+export default function MiniCalendar({ projectId, onExpandClick, refreshKey }: MiniCalendarProps) {
   const [currentDate, setCurrentDate] = useState(new Date())
   const [events, setEvents] = useState<CalendarEvent[]>([])
   const [upcomingEvents, setUpcomingEvents] = useState<CalendarEvent[]>([])
@@ -27,7 +28,7 @@ export default function MiniCalendar({ projectId, onExpandClick }: MiniCalendarP
 
   useEffect(() => {
     loadEvents()
-  }, [projectId, year, month])
+  }, [projectId, year, month, refreshKey])
 
   async function loadEvents() {
     setIsLoading(true)

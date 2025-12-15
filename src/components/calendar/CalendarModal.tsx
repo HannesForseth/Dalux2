@@ -9,6 +9,7 @@ interface CalendarModalProps {
   isOpen: boolean
   onClose: () => void
   projectId: string
+  onEventCreated?: () => void  // Called when a new event is created
 }
 
 const WEEKDAYS = ['måndag', 'tisdag', 'onsdag', 'torsdag', 'fredag', 'lördag', 'söndag']
@@ -29,7 +30,7 @@ const EVENT_TYPE_LABELS: Record<EventTypeFilter, string> = {
   milestone: 'Milstolpar'
 }
 
-export default function CalendarModal({ isOpen, onClose, projectId }: CalendarModalProps) {
+export default function CalendarModal({ isOpen, onClose, projectId, onEventCreated }: CalendarModalProps) {
   const [currentDate, setCurrentDate] = useState(new Date())
   const [events, setEvents] = useState<CalendarEvent[]>([])
   const [selectedDate, setSelectedDate] = useState<string | null>(null)
@@ -142,6 +143,7 @@ export default function CalendarModal({ isOpen, onClose, projectId }: CalendarMo
     setShowCreateModal(false)
     setCreateModalDate(null)
     loadEvents()
+    onEventCreated?.()  // Notify parent to refresh other components
   }
 
   const days = getDaysInMonth()

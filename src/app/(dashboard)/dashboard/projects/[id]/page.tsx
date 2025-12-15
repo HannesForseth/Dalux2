@@ -35,6 +35,7 @@ export default function ProjectDetailPage() {
   const [activities, setActivities] = useState<ActivityItem[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [isCalendarModalOpen, setIsCalendarModalOpen] = useState(false)
+  const [calendarRefreshKey, setCalendarRefreshKey] = useState(0)
 
   useEffect(() => {
     loadProject()
@@ -352,6 +353,7 @@ export default function ProjectDetailPage() {
             <MiniCalendar
               projectId={project.id}
               onExpandClick={() => setIsCalendarModalOpen(true)}
+              refreshKey={calendarRefreshKey}
             />
           </motion.div>
         </div>
@@ -362,6 +364,7 @@ export default function ProjectDetailPage() {
         isOpen={isCalendarModalOpen}
         onClose={() => setIsCalendarModalOpen(false)}
         projectId={project.id}
+        onEventCreated={() => setCalendarRefreshKey(k => k + 1)}
       />
     </motion.div>
   )
