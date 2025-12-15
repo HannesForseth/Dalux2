@@ -314,6 +314,8 @@ export default function DocumentViewer({
 
   // Pan handlers
   const handleMouseDown = (e: React.MouseEvent) => {
+    // Don't start panning in highlight mode - allow text selection
+    if (highlightMode) return
     if (scale <= 1 || content.type !== 'pdf') return
     e.preventDefault()
     setIsPanning(true)
@@ -928,7 +930,7 @@ export default function DocumentViewer({
           {content.type === 'pdf' && !compareMode && (
             <div
               ref={pdfContainerRef}
-              className={`flex flex-col items-center min-h-full select-none ${scale > 1 ? 'cursor-grab' : ''} ${isPanning ? 'cursor-grabbing' : ''}`}
+              className={`flex flex-col items-center min-h-full ${scale > 1 && !highlightMode ? 'select-none cursor-grab' : 'select-text'} ${isPanning ? 'cursor-grabbing' : ''} ${highlightMode ? 'cursor-text' : ''}`}
               onMouseDown={handleMouseDown}
               onMouseMove={handleMouseMove}
               onMouseUp={handleMouseUp}
@@ -1154,14 +1156,14 @@ export default function DocumentViewer({
                       currentSearchIndex === index ? 'bg-yellow-50 border-l-2 border-l-yellow-400' : ''
                     }`}
                   >
-                    <div className="text-sm text-slate-600 mb-1">
-                      <span className="text-slate-400">{result.contextBefore}</span>
-                      <mark className="bg-yellow-200 text-yellow-900 px-0.5 rounded font-medium">
+                    <div className="text-sm mb-1">
+                      <span className="text-slate-700">{result.contextBefore}</span>
+                      <mark className="bg-yellow-300 text-yellow-900 px-0.5 rounded font-semibold">
                         {result.text}
                       </mark>
-                      <span className="text-slate-400">{result.contextAfter}</span>
+                      <span className="text-slate-700">{result.contextAfter}</span>
                     </div>
-                    <div className="text-xs text-slate-400">
+                    <div className="text-xs text-slate-500 font-medium">
                       Sida {result.page}
                     </div>
                   </button>
