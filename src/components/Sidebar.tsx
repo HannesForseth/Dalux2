@@ -219,11 +219,11 @@ export default function Sidebar() {
         {/* Bottom section - Settings */}
         <div className="pb-4 border-t border-slate-200/50 pt-4 space-y-1">
           <Link
-            href="/dashboard/settings"
+            href={isInProjectContext ? `${projectBasePath}/settings` : '/dashboard/profile'}
             className="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium text-slate-600 hover:bg-slate-100 hover:text-slate-900 transition-all duration-200"
           >
             <SettingsIcon className="h-5 w-5" />
-            Inställningar
+            {isInProjectContext ? 'Projektinställningar' : 'Min profil'}
           </Link>
         </div>
       </nav>

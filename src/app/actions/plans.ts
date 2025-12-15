@@ -73,6 +73,65 @@ export async function getStorageAddons(): Promise<StorageAddon[]> {
   return data as StorageAddon[]
 }
 
+export async function getProjectSubscription(projectId: string): Promise<{
+  subscription: import('@/types/database').ProjectSubscription | null
+  plan: ProjectPlan | null
+}> {
+  const supabase = await createClient()
+
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) {
+    throw new Error('Inte inloggad')
+  }
+
+  // Verify access to project
+  const { data: member } = await supabase
+    .from('project_members')
+    .select('id')
+    .eq('project_id', projectId)
+    .eq('user_id', user.id)
+    .single()
+
+  if (!member) {
+    throw new Error('Du har inte behörighet till detta projekt')
+  }
+
+  // Get subscription
+  const { data: subscription, error: subError } = await supabase
+    .from('project_subscriptions')
+    .select('*')
+    .eq('project_id', projectId)
+    .order('created_at', { ascending: false })
+    .limit(1)
+    .single()
+
+  if (subError && subError.code !== 'PGRST116') {
+    console.error('Error fetching subscription:', subError)
+    throw new Error('Kunde inte hämta prenumeration')
+  }
+
+  // Get plan if subscription exists
+  let plan: ProjectPlan | null = null
+  if (subscription?.plan_id) {
+    const { data: planData, error: planError } = await supabase
+      .from('project_plans')
+      .select('*')
+      .eq('id', subscription.plan_id)
+      .single()
+
+    if (planError && planError.code !== 'PGRST116') {
+      console.error('Error fetching plan:', planError)
+    } else {
+      plan = planData as ProjectPlan
+    }
+  }
+
+  return {
+    subscription: subscription as import('@/types/database').ProjectSubscription | null,
+    plan,
+  }
+}
+
 export async function calculateProjectPrice(
   planId: string,
   extraUsers: number = 0,
