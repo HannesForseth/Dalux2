@@ -163,8 +163,8 @@ export default function NewProjectPage() {
             <span>Tillbaka</span>
           </Link>
           <div className="flex items-center gap-3">
-            <div className="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center">
-              <span className="text-white font-bold text-sm">D2</span>
+            <div className="w-8 h-8 bg-gradient-to-br from-indigo-500 to-purple-600 rounded-lg flex items-center justify-center">
+              <span className="text-white font-bold text-sm">B</span>
             </div>
             <span className="text-white font-semibold">Skapa projekt</span>
           </div>

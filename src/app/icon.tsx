@@ -14,7 +14,7 @@ export default function Icon() {
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
-          backgroundColor: '#2563EB',
+          background: 'linear-gradient(135deg, #6366f1 0%, #a855f7 100%)',
           borderRadius: '8px',
         }}
       >
@@ -26,7 +26,7 @@ export default function Icon() {
             fontFamily: 'system-ui',
           }}
         >
-          D
+          B
         </div>
       </div>
     ),
