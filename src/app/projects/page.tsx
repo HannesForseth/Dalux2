@@ -114,13 +114,14 @@ export default function ProjectSelectorPage() {
       {/* Glassmorphism Header */}
       <header className="sticky top-0 z-50 bg-white/80 backdrop-blur-md border-b border-slate-200/50">
         <div className="max-w-6xl mx-auto px-4 py-4 flex items-center justify-between">
-          <Link href="/" className="flex items-center gap-3 group">
-            <div className="w-10 h-10 bg-gradient-to-br from-indigo-500 via-purple-500 to-pink-500 rounded-xl flex items-center justify-center shadow-lg shadow-indigo-500/25 group-hover:shadow-xl group-hover:shadow-indigo-500/30 transition-all duration-300 group-hover:scale-105">
-              <span className="text-white font-bold text-lg">B</span>
-            </div>
-            <span className="text-xl font-bold bg-gradient-to-r from-indigo-600 via-purple-600 to-pink-500 bg-clip-text text-transparent">
-              Bloxr
-            </span>
+          <Link href="/" className="flex items-center group-hover:scale-105 transition-transform duration-300">
+            <Image
+              src="/bloxr-logo.png"
+              alt="Bloxr"
+              width={120}
+              height={40}
+              className="h-10 w-auto"
+            />
           </Link>
 
           <div className="flex items-center gap-4">

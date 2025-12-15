@@ -1,6 +1,7 @@
 'use client'
 
 import Link from 'next/link'
+import Image from 'next/image'
 import { usePathname, useParams } from 'next/navigation'
 import { motion, AnimatePresence } from 'framer-motion'
 import { X } from 'lucide-react'
@@ -157,13 +158,14 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
       >
         {/* Logo Header */}
         <div className="flex h-16 items-center justify-between px-6 border-b border-slate-200/50">
-          <Link href="/projects" className="flex items-center gap-3 group" onClick={handleNavClick}>
-            <div className="w-9 h-9 bg-gradient-to-br from-indigo-500 via-purple-500 to-pink-500 rounded-xl flex items-center justify-center shadow-lg shadow-indigo-500/25 group-hover:shadow-xl group-hover:shadow-indigo-500/30 transition-all duration-300 group-hover:scale-105">
-              <span className="text-white font-bold text-lg">B</span>
-            </div>
-            <span className="text-xl font-bold bg-gradient-to-r from-indigo-600 via-purple-600 to-pink-500 bg-clip-text text-transparent">
-              Bloxr
-            </span>
+          <Link href="/projects" className="flex items-center group-hover:scale-105 transition-transform duration-300" onClick={handleNavClick}>
+            <Image
+              src="/bloxr-logo.png"
+              alt="Bloxr"
+              width={110}
+              height={36}
+              className="h-9 w-auto"
+            />
           </Link>
 
           {/* Close button - mobile only */}
