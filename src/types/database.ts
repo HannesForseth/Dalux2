@@ -1155,6 +1155,7 @@ export interface CreateMeasurementData {
   points: MeasurementPoint[]
   color?: MeasurementColor
   note?: string
+  measured_value?: number // Calculated value in real-world units
 }
 
 export interface UpdateMeasurementData {

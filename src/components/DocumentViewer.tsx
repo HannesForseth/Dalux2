@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect, useCallback, useRef } from 'react'
+import { useHotkeys } from 'react-hotkeys-hook'
 import { Document, Page, pdfjs } from 'react-pdf'
 import 'react-pdf/dist/Page/TextLayer.css'
 import * as XLSX from 'xlsx'
@@ -10,6 +11,7 @@ import CommentPanel from './documents/CommentPanel'
 import VersionHistoryPanel from './documents/VersionHistoryPanel'
 import UploadVersionModal from './documents/UploadVersionModal'
 import MeasurementOverlay from './documents/MeasurementOverlay'
+import MeasurementsPanel from './documents/MeasurementsPanel'
 import { getComparisonUrls, getDocumentDownloadUrl } from '@/app/actions/documents'
 import { getDocumentHighlights, createHighlight, updateHighlight, deleteHighlight } from '@/app/actions/documentHighlights'
 import {
@@ -20,6 +22,13 @@ import {
   getScaleCalibration,
   setScaleCalibration
 } from '@/app/actions/documentMeasurements'
+import {
+  calculatePixelDistance,
+  calculateRealLength,
+  calculatePixelArea,
+  calculateRealArea,
+  calculatePolylinePixelLength
+} from '@/lib/measurementUtils'
 import type { DocumentHighlightWithCreator, HighlightColor, CreateHighlightData } from '@/types/database'
 import type {
   DocumentMeasurementWithCreator,
@@ -159,12 +168,18 @@ export default function DocumentViewer({
   const [calibrationUnit, setCalibrationUnit] = useState<MeasurementUnit>('m')
   // Page dimensions for measurements
   const [pageDimensions, setPageDimensions] = useState<{ width: number; height: number }>({ width: 0, height: 0 })
+  // Measurements panel state
+  const [showMeasurementsPanel, setShowMeasurementsPanel] = useState<boolean>(false)
+  const [showKeyboardHelp, setShowKeyboardHelp] = useState<boolean>(false)
 
   // Pan/drag state
   const [isPanning, setIsPanning] = useState(false)
   const [panStart, setPanStart] = useState({ x: 0, y: 0 })
   const [panOffset, setPanOffset] = useState({ x: 0, y: 0 })
   const [lastPanOffset, setLastPanOffset] = useState({ x: 0, y: 0 })
+
+  // Zoom dropdown state
+  const [showZoomMenu, setShowZoomMenu] = useState(false)
 
   const pdfContainerRef = useRef<HTMLDivElement>(null)
   const searchInputRef = useRef<HTMLInputElement>(null)
@@ -218,6 +233,154 @@ export default function DocumentViewer({
     }
     loadCalibration()
   }, [isOpen, documentId, currentPage])
+
+  // ==============================
+  // Keyboard shortcuts
+  // ==============================
+
+  // L - Length measurement
+  useHotkeys('l', () => {
+    if (!isOpen || content.type !== 'pdf' || !projectId || !documentId) return
+    if (showMeasurementModal || showCalibrationModal || showAddHighlightModal) return
+    setMeasurementMode('length')
+    setDrawingPoints([])
+    setShowMeasurementToolbar(true)
+  }, { enabled: isOpen && content.type === 'pdf' }, [isOpen, content.type, projectId, documentId, showMeasurementModal, showCalibrationModal, showAddHighlightModal])
+
+  // A - Area measurement
+  useHotkeys('a', () => {
+    if (!isOpen || content.type !== 'pdf' || !projectId || !documentId) return
+    if (showMeasurementModal || showCalibrationModal || showAddHighlightModal) return
+    setMeasurementMode('area')
+    setDrawingPoints([])
+    setShowMeasurementToolbar(true)
+  }, { enabled: isOpen && content.type === 'pdf' }, [isOpen, content.type, projectId, documentId, showMeasurementModal, showCalibrationModal, showAddHighlightModal])
+
+  // P - Polyline measurement
+  useHotkeys('p', () => {
+    if (!isOpen || content.type !== 'pdf' || !projectId || !documentId) return
+    if (showMeasurementModal || showCalibrationModal || showAddHighlightModal) return
+    setMeasurementMode('polyline')
+    setDrawingPoints([])
+    setShowMeasurementToolbar(true)
+  }, { enabled: isOpen && content.type === 'pdf' }, [isOpen, content.type, projectId, documentId, showMeasurementModal, showCalibrationModal, showAddHighlightModal])
+
+  // C - Count measurement
+  useHotkeys('c', () => {
+    if (!isOpen || content.type !== 'pdf' || !projectId || !documentId) return
+    if (showMeasurementModal || showCalibrationModal || showAddHighlightModal) return
+    setMeasurementMode('count')
+    setDrawingPoints([])
+    setShowMeasurementToolbar(true)
+  }, { enabled: isOpen && content.type === 'pdf' }, [isOpen, content.type, projectId, documentId, showMeasurementModal, showCalibrationModal, showAddHighlightModal])
+
+  // K - Calibration
+  useHotkeys('k', () => {
+    if (!isOpen || content.type !== 'pdf' || !projectId || !documentId) return
+    if (showMeasurementModal || showCalibrationModal || showAddHighlightModal) return
+    setIsCalibrating(true)
+    setCalibrationPoints([])
+    setMeasurementMode(null)
+    setShowMeasurementToolbar(true)
+  }, { enabled: isOpen && content.type === 'pdf' }, [isOpen, content.type, projectId, documentId, showMeasurementModal, showCalibrationModal, showAddHighlightModal])
+
+  // Escape - Cancel current action
+  useHotkeys('escape', () => {
+    if (!isOpen) return
+    // Close modals first
+    if (showMeasurementModal) {
+      setShowMeasurementModal(false)
+      setPendingMeasurement(null)
+      setMeasurementName('')
+      setMeasurementNote('')
+      return
+    }
+    if (showCalibrationModal) {
+      setShowCalibrationModal(false)
+      setCalibrationPoints([])
+      setCalibrationDistance('')
+      setIsCalibrating(false)
+      return
+    }
+    if (showAddHighlightModal) {
+      setShowAddHighlightModal(false)
+      setPendingHighlight(null)
+      return
+    }
+    if (showKeyboardHelp) {
+      setShowKeyboardHelp(false)
+      return
+    }
+    // Cancel measurement mode
+    if (measurementMode || isCalibrating) {
+      setMeasurementMode(null)
+      setDrawingPoints([])
+      setMousePosition(null)
+      setIsCalibrating(false)
+      setCalibrationPoints([])
+      return
+    }
+    // Deselect measurement
+    if (selectedMeasurementId) {
+      setSelectedMeasurementId(null)
+      return
+    }
+  }, { enabled: isOpen }, [isOpen, showMeasurementModal, showCalibrationModal, showAddHighlightModal, showKeyboardHelp, measurementMode, isCalibrating, selectedMeasurementId])
+
+  // Enter - Complete polygon/polyline/count
+  useHotkeys('enter', () => {
+    if (!isOpen || !measurementMode) return
+    if (showMeasurementModal || showCalibrationModal) return
+
+    if (measurementMode === 'area' && drawingPoints.length >= 3) {
+      setPendingMeasurement({
+        type: 'area',
+        page_number: currentPage,
+        points: drawingPoints,
+        color: selectedMeasurementColor
+      })
+      setDrawingPoints([])
+      setShowMeasurementModal(true)
+    } else if (measurementMode === 'polyline' && drawingPoints.length >= 2) {
+      setPendingMeasurement({
+        type: 'polyline',
+        page_number: currentPage,
+        points: drawingPoints,
+        color: selectedMeasurementColor
+      })
+      setDrawingPoints([])
+      setShowMeasurementModal(true)
+    } else if (measurementMode === 'count' && drawingPoints.length > 0) {
+      setPendingMeasurement({
+        type: 'count',
+        page_number: currentPage,
+        points: drawingPoints,
+        color: selectedMeasurementColor
+      })
+      setDrawingPoints([])
+      setShowMeasurementModal(true)
+    }
+  }, { enabled: isOpen && !!measurementMode }, [isOpen, measurementMode, drawingPoints, currentPage, selectedMeasurementColor, showMeasurementModal, showCalibrationModal])
+
+  // Delete - Delete selected measurement
+  useHotkeys('delete, backspace', () => {
+    if (!isOpen || !selectedMeasurementId) return
+    if (showMeasurementModal || showCalibrationModal || showAddHighlightModal) return
+    handleDeleteMeasurement(selectedMeasurementId)
+  }, { enabled: isOpen && !!selectedMeasurementId }, [isOpen, selectedMeasurementId, showMeasurementModal, showCalibrationModal, showAddHighlightModal])
+
+  // ? - Show keyboard help
+  useHotkeys('shift+/', () => {
+    if (!isOpen) return
+    setShowKeyboardHelp(prev => !prev)
+  }, { enabled: isOpen }, [isOpen])
+
+  // M - Toggle measurements panel
+  useHotkeys('m', () => {
+    if (!isOpen || content.type !== 'pdf' || !projectId || !documentId) return
+    if (showMeasurementModal || showCalibrationModal || showAddHighlightModal) return
+    setShowMeasurementsPanel(prev => !prev)
+  }, { enabled: isOpen && content.type === 'pdf' }, [isOpen, content.type, projectId, documentId, showMeasurementModal, showCalibrationModal, showAddHighlightModal])
 
   const loadContent = useCallback(async () => {
     setContent({ type: 'loading' })
@@ -393,6 +556,55 @@ export default function DocumentViewer({
     setPanOffset({ x: 0, y: 0 })
     setLastPanOffset({ x: 0, y: 0 })
   }
+
+  const handleZoomTo = (value: number) => {
+    setScale(value)
+    setPanOffset({ x: 0, y: 0 })
+    setLastPanOffset({ x: 0, y: 0 })
+    setShowZoomMenu(false)
+  }
+
+  const handleFitToWidth = () => {
+    if (!pdfContainerRef.current || pageDimensions.width === 0) return
+    // Get container width (with some padding)
+    const containerWidth = pdfContainerRef.current.clientWidth - 48
+    // Calculate scale to fit width
+    const newScale = containerWidth / pageDimensions.width
+    setScale(Math.min(3.0, Math.max(0.25, newScale)))
+    setPanOffset({ x: 0, y: 0 })
+    setLastPanOffset({ x: 0, y: 0 })
+    setShowZoomMenu(false)
+  }
+
+  const handleFitToPage = () => {
+    if (!pdfContainerRef.current || pageDimensions.width === 0 || pageDimensions.height === 0) return
+    // Get container dimensions (with some padding)
+    const containerWidth = pdfContainerRef.current.clientWidth - 48
+    const containerHeight = pdfContainerRef.current.clientHeight - 48
+    // Calculate scale to fit both dimensions
+    const scaleX = containerWidth / pageDimensions.width
+    const scaleY = containerHeight / pageDimensions.height
+    const newScale = Math.min(scaleX, scaleY)
+    setScale(Math.min(3.0, Math.max(0.25, newScale)))
+    setPanOffset({ x: 0, y: 0 })
+    setLastPanOffset({ x: 0, y: 0 })
+    setShowZoomMenu(false)
+  }
+
+  // W - Fit to width hotkey
+  useHotkeys('w', () => {
+    if (!isOpen || content.type !== 'pdf') return
+    if (showMeasurementModal || showCalibrationModal || showAddHighlightModal) return
+    handleFitToWidth()
+  }, { enabled: isOpen && content.type === 'pdf' }, [isOpen, content.type, showMeasurementModal, showCalibrationModal, showAddHighlightModal])
+
+  // F - Fit to page hotkey (only when not in measurement mode)
+  useHotkeys('f', () => {
+    if (!isOpen || content.type !== 'pdf') return
+    if (showMeasurementModal || showCalibrationModal || showAddHighlightModal) return
+    if (measurementMode || isCalibrating) return
+    handleFitToPage()
+  }, { enabled: isOpen && content.type === 'pdf' }, [isOpen, content.type, showMeasurementModal, showCalibrationModal, showAddHighlightModal, measurementMode, isCalibrating])
 
   const handleDownload = () => {
     window.open(fileUrl, '_blank')
@@ -760,10 +972,9 @@ export default function DocumentViewer({
   // Handle click on PDF in measurement mode
   const handleMeasurementModeClick = useCallback((e: React.MouseEvent) => {
     if (!pageRef.current) return
-    const pageElement = pageRef.current.querySelector('.react-pdf__Page')
-    if (!pageElement) return
-
-    const coords = getRelativeCoords(e, pageElement as HTMLElement)
+    // Use pageRef directly since the SVG overlay is positioned on pageRef
+    // This ensures coordinate alignment between click position and rendered overlay
+    const coords = getRelativeCoords(e, pageRef.current)
 
     if (isCalibrating) {
       // Calibration mode
@@ -849,10 +1060,8 @@ export default function DocumentViewer({
     if (!measurementMode && !isCalibrating) return
     if (!pageRef.current) return
 
-    const pageElement = pageRef.current.querySelector('.react-pdf__Page')
-    if (!pageElement) return
-
-    const coords = getRelativeCoords(e, pageElement as HTMLElement)
+    // Use pageRef directly to match click coordinate calculation
+    const coords = getRelativeCoords(e, pageRef.current)
     setMousePosition(coords)
   }, [measurementMode, isCalibrating, getRelativeCoords])
 
@@ -865,15 +1074,81 @@ export default function DocumentViewer({
     setCalibrationPoints([])
   }, [])
 
+  // Calculate pixels per unit from calibration using current page dimensions
+  const calculatePixelsPerUnit = useCallback((
+    cal: ScaleCalibration | null,
+    pageWidth: number,
+    pageHeight: number
+  ): number | null => {
+    if (!cal || pageWidth === 0 || pageHeight === 0) return null
+
+    // Convert calibration points from percentage to pixels
+    const calPoint1: MeasurementPoint = { x: cal.point1_x, y: cal.point1_y }
+    const calPoint2: MeasurementPoint = { x: cal.point2_x, y: cal.point2_y }
+
+    // Calculate pixel distance of calibration line
+    const pixelDistance = calculatePixelDistance(calPoint1, calPoint2, pageWidth, pageHeight)
+
+    // pixels per unit = pixel distance / known distance
+    return pixelDistance / cal.known_distance
+  }, [])
+
+  // Calculate measured value based on type, points, and calibration
+  const calculateMeasuredValue = useCallback((
+    type: MeasurementType,
+    points: MeasurementPoint[],
+    pageWidth: number,
+    pageHeight: number,
+    cal: ScaleCalibration | null
+  ): number | null => {
+    if (type === 'count') {
+      return points.length
+    }
+
+    // Calculate pixels per unit dynamically using calibration and current page dimensions
+    const pixelsPerUnit = calculatePixelsPerUnit(cal, pageWidth, pageHeight)
+
+    if (!pixelsPerUnit || pageWidth === 0 || pageHeight === 0) {
+      return null // No calibration, can't calculate real value
+    }
+
+    if (type === 'length' && points.length >= 2) {
+      const pixelDist = calculatePixelDistance(points[0], points[1], pageWidth, pageHeight)
+      return calculateRealLength(pixelDist, pixelsPerUnit)
+    }
+
+    if (type === 'area' && points.length >= 3) {
+      const pixelArea = calculatePixelArea(points, pageWidth, pageHeight)
+      return calculateRealArea(pixelArea, pixelsPerUnit)
+    }
+
+    if (type === 'polyline' && points.length >= 2) {
+      const pixelLength = calculatePolylinePixelLength(points, pageWidth, pageHeight)
+      return calculateRealLength(pixelLength, pixelsPerUnit)
+    }
+
+    return null
+  }, [calculatePixelsPerUnit])
+
   // Save measurement
   const handleSaveMeasurement = async () => {
     if (!pendingMeasurement || !documentId || !projectId) return
 
     try {
+      // Calculate measured value if calibration exists
+      const measuredValue = calculateMeasuredValue(
+        pendingMeasurement.type,
+        pendingMeasurement.points,
+        pageDimensions.width,
+        pageDimensions.height,
+        calibration
+      )
+
       const data: CreateMeasurementData = {
         ...pendingMeasurement,
         name: measurementName || undefined,
-        note: measurementNote || undefined
+        note: measurementNote || undefined,
+        measured_value: measuredValue ?? undefined
       }
 
       await createMeasurement(documentId, projectId, data)
@@ -1291,6 +1566,39 @@ export default function DocumentViewer({
               </div>
             )}
 
+            {/* Measurements panel button */}
+            {content.type === 'pdf' && projectId && documentId && (
+              <button
+                onClick={() => setShowMeasurementsPanel(!showMeasurementsPanel)}
+                className={`p-2 rounded-lg transition-colors flex items-center gap-1 ${
+                  showMeasurementsPanel
+                    ? 'text-blue-600 bg-blue-50'
+                    : 'text-slate-500 hover:text-slate-900 hover:bg-slate-100'
+                }`}
+                title="Mätningar (M)"
+              >
+                <ListBulletIcon />
+                {measurements.length > 0 && (
+                  <span className="text-xs font-medium">{measurements.length}</span>
+                )}
+              </button>
+            )}
+
+            {/* Keyboard shortcuts help button */}
+            {content.type === 'pdf' && projectId && documentId && (
+              <button
+                onClick={() => setShowKeyboardHelp(true)}
+                className={`p-2 rounded-lg transition-colors ${
+                  showKeyboardHelp
+                    ? 'text-slate-700 bg-slate-100'
+                    : 'text-slate-500 hover:text-slate-900 hover:bg-slate-100'
+                }`}
+                title="Tangentbordsgenvägar (?)"
+              >
+                <QuestionIcon />
+              </button>
+            )}
+
             {/* Comments button for PDF */}
             {content.type === 'pdf' && projectId && documentId && (
               <button
@@ -1330,6 +1638,33 @@ export default function DocumentViewer({
             {/* Zoom controls for PDF */}
             {content.type === 'pdf' && (
               <div className="flex items-center gap-1 bg-slate-100 rounded-lg p-1">
+                {/* Fit buttons */}
+                <button
+                  onClick={handleFitToWidth}
+                  className="p-1.5 text-slate-500 hover:text-slate-900 hover:bg-white rounded transition-colors"
+                  title="Anpassa till bredd (W)"
+                >
+                  <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <rect x="4" y="6" width="16" height="12" rx="1" />
+                    <path d="M4 12h16" />
+                    <path d="M7 9l-3 3 3 3" />
+                    <path d="M17 9l3 3-3 3" />
+                  </svg>
+                </button>
+                <button
+                  onClick={handleFitToPage}
+                  className="p-1.5 text-slate-500 hover:text-slate-900 hover:bg-white rounded transition-colors"
+                  title="Anpassa till sida (F)"
+                >
+                  <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <rect x="4" y="4" width="16" height="16" rx="1" />
+                    <path d="M8 8h8v8H8z" />
+                  </svg>
+                </button>
+
+                <div className="w-px h-4 bg-slate-300 mx-0.5" />
+
+                {/* Zoom controls */}
                 <button
                   onClick={handleZoomOut}
                   className="p-1.5 text-slate-500 hover:text-slate-900 hover:bg-white rounded transition-colors"
@@ -1337,9 +1672,65 @@ export default function DocumentViewer({
                 >
                   <ZoomOutIcon />
                 </button>
-                <span className="text-sm text-slate-600 min-w-[50px] text-center font-medium">
-                  {Math.round(scale * 100)}%
-                </span>
+
+                {/* Zoom level dropdown */}
+                <div className="relative">
+                  <button
+                    onClick={() => setShowZoomMenu(!showZoomMenu)}
+                    className="text-sm text-slate-600 min-w-[55px] text-center font-medium px-2 py-1 hover:bg-white rounded transition-colors"
+                    title="Välj zoomnivå"
+                  >
+                    {Math.round(scale * 100)}%
+                  </button>
+                  {showZoomMenu && (
+                    <>
+                      <div
+                        className="fixed inset-0 z-10"
+                        onClick={() => setShowZoomMenu(false)}
+                      />
+                      <div className="absolute top-full left-1/2 -translate-x-1/2 mt-1 z-20 bg-white rounded-lg shadow-lg border border-slate-200 py-1 min-w-[100px]">
+                        {[
+                          { label: 'Anpassa bredd', action: handleFitToWidth },
+                          { label: 'Anpassa sida', action: handleFitToPage },
+                          { divider: true },
+                          { label: '25%', value: 0.25 },
+                          { label: '50%', value: 0.5 },
+                          { label: '75%', value: 0.75 },
+                          { label: '100%', value: 1.0 },
+                          { label: '125%', value: 1.25 },
+                          { label: '150%', value: 1.5 },
+                          { label: '200%', value: 2.0 },
+                          { label: '300%', value: 3.0 },
+                        ].map((item, i) => (
+                          'divider' in item ? (
+                            <div key={i} className="h-px bg-slate-200 my-1" />
+                          ) : 'action' in item ? (
+                            <button
+                              key={i}
+                              onClick={item.action}
+                              className="w-full px-3 py-1.5 text-left text-sm text-slate-700 hover:bg-slate-100 transition-colors"
+                            >
+                              {item.label}
+                            </button>
+                          ) : (
+                            <button
+                              key={i}
+                              onClick={() => handleZoomTo(item.value!)}
+                              className={`w-full px-3 py-1.5 text-left text-sm transition-colors ${
+                                Math.abs(scale - item.value!) < 0.01
+                                  ? 'bg-indigo-50 text-indigo-700 font-medium'
+                                  : 'text-slate-700 hover:bg-slate-100'
+                              }`}
+                            >
+                              {item.label}
+                            </button>
+                          )
+                        ))}
+                      </div>
+                    </>
+                  )}
+                </div>
+
                 <button
                   onClick={handleZoomIn}
                   className="p-1.5 text-slate-500 hover:text-slate-900 hover:bg-white rounded transition-colors"
@@ -1492,7 +1883,6 @@ export default function DocumentViewer({
                       currentPage={currentPage}
                       pageWidth={pageDimensions.width}
                       pageHeight={pageDimensions.height}
-                      scale={scale}
                       measurementMode={measurementMode}
                       drawingPoints={drawingPoints}
                       mousePosition={mousePosition}
@@ -1511,8 +1901,10 @@ export default function DocumentViewer({
                 <span><kbd className="px-1.5 py-0.5 bg-slate-200 rounded text-slate-600">Scroll</kbd> zooma</span>
                 <span><kbd className="px-1.5 py-0.5 bg-slate-200 rounded text-slate-600">+/-</kbd> zooma</span>
                 <span><kbd className="px-1.5 py-0.5 bg-slate-200 rounded text-slate-600">0</kbd> återställ</span>
+                <span><kbd className="px-1.5 py-0.5 bg-slate-200 rounded text-slate-600">W</kbd> bredd</span>
+                <span><kbd className="px-1.5 py-0.5 bg-slate-200 rounded text-slate-600">F</kbd> sida</span>
                 <span><kbd className="px-1.5 py-0.5 bg-slate-200 rounded text-slate-600">Ctrl+F</kbd> sök</span>
-                {scale > 1 && <span className="text-indigo-500 font-medium">Dra för att panorera</span>}
+                {scale > 1 && <span className="text-indigo-500 font-medium">Högerklicka+dra för att panorera</span>}
               </div>
             </div>
           )}
@@ -1769,6 +2161,31 @@ export default function DocumentViewer({
             </div>
           )}
 
+          {/* Measurements Panel */}
+          {showMeasurementsPanel && projectId && documentId && (
+            <MeasurementsPanel
+              measurements={measurements}
+              currentPage={currentPage}
+              onClose={() => setShowMeasurementsPanel(false)}
+              onSelectMeasurement={(id) => {
+                setSelectedMeasurementId(id)
+                // Find measurement and go to its page
+                const m = measurements.find(m => m.id === id)
+                if (m && m.page_number !== currentPage) {
+                  setCurrentPage(m.page_number)
+                }
+              }}
+              onDeleteMeasurement={handleDeleteMeasurement}
+              onEditMeasurement={(id) => {
+                // TODO: Implement edit modal
+                console.log('Edit measurement:', id)
+              }}
+              onGoToPage={setCurrentPage}
+              selectedMeasurementId={selectedMeasurementId}
+              calibrationUnit={calibration?.unit || null}
+            />
+          )}
+
           {/* Version History Panel */}
           {versionsOpen && documentId && (
             <div className="w-80 border-l border-slate-200 bg-white flex flex-col">
@@ -2011,6 +2428,49 @@ export default function DocumentViewer({
                 </p>
               </div>
 
+              {/* Scale presets */}
+              <div className="mb-4">
+                <label className="block text-sm text-slate-500 mb-2">Skalförinställningar (om linjen är 1 cm på pappret):</label>
+                <div className="flex flex-wrap gap-2">
+                  {[
+                    { label: '1:50', value: 0.5 },
+                    { label: '1:100', value: 1 },
+                    { label: '1:250', value: 2.5 },
+                    { label: '1:500', value: 5 },
+                    { label: '1:750', value: 7.5 },
+                    { label: '1:1000', value: 10 },
+                  ].map((preset) => (
+                    <button
+                      key={preset.label}
+                      onClick={() => {
+                        setCalibrationDistance(preset.value.toString())
+                        setCalibrationUnit('m')
+                      }}
+                      className={`px-3 py-1.5 text-xs rounded-lg border transition-colors ${
+                        calibrationDistance === preset.value.toString() && calibrationUnit === 'm'
+                          ? 'bg-amber-100 border-amber-400 text-amber-800'
+                          : 'border-slate-200 text-slate-600 hover:border-amber-300 hover:bg-amber-50'
+                      }`}
+                    >
+                      {preset.label}
+                    </button>
+                  ))}
+                </div>
+                <p className="text-xs text-slate-400 mt-1">
+                  Välj skala om du ritade linjen över exakt 1 cm på ritningen
+                </p>
+              </div>
+
+              {/* Divider */}
+              <div className="relative mb-4">
+                <div className="absolute inset-0 flex items-center">
+                  <div className="w-full border-t border-slate-200"></div>
+                </div>
+                <div className="relative flex justify-center text-xs">
+                  <span className="px-2 bg-white text-slate-400">eller ange manuellt</span>
+                </div>
+              </div>
+
               {/* Distance input */}
               <div className="mb-4">
                 <label className="block text-sm text-slate-500 mb-2">Verkligt mått:</label>
@@ -2023,7 +2483,6 @@ export default function DocumentViewer({
                     onChange={(e) => setCalibrationDistance(e.target.value)}
                     placeholder="T.ex. 1, 5, 10..."
                     className="flex-1 px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-amber-500"
-                    autoFocus
                   />
                   <select
                     value={calibrationUnit}
@@ -2291,6 +2750,14 @@ function RulerIcon({ className = 'h-5 w-5' }: { className?: string }) {
   return (
     <svg className={className} fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
       <path strokeLinecap="round" strokeLinejoin="round" d="M10.5 6h9.75M10.5 6a1.5 1.5 0 1 1-3 0m3 0a1.5 1.5 0 1 0-3 0M3.75 6H7.5m3 12h9.75m-9.75 0a1.5 1.5 0 0 1-3 0m3 0a1.5 1.5 0 0 0-3 0m-3.75 0H7.5m9-6h3.75m-3.75 0a1.5 1.5 0 0 1-3 0m3 0a1.5 1.5 0 0 0-3 0m-9.75 0h9.75" />
+    </svg>
+  )
+}
+
+function QuestionIcon({ className = 'h-5 w-5' }: { className?: string }) {
+  return (
+    <svg className={className} fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+      <path strokeLinecap="round" strokeLinejoin="round" d="M9.879 7.519c1.171-1.025 3.071-1.025 4.242 0 1.172 1.025 1.172 2.687 0 3.712-.203.179-.43.326-.67.442-.745.361-1.45.999-1.45 1.827v.75M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Zm-9 5.25h.008v.008H12v-.008Z" />
     </svg>
   )
 }

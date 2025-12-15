@@ -11,9 +11,8 @@ import type {
 interface MeasurementOverlayProps {
   measurements: DocumentMeasurementWithCreator[]
   currentPage: number
-  pageWidth: number
-  pageHeight: number
-  scale: number
+  pageWidth: number  // Already scaled from react-pdf
+  pageHeight: number // Already scaled from react-pdf
   // Drawing state
   measurementMode: MeasurementType | null
   drawingPoints: MeasurementPoint[]
@@ -606,7 +605,6 @@ export default function MeasurementOverlay({
   currentPage,
   pageWidth,
   pageHeight,
-  scale,
   measurementMode,
   drawingPoints,
   mousePosition,
@@ -632,10 +630,12 @@ export default function MeasurementOverlay({
 
   if (pageWidth === 0 || pageHeight === 0) return null
 
+  // Note: pageWidth and pageHeight from react-pdf's onRenderSuccess are already scaled
+  // So we use them directly without multiplying by scale again
   return (
     <svg
       className="absolute inset-0 pointer-events-none"
-      style={{ width: pageWidth * scale, height: pageHeight * scale }}
+      style={{ width: pageWidth, height: pageHeight }}
       viewBox={`0 0 ${pageWidth} ${pageHeight}`}
       preserveAspectRatio="none"
     >

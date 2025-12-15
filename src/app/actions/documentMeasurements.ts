@@ -100,20 +100,17 @@ export async function createMeasurement(
     throw new Error('Inte inloggad')
   }
 
-  // Get calibration for this page to calculate measured value
+  // Get calibration for this page
   const calibration = await getScaleCalibration(documentId, data.page_number)
 
-  let measuredValue: number | null = null
+  // Use measured_value from client if provided, otherwise null
+  const measuredValue: number | null = data.measured_value ?? null
   let scaleRatio: number | null = null
   let scaleUnit: string | null = null
 
   if (calibration) {
     scaleRatio = calibration.pixels_per_unit
     scaleUnit = calibration.unit
-
-    // Calculate measured value based on type
-    // Note: actual calculation happens in the UI with page dimensions
-    // Here we just store the calibration info
   }
 
   const { data: measurement, error } = await supabase
