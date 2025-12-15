@@ -118,7 +118,9 @@ export default function DocumentViewer({
   const [numPages, setNumPages] = useState<number>(0)
   const [currentPage, setCurrentPage] = useState<number>(1)
   const [scale, setScale] = useState<number>(1.0)
-  const [renderScale, setRenderScale] = useState<number>(1.0) // Actual PDF render scale (debounced)
+  // Fixed high-resolution render scale - PDF renders once at high quality,
+  // all zooming is done via CSS transform (no re-rendering = no jumping)
+  const FIXED_RENDER_SCALE = 2.5
   const [searchText, setSearchText] = useState<string>('')
   const [searchOpen, setSearchOpen] = useState<boolean>(false)
   const [textContent, setTextContent] = useState<string[]>([])
@@ -396,7 +398,6 @@ export default function DocumentViewer({
     setPanOffset({ x: 0, y: 0 })
     setLastPanOffset({ x: 0, y: 0 })
     setScale(1.0)
-    setRenderScale(1.0)
 
     const extension = fileName.split('.').pop()?.toLowerCase() || ''
     const mimeType = fileType.toLowerCase()
@@ -559,28 +560,16 @@ export default function DocumentViewer({
   const ZOOM_FACTOR = 1.15 // 15% per step - feels natural
   const MIN_SCALE = 0.1
   const MAX_SCALE = 5.0
-  const RENDER_DEBOUNCE_MS = 200 // Debounce PDF re-render for smooth zooming
 
-  // Debounced render scale update - prevents white flash during zoom
-  // The PDF only re-renders when renderScale changes (debounced),
-  // but visual zoom is instant via CSS transform
+  // Show/hide zoom indicator when scale changes
   useEffect(() => {
+    setShowZoomIndicator(true)
     const timer = setTimeout(() => {
-      setRenderScale(scale)
+      setShowZoomIndicator(false)
       setIsZooming(false)
-    }, RENDER_DEBOUNCE_MS)
+    }, 800)
     return () => clearTimeout(timer)
   }, [scale])
-
-  // Show/hide zoom indicator based on zoom state
-  useEffect(() => {
-    if (isZooming) {
-      setShowZoomIndicator(true)
-    } else {
-      const timer = setTimeout(() => setShowZoomIndicator(false), 800)
-      return () => clearTimeout(timer)
-    }
-  }, [isZooming, scale])
 
   // Cleanup animation frame on unmount
   useEffect(() => {
@@ -592,7 +581,8 @@ export default function DocumentViewer({
   }, [])
 
   // Calculate CSS transform scale (instant visual zoom)
-  const cssScale = scale / renderScale
+  // Since we render at fixed high resolution, all zoom is via CSS transform
+  const cssScale = scale / FIXED_RENDER_SCALE
 
   const handleZoomIn = () => {
     setIsZooming(true)
@@ -612,7 +602,6 @@ export default function DocumentViewer({
   const handleZoomTo = (value: number) => {
     const newScale = Math.min(MAX_SCALE, Math.max(MIN_SCALE, value))
     setScale(newScale)
-    setRenderScale(newScale) // Immediate render for explicit zoom selection
     setPanOffset({ x: 0, y: 0 })
     setLastPanOffset({ x: 0, y: 0 })
     setShowZoomMenu(false)
@@ -622,10 +611,9 @@ export default function DocumentViewer({
     if (!pdfContainerRef.current || pageDimensions.width === 0) return
     // Get container width (with some padding)
     const containerWidth = pdfContainerRef.current.clientWidth - 64
-    // Calculate scale to fit width
-    const newScale = Math.min(MAX_SCALE, Math.max(MIN_SCALE, containerWidth / pageDimensions.width))
+    // Calculate scale to fit width (pageDimensions are at FIXED_RENDER_SCALE)
+    const newScale = Math.min(MAX_SCALE, Math.max(MIN_SCALE, (containerWidth / pageDimensions.width) * FIXED_RENDER_SCALE))
     setScale(newScale)
-    setRenderScale(newScale) // Immediate render for fit operations
     setPanOffset({ x: 0, y: 0 })
     setLastPanOffset({ x: 0, y: 0 })
     setShowZoomMenu(false)
@@ -636,12 +624,11 @@ export default function DocumentViewer({
     // Get container dimensions (with generous padding for toolbar and margins)
     const containerWidth = pdfContainerRef.current.clientWidth - 64
     const containerHeight = pdfContainerRef.current.clientHeight - 64
-    // Calculate scale to fit both dimensions
-    const scaleX = containerWidth / pageDimensions.width
-    const scaleY = containerHeight / pageDimensions.height
+    // Calculate scale to fit both dimensions (pageDimensions are at FIXED_RENDER_SCALE)
+    const scaleX = (containerWidth / pageDimensions.width) * FIXED_RENDER_SCALE
+    const scaleY = (containerHeight / pageDimensions.height) * FIXED_RENDER_SCALE
     const newScale = Math.min(MAX_SCALE, Math.max(MIN_SCALE, Math.min(scaleX, scaleY)))
     setScale(newScale)
-    setRenderScale(newScale) // Immediate render for fit operations
     setPanOffset({ x: 0, y: 0 })
     setLastPanOffset({ x: 0, y: 0 })
     setShowZoomMenu(false)
@@ -1968,13 +1955,13 @@ export default function DocumentViewer({
                   >
                     <Page
                       pageNumber={currentPage}
-                      scale={renderScale}
+                      scale={FIXED_RENDER_SCALE}
                       renderTextLayer={true}
                       renderAnnotationLayer={false}
                       className="shadow-xl rounded-lg"
                       onRenderSuccess={(page) => {
                         handlePageRenderSuccess()
-                        // Update page dimensions for measurement calculations (at render scale)
+                        // Update page dimensions for measurement calculations (at FIXED_RENDER_SCALE)
                         setPageDimensions({
                           width: page.width,
                           height: page.height
@@ -2062,7 +2049,7 @@ export default function DocumentViewer({
                       <div style={{ transform: `scale(${cssScale})`, transition: 'transform 0.05s ease-out' }}>
                         <Page
                           pageNumber={currentPage}
-                          scale={renderScale * 0.85}
+                          scale={FIXED_RENDER_SCALE * 0.85}
                           renderTextLayer={false}
                           renderAnnotationLayer={false}
                           className="shadow-lg mx-auto"
@@ -2090,7 +2077,7 @@ export default function DocumentViewer({
                       <div style={{ transform: `scale(${cssScale})`, transition: 'transform 0.05s ease-out' }}>
                         <Page
                           pageNumber={currentPage}
-                          scale={renderScale * 0.85}
+                          scale={FIXED_RENDER_SCALE * 0.85}
                           renderTextLayer={false}
                           renderAnnotationLayer={false}
                           className="shadow-lg mx-auto"
