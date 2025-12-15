@@ -177,6 +177,7 @@ export default function DocumentViewer({
   const [panStart, setPanStart] = useState({ x: 0, y: 0 })
   const [panOffset, setPanOffset] = useState({ x: 0, y: 0 })
   const [lastPanOffset, setLastPanOffset] = useState({ x: 0, y: 0 })
+  const [initialFitDone, setInitialFitDone] = useState(false)
 
   // Zoom dropdown state
   const [showZoomMenu, setShowZoomMenu] = useState(false)
@@ -385,6 +386,9 @@ export default function DocumentViewer({
   const loadContent = useCallback(async () => {
     setContent({ type: 'loading' })
     setCurrentPage(initialPage || 1)
+    setInitialFitDone(false) // Reset so new document gets auto-fit
+    setPanOffset({ x: 0, y: 0 })
+    setLastPanOffset({ x: 0, y: 0 })
 
     const extension = fileName.split('.').pop()?.toLowerCase() || ''
     const mimeType = fileType.toLowerCase()
@@ -543,22 +547,26 @@ export default function DocumentViewer({
     setCurrentPage(prev => Math.min(numPages, prev + 1))
   }
 
+  // Zoom constants - multiplicative for smoother zooming
+  const ZOOM_FACTOR = 1.15 // 15% per step - feels natural
+  const MIN_SCALE = 0.1
+  const MAX_SCALE = 5.0
+
   const handleZoomIn = () => {
-    setScale(prev => Math.min(3.0, prev + 0.25))
+    setScale(prev => Math.min(MAX_SCALE, prev * ZOOM_FACTOR))
   }
 
   const handleZoomOut = () => {
-    setScale(prev => Math.max(0.25, prev - 0.25))
+    setScale(prev => Math.max(MIN_SCALE, prev / ZOOM_FACTOR))
   }
 
   const handleZoomReset = () => {
-    setScale(1.0)
-    setPanOffset({ x: 0, y: 0 })
-    setLastPanOffset({ x: 0, y: 0 })
+    // Reset to fit page instead of 1.0
+    handleFitToPage()
   }
 
   const handleZoomTo = (value: number) => {
-    setScale(value)
+    setScale(Math.min(MAX_SCALE, Math.max(MIN_SCALE, value)))
     setPanOffset({ x: 0, y: 0 })
     setLastPanOffset({ x: 0, y: 0 })
     setShowZoomMenu(false)
@@ -567,10 +575,10 @@ export default function DocumentViewer({
   const handleFitToWidth = () => {
     if (!pdfContainerRef.current || pageDimensions.width === 0) return
     // Get container width (with some padding)
-    const containerWidth = pdfContainerRef.current.clientWidth - 48
+    const containerWidth = pdfContainerRef.current.clientWidth - 64
     // Calculate scale to fit width
     const newScale = containerWidth / pageDimensions.width
-    setScale(Math.min(3.0, Math.max(0.25, newScale)))
+    setScale(Math.min(MAX_SCALE, Math.max(MIN_SCALE, newScale)))
     setPanOffset({ x: 0, y: 0 })
     setLastPanOffset({ x: 0, y: 0 })
     setShowZoomMenu(false)
@@ -578,14 +586,14 @@ export default function DocumentViewer({
 
   const handleFitToPage = () => {
     if (!pdfContainerRef.current || pageDimensions.width === 0 || pageDimensions.height === 0) return
-    // Get container dimensions (with some padding)
-    const containerWidth = pdfContainerRef.current.clientWidth - 48
-    const containerHeight = pdfContainerRef.current.clientHeight - 48
+    // Get container dimensions (with generous padding for toolbar and margins)
+    const containerWidth = pdfContainerRef.current.clientWidth - 64
+    const containerHeight = pdfContainerRef.current.clientHeight - 64
     // Calculate scale to fit both dimensions
     const scaleX = containerWidth / pageDimensions.width
     const scaleY = containerHeight / pageDimensions.height
     const newScale = Math.min(scaleX, scaleY)
-    setScale(Math.min(3.0, Math.max(0.25, newScale)))
+    setScale(Math.min(MAX_SCALE, Math.max(MIN_SCALE, newScale)))
     setPanOffset({ x: 0, y: 0 })
     setLastPanOffset({ x: 0, y: 0 })
     setShowZoomMenu(false)
@@ -606,23 +614,41 @@ export default function DocumentViewer({
     handleFitToPage()
   }, { enabled: isOpen && content.type === 'pdf' }, [isOpen, content.type, showMeasurementModal, showCalibrationModal, showAddHighlightModal, measurementMode, isCalibrating])
 
+  // Auto-fit to page on initial document load
+  useEffect(() => {
+    if (content.type !== 'pdf') return
+    if (initialFitDone) return
+    if (pageDimensions.width === 0 || pageDimensions.height === 0) return
+    if (!pdfContainerRef.current) return
+
+    // Wait a tick for the container to be fully rendered
+    const timer = setTimeout(() => {
+      handleFitToPage()
+      setInitialFitDone(true)
+    }, 50)
+
+    return () => clearTimeout(timer)
+  }, [content.type, pageDimensions, initialFitDone])
+
   const handleDownload = () => {
     window.open(fileUrl, '_blank')
   }
 
-  // Pan handlers - right mouse button only for panning
+  // Pan handlers - right mouse button only
   const handleMouseDown = (e: React.MouseEvent) => {
-    // Only pan with right mouse button (button === 2)
-    if (e.button !== 2) return
-    if (scale <= 1 || content.type !== 'pdf') return
-    e.preventDefault()
-    setIsPanning(true)
-    setPanStart({ x: e.clientX - panOffset.x, y: e.clientY - panOffset.y })
+    if (content.type !== 'pdf') return
+
+    // Pan only with right mouse button (2)
+    if (e.button === 2) {
+      e.preventDefault()
+      setIsPanning(true)
+      setPanStart({ x: e.clientX - lastPanOffset.x, y: e.clientY - lastPanOffset.y })
+    }
   }
 
   // Prevent context menu when right-clicking for panning
   const handleContextMenu = (e: React.MouseEvent) => {
-    if (scale > 1 && content.type === 'pdf') {
+    if (content.type === 'pdf') {
       e.preventDefault()
     }
   }
@@ -665,12 +691,11 @@ export default function DocumentViewer({
         setCurrentPage(prev => Math.max(1, prev - 1))
       }
     } else {
-      // Regular wheel = zoom at cursor position
+      // Regular wheel = zoom at cursor position (multiplicative for smooth zooming)
       const target = e.target as HTMLElement
       const pdfContainer = pdfContainerRef.current
       if (pdfContainer && pdfContainer.contains(target)) {
         e.preventDefault()
-        const zoomStep = 0.1
         const rect = pdfContainer.getBoundingClientRect()
 
         // Calculate cursor position relative to container center
@@ -678,9 +703,10 @@ export default function DocumentViewer({
         const cursorY = e.clientY - rect.top - rect.height / 2
 
         setScale(prev => {
+          // Use multiplicative zoom factor (same as buttons)
           const newScale = e.deltaY < 0
-            ? Math.min(3.0, prev + zoomStep)
-            : Math.max(0.25, prev - zoomStep)
+            ? Math.min(MAX_SCALE, prev * ZOOM_FACTOR)
+            : Math.max(MIN_SCALE, prev / ZOOM_FACTOR)
 
           // Calculate new pan offset to zoom towards cursor
           const scaleFactor = newScale / prev
@@ -736,14 +762,14 @@ export default function DocumentViewer({
         }
       }
 
-      // Zoom keyboard shortcuts
+      // Zoom keyboard shortcuts (multiplicative for smooth zooming)
       if (content.type === 'pdf' && !searchOpen) {
         if (e.key === '+' || e.key === '=') {
           e.preventDefault()
-          setScale(prev => Math.min(3.0, prev + 0.25))
+          setScale(prev => Math.min(MAX_SCALE, prev * ZOOM_FACTOR))
         } else if (e.key === '-') {
           e.preventDefault()
-          setScale(prev => Math.max(0.25, prev - 0.25))
+          setScale(prev => Math.max(MIN_SCALE, prev / ZOOM_FACTOR))
         } else if (e.key === '0') {
           e.preventDefault()
           handleZoomReset()
