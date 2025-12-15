@@ -10,7 +10,8 @@ import AIFolderWizard from '@/components/AIFolderWizard'
 import FolderTree from '@/components/documents/FolderTree'
 import DocumentTable from '@/components/documents/DocumentTable'
 import ReplaceVersionModal from '@/components/documents/ReplaceVersionModal'
-import { getProjectDocuments, uploadDocument, deleteDocument, getDocumentDownloadUrl, moveMultipleDocuments, checkDuplicateDocument } from '@/app/actions/documents'
+import { getProjectDocuments, deleteDocument, getDocumentDownloadUrl, moveMultipleDocuments, checkDuplicateDocument, getDocumentUploadUrl, createDocumentAfterUpload } from '@/app/actions/documents'
+import { uploadFileDirectly, formatFileSize } from '@/lib/directUpload'
 import { getAllFolderPaths, createFolder, createMultipleFolders, renameFolder, deleteFolder } from '@/app/actions/folders'
 import type { Document, DocumentWithUploader } from '@/types/database'
 
@@ -60,6 +61,7 @@ export default function ProjectDocumentsPage() {
     newFile: File
     remainingFiles: File[]
   } | null>(null)
+  const [uploadProgress, setUploadProgress] = useState<{ fileName: string; progress: number } | null>(null)
 
   const loadDocuments = useCallback(async () => {
     try {
@@ -198,7 +200,7 @@ export default function ProjectDocumentsPage() {
     }
   }
 
-  // Helper to process a single file upload with duplicate checking
+  // Helper to process a single file upload with duplicate checking (using direct upload)
   const processFileUpload = async (file: File, remainingFiles: File[] = []) => {
     // Check if file with same name exists in current folder
     const existingDoc = await checkDuplicateDocument(projectId, file.name, currentPath)
@@ -213,12 +215,34 @@ export default function ProjectDocumentsPage() {
       return false // Indicates we're waiting for user decision
     }
 
-    // No duplicate, upload normally
-    await uploadDocument(projectId, file, {
-      name: file.name,
-      folder_path: currentPath
-    })
-    return true
+    // No duplicate, upload using direct upload (bypasses Vercel 4.5MB limit)
+    try {
+      // 1. Get signed upload URL from server
+      const { signedUrl, path } = await getDocumentUploadUrl(projectId, file.name)
+
+      // 2. Upload directly to Supabase Storage with progress tracking
+      setUploadProgress({ fileName: file.name, progress: 0 })
+      const uploadResult = await uploadFileDirectly(signedUrl, file, (progress) => {
+        setUploadProgress({ fileName: file.name, progress })
+      })
+
+      if (!uploadResult.success) {
+        throw new Error(uploadResult.error || 'Uppladdning misslyckades')
+      }
+
+      // 3. Create database record
+      await createDocumentAfterUpload(projectId, path, file.size, file.type, {
+        name: file.name,
+        folder_path: currentPath
+      })
+
+      setUploadProgress(null)
+      return true
+    } catch (error) {
+      setUploadProgress(null)
+      console.error('Direct upload failed:', error)
+      throw error
+    }
   }
 
   const handleUpload = async (file: File) => {
@@ -282,11 +306,33 @@ export default function ProjectDocumentsPage() {
       if (counter > 100) break // Safety limit
     }
 
-    // Upload with new name
-    await uploadDocument(projectId, file, {
-      name: newName,
-      folder_path: currentPath
-    })
+    // Upload with new name using direct upload (bypasses Vercel 4.5MB limit)
+    try {
+      // 1. Get signed upload URL
+      const { signedUrl, path } = await getDocumentUploadUrl(projectId, newName)
+
+      // 2. Upload directly to Supabase Storage
+      setUploadProgress({ fileName: newName, progress: 0 })
+      const uploadResult = await uploadFileDirectly(signedUrl, file, (progress) => {
+        setUploadProgress({ fileName: newName, progress })
+      })
+
+      if (!uploadResult.success) {
+        throw new Error(uploadResult.error || 'Uppladdning misslyckades')
+      }
+
+      // 3. Create database record
+      await createDocumentAfterUpload(projectId, path, file.size, file.type, {
+        name: newName,
+        folder_path: currentPath
+      })
+
+      setUploadProgress(null)
+    } catch (error) {
+      setUploadProgress(null)
+      console.error('Direct upload failed:', error)
+      throw error
+    }
 
     setDuplicateCheck(null)
 
@@ -854,6 +900,41 @@ export default function ProjectDocumentsPage() {
                   Byt namn
                 </button>
               </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Upload progress indicator */}
+      <AnimatePresence>
+        {uploadProgress && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-[100]"
+          >
+            <motion.div
+              initial={{ scale: 0.95 }}
+              animate={{ scale: 1 }}
+              className="bg-white border border-slate-200 rounded-2xl p-6 shadow-2xl w-80"
+            >
+              <div className="flex items-center gap-3 mb-3">
+                <Upload className="h-5 w-5 text-indigo-600" />
+                <span className="text-slate-700 font-medium">Laddar upp...</span>
+              </div>
+              <p className="text-sm text-slate-500 mb-2 truncate" title={uploadProgress.fileName}>
+                {uploadProgress.fileName}
+              </p>
+              <div className="w-full bg-slate-200 rounded-full h-2">
+                <motion.div
+                  className="bg-gradient-to-r from-indigo-600 to-purple-600 h-2 rounded-full"
+                  initial={{ width: 0 }}
+                  animate={{ width: `${uploadProgress.progress}%` }}
+                  transition={{ duration: 0.3 }}
+                />
+              </div>
+              <p className="text-xs text-slate-400 mt-2 text-right">{uploadProgress.progress}%</p>
             </motion.div>
           </motion.div>
         )}

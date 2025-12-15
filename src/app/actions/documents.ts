@@ -10,7 +10,7 @@ import type {
   DocumentVersion,
   DocumentVersionWithUploader
 } from '@/types/database'
-import { uploadFile, deleteFile, getSignedUrl } from './storage'
+import { uploadFile, deleteFile, getSignedUrl, getSignedUploadUrl, type SignedUploadUrlResult } from './storage'
 
 export async function getProjectDocuments(
   projectId: string,
@@ -700,4 +700,198 @@ export async function getComparisonUrls(
   ])
 
   return { url1, url2 }
+}
+
+// ===============================
+// Direct Upload Functions (bypasses Vercel 4.5MB limit)
+// ===============================
+
+export interface DocumentUploadUrlResult extends SignedUploadUrlResult {
+  bucket: 'documents'
+}
+
+/**
+ * Get a signed URL for direct client-side document upload
+ * This allows uploading files larger than Vercel's 4.5MB limit
+ */
+export async function getDocumentUploadUrl(
+  projectId: string,
+  fileName: string
+): Promise<DocumentUploadUrlResult> {
+  const supabase = await createClient()
+
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) {
+    throw new Error('Inte inloggad')
+  }
+
+  // Verify user has access to project
+  const { data: membership } = await supabase
+    .from('project_members')
+    .select('id')
+    .eq('project_id', projectId)
+    .eq('user_id', user.id)
+    .single()
+
+  if (!membership) {
+    throw new Error('Du har inte tillgång till detta projekt')
+  }
+
+  const result = await getSignedUploadUrl('documents', projectId, fileName)
+
+  return {
+    ...result,
+    bucket: 'documents'
+  }
+}
+
+/**
+ * Create a document record after successful direct upload
+ * Call this after the client has uploaded the file directly to storage
+ */
+export async function createDocumentAfterUpload(
+  projectId: string,
+  filePath: string,
+  fileSize: number,
+  fileType: string,
+  metadata: CreateDocumentData
+): Promise<Document> {
+  const supabase = await createClient()
+
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) {
+    throw new Error('Inte inloggad')
+  }
+
+  // Create document record
+  const { data, error } = await supabase
+    .from('documents')
+    .insert({
+      project_id: projectId,
+      name: metadata.name,
+      description: metadata.description || null,
+      file_path: filePath,
+      file_size: fileSize,
+      file_type: fileType,
+      folder_path: metadata.folder_path || '/',
+      uploaded_by: user.id,
+    })
+    .select()
+    .single()
+
+  if (error) {
+    // Try to clean up uploaded file on error
+    try {
+      await deleteFile('documents', filePath)
+    } catch {
+      // Ignore cleanup errors
+    }
+    console.error('Error creating document:', error)
+    throw new Error('Kunde inte spara dokumentet')
+  }
+
+  revalidatePath(`/dashboard/projects/${projectId}/documents`)
+  return data
+}
+
+/**
+ * Get a signed URL for direct client-side version upload
+ */
+export async function getVersionUploadUrl(
+  documentId: string
+): Promise<DocumentUploadUrlResult & { projectId: string }> {
+  const supabase = await createClient()
+
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) {
+    throw new Error('Inte inloggad')
+  }
+
+  // Get document info
+  const { data: document, error } = await supabase
+    .from('documents')
+    .select('project_id, name')
+    .eq('id', documentId)
+    .single()
+
+  if (error || !document) {
+    throw new Error('Dokumentet hittades inte')
+  }
+
+  const result = await getSignedUploadUrl('documents', document.project_id, document.name)
+
+  return {
+    ...result,
+    bucket: 'documents',
+    projectId: document.project_id
+  }
+}
+
+/**
+ * Create a new version record after successful direct upload
+ * Call this after the client has uploaded the new version directly to storage
+ */
+export async function createVersionAfterUpload(
+  documentId: string,
+  filePath: string,
+  fileSize: number,
+  fileType: string,
+  changeNote?: string
+): Promise<Document> {
+  const supabase = await createClient()
+
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) {
+    throw new Error('Inte inloggad')
+  }
+
+  // Get existing document
+  const { data: existingDoc, error: fetchError } = await supabase
+    .from('documents')
+    .select('*')
+    .eq('id', documentId)
+    .single()
+
+  if (fetchError || !existingDoc) {
+    throw new Error('Dokumentet hittades inte')
+  }
+
+  // Save current file as a version in document_versions
+  const { error: versionError } = await supabase
+    .from('document_versions')
+    .insert({
+      document_id: documentId,
+      version: existingDoc.version,
+      file_path: existingDoc.file_path,
+      file_size: existingDoc.file_size,
+      change_note: changeNote || null,
+      uploaded_by: user.id,
+    })
+
+  if (versionError) {
+    console.error('Error saving version:', versionError)
+    throw new Error('Kunde inte spara versionshistorik')
+  }
+
+  // Update document with new file info
+  const { data: updatedDoc, error: updateError } = await supabase
+    .from('documents')
+    .update({
+      file_path: filePath,
+      file_size: fileSize,
+      file_type: fileType,
+      version: existingDoc.version + 1,
+      updated_at: new Date().toISOString(),
+    })
+    .eq('id', documentId)
+    .select()
+    .single()
+
+  if (updateError) {
+    console.error('Error updating document:', updateError)
+    throw new Error('Kunde inte uppdatera dokumentet')
+  }
+
+  revalidatePath(`/dashboard/projects/${existingDoc.project_id}/documents`)
+  return updatedDoc
 }

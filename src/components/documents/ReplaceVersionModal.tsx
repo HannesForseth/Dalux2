@@ -1,7 +1,8 @@
 'use client'
 
 import { useState } from 'react'
-import { uploadNewVersion } from '@/app/actions/documents'
+import { getVersionUploadUrl, createVersionAfterUpload } from '@/app/actions/documents'
+import { uploadFileDirectly } from '@/lib/directUpload'
 import type { Document } from '@/types/database'
 
 interface ReplaceVersionModalProps {
@@ -54,6 +55,7 @@ export default function ReplaceVersionModal({
   const [isReplacing, setIsReplacing] = useState(false)
   const [changeNote, setChangeNote] = useState('')
   const [error, setError] = useState<string | null>(null)
+  const [uploadProgress, setUploadProgress] = useState(0)
 
   const formatFileSize = (bytes: number) => {
     if (bytes < 1024) return `${bytes} B`
@@ -64,14 +66,36 @@ export default function ReplaceVersionModal({
   const handleReplace = async () => {
     setIsReplacing(true)
     setError(null)
+    setUploadProgress(0)
 
     try {
-      await uploadNewVersion(existingDocument.id, newFile, changeNote || undefined)
+      // 1. Get signed upload URL
+      const { signedUrl, path } = await getVersionUploadUrl(existingDocument.id)
+
+      // 2. Upload directly to Supabase Storage with progress tracking
+      const uploadResult = await uploadFileDirectly(signedUrl, newFile, (progress) => {
+        setUploadProgress(progress)
+      })
+
+      if (!uploadResult.success) {
+        throw new Error(uploadResult.error || 'Uppladdning misslyckades')
+      }
+
+      // 3. Create database version record
+      await createVersionAfterUpload(
+        existingDocument.id,
+        path,
+        newFile.size,
+        newFile.type,
+        changeNote || undefined
+      )
+
       onReplaced()
     } catch (err) {
       console.error('Error replacing version:', err)
       setError(err instanceof Error ? err.message : 'Kunde inte ersätta dokumentet')
       setIsReplacing(false)
+      setUploadProgress(0)
     }
   }
 
@@ -162,18 +186,21 @@ export default function ReplaceVersionModal({
           <button
             onClick={handleReplace}
             disabled={isReplacing}
-            className="w-full px-4 py-3 sm:py-2.5 bg-blue-600 hover:bg-blue-500 text-white rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 font-medium"
+            className="w-full px-4 py-3 sm:py-2.5 bg-blue-600 hover:bg-blue-500 text-white rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex flex-col items-center justify-center gap-1 font-medium relative overflow-hidden"
           >
             {isReplacing ? (
               <>
-                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
-                Ersätter...
+                <div className="flex items-center gap-2">
+                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                  <span>Laddar upp... {uploadProgress}%</span>
+                </div>
+                <div className="absolute bottom-0 left-0 h-1 bg-blue-400 transition-all duration-300" style={{ width: `${uploadProgress}%` }} />
               </>
             ) : (
-              <>
+              <div className="flex items-center gap-2">
                 <ArrowPathIcon className="h-5 w-5" />
-                Ersätt som v{existingDocument.version + 1}
-              </>
+                <span>Ersätt som v{existingDocument.version + 1}</span>
+              </div>
             )}
           </button>
 

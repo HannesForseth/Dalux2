@@ -241,3 +241,86 @@ export async function uploadProjectImage(
 export async function deleteProjectImage(path: string): Promise<void> {
   await deleteFile('project-images', path)
 }
+
+// ===============================
+// Direct Upload Functions (Client-side upload to bypass 4.5MB limit)
+// ===============================
+
+export interface SignedUploadUrlResult {
+  signedUrl: string
+  token: string
+  path: string
+}
+
+/**
+ * Get a signed URL for direct client-side upload to Supabase Storage
+ * This bypasses the Vercel 4.5MB limit by allowing direct uploads to storage
+ */
+export async function getSignedUploadUrl(
+  bucket: StorageBucket,
+  projectId: string,
+  fileName: string,
+  subfolder?: string
+): Promise<SignedUploadUrlResult> {
+  const supabase = await createClient()
+
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) {
+    throw new Error('Inte inloggad')
+  }
+
+  // Generate unique filename
+  const timestamp = Date.now()
+  const cleanFileName = fileName.replace(/[^a-zA-Z0-9.-]/g, '_')
+  const uniqueFileName = `${timestamp}_${cleanFileName}`
+
+  // Build path: projectId/[subfolder/]filename
+  const path = subfolder
+    ? `${projectId}/${subfolder}/${uniqueFileName}`
+    : `${projectId}/${uniqueFileName}`
+
+  // Create signed upload URL (valid for 1 hour)
+  const { data, error } = await supabase.storage
+    .from(bucket)
+    .createSignedUploadUrl(path)
+
+  if (error || !data) {
+    console.error('Error creating signed upload URL:', error)
+    throw new Error('Kunde inte skapa uppladdnings-URL')
+  }
+
+  return {
+    signedUrl: data.signedUrl,
+    token: data.token,
+    path: path
+  }
+}
+
+/**
+ * Verify that a file was successfully uploaded to a path
+ */
+export async function verifyUpload(
+  bucket: StorageBucket,
+  path: string
+): Promise<boolean> {
+  const supabase = await createClient()
+
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) {
+    throw new Error('Inte inloggad')
+  }
+
+  // Try to get file metadata to verify it exists
+  const { data, error } = await supabase.storage
+    .from(bucket)
+    .list(path.split('/').slice(0, -1).join('/'), {
+      search: path.split('/').pop()
+    })
+
+  if (error) {
+    console.error('Error verifying upload:', error)
+    return false
+  }
+
+  return data && data.length > 0
+}
