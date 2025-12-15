@@ -14,14 +14,9 @@ import {
   Sparkles,
   ArrowRight,
   Check,
-  Building2,
-  Zap,
-  Shield,
-  Users,
   Play,
   FolderOpen,
   AtSign,
-  Bell,
   Upload
 } from "lucide-react"
 
@@ -460,19 +455,6 @@ export default function Home() {
         </div>
       </section>
 
-      {/* Stats Section with Scroll Animation */}
-      <section className="py-24 px-6 bg-white relative overflow-hidden">
-        <div className="absolute inset-0 bg-[radial-gradient(circle_at_30%_50%,rgba(99,102,241,0.05),transparent_50%)]" />
-        <div className="max-w-6xl mx-auto relative">
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-8">
-            <AnimatedStat number={500} suffix="+" label="Projekt" icon={<Building2 />} />
-            <AnimatedStat number={10000} suffix="+" label="Användare" icon={<Users />} />
-            <AnimatedStat number={99.9} suffix="%" label="Upptid" icon={<Shield />} />
-            <AnimatedStat number={2} suffix="x" label="Snabbare" icon={<Zap />} />
-          </div>
-        </div>
-      </section>
-
       {/* Pricing Section */}
       <section id="priser" className="py-24 px-6">
         <div className="max-w-5xl mx-auto">
@@ -660,44 +642,6 @@ function BentoCard({
         <h3 className="text-lg font-semibold text-slate-900 mb-2">{title}</h3>
         <p className="text-slate-600">{description}</p>
       </div>
-    </motion.div>
-  )
-}
-
-// Animated Stat Component
-function AnimatedStat({
-  number,
-  suffix,
-  label,
-  icon
-}: {
-  number: number
-  suffix: string
-  label: string
-  icon: React.ReactNode
-}) {
-  const ref = useRef<HTMLDivElement>(null)
-  const { scrollYProgress } = useScroll({
-    target: ref,
-    offset: ["start end", "end start"]
-  })
-
-  const scale = useTransform(scrollYProgress, [0, 0.5], [0.8, 1])
-  const opacity = useTransform(scrollYProgress, [0, 0.3], [0, 1])
-
-  return (
-    <motion.div
-      ref={ref}
-      className="text-center"
-      style={{ scale, opacity }}
-    >
-      <div className="w-14 h-14 rounded-2xl bg-slate-100 flex items-center justify-center mx-auto mb-4 text-slate-600">
-        {icon}
-      </div>
-      <p className="text-4xl md:text-5xl font-bold text-slate-900">
-        {number.toLocaleString()}{suffix}
-      </p>
-      <p className="text-slate-600 mt-1">{label}</p>
     </motion.div>
   )
 }
