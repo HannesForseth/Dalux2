@@ -122,7 +122,7 @@ export default function ProjectDetailPage() {
 
         {userRole && canUpdateProject(userRole) && (
           <Link
-            href={`/dashboard/projects/${project.id}/settings/members`}
+            href={`/dashboard/projects/${project.id}/settings`}
             className="px-4 py-2 bg-white/80 text-slate-700 rounded-xl font-medium hover:bg-white hover:shadow-md border border-slate-200 transition-all"
           >
             Inställningar

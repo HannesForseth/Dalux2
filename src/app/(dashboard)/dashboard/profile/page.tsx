@@ -1,13 +1,25 @@
 'use client'
 
 import { useEffect, useState, useRef } from 'react'
+import { motion } from 'framer-motion'
+import { User, Building2, Phone, Mail, Calendar, Clock, Save, Camera, Trash2 } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import { getProfile, updateProfile, uploadAvatar, deleteAvatar } from '@/app/actions/profile'
 import type { Profile } from '@/types/database'
-import type { User } from '@supabase/supabase-js'
+import type { User as AuthUser } from '@supabase/supabase-js'
+
+const containerVariants = {
+  hidden: { opacity: 0 },
+  visible: { opacity: 1, transition: { staggerChildren: 0.1 } }
+}
+
+const itemVariants = {
+  hidden: { opacity: 0, y: 20 },
+  visible: { opacity: 1, y: 0, transition: { duration: 0.4 } }
+}
 
 export default function ProfilePage() {
-  const [user, setUser] = useState<User | null>(null)
+  const [user, setUser] = useState<AuthUser | null>(null)
   const [profile, setProfile] = useState<Profile | null>(null)
   const [isLoading, setIsLoading] = useState(true)
   const [isSaving, setIsSaving] = useState(false)
@@ -58,7 +70,6 @@ export default function ProfilePage() {
     if (result.success) {
       setSuccessMessage('Profilen har sparats')
       setTimeout(() => setSuccessMessage(''), 3000)
-      // Reload profile to get updated data
       const updatedProfile = await getProfile()
       setProfile(updatedProfile)
     } else {
@@ -89,7 +100,6 @@ export default function ProfilePage() {
     }
 
     setIsUploadingAvatar(false)
-    // Reset file input
     if (fileInputRef.current) {
       fileInputRef.current.value = ''
     }
@@ -126,51 +136,68 @@ export default function ProfilePage() {
 
   if (isLoading) {
     return (
-      <div className="animate-pulse">
-        <div className="h-8 bg-slate-800 rounded w-1/4 mb-8" />
-        <div className="bg-slate-900 border border-slate-800 rounded-xl p-6">
-          <div className="flex items-center gap-6 mb-8">
-            <div className="w-24 h-24 bg-slate-800 rounded-full" />
-            <div className="space-y-2">
-              <div className="h-6 bg-slate-800 rounded w-48" />
-              <div className="h-4 bg-slate-800 rounded w-32" />
-            </div>
-          </div>
-          <div className="space-y-4">
-            <div className="h-10 bg-slate-800 rounded" />
-            <div className="h-10 bg-slate-800 rounded" />
-            <div className="h-10 bg-slate-800 rounded" />
-          </div>
-        </div>
+      <div className="animate-pulse max-w-3xl mx-auto space-y-6">
+        <div className="h-8 bg-slate-200 rounded-xl w-1/3" />
+        <div className="bg-white/60 border border-slate-200 rounded-2xl p-6 h-40" />
+        <div className="bg-white/60 border border-slate-200 rounded-2xl p-6 h-64" />
       </div>
     )
   }
 
   return (
-    <div className="max-w-3xl">
-      <div className="mb-8">
-        <h1 className="text-2xl font-bold text-white">Min profil</h1>
-        <p className="text-slate-400 mt-1">Hantera din personliga information och inställningar</p>
-      </div>
+    <motion.div
+      variants={containerVariants}
+      initial="hidden"
+      animate="visible"
+      className="max-w-3xl mx-auto"
+    >
+      {/* Header */}
+      <motion.div variants={itemVariants} className="mb-8">
+        <h1 className="text-2xl font-bold text-slate-900">Min profil</h1>
+        <p className="text-slate-500 mt-1">Hantera din personliga information och inställningar</p>
+      </motion.div>
 
       {/* Success/Error messages */}
       {successMessage && (
-        <div className="mb-6 p-4 bg-green-500/10 border border-green-500/20 rounded-lg text-green-400 flex items-center gap-2">
-          <CheckCircleIcon />
+        <motion.div
+          initial={{ opacity: 0, y: -10 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="mb-6 p-4 bg-green-50 border border-green-200 rounded-xl text-green-700 flex items-center gap-2"
+        >
+          <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+          </svg>
           {successMessage}
-        </div>
+        </motion.div>
       )}
       {errorMessage && (
-        <div className="mb-6 p-4 bg-red-500/10 border border-red-500/20 rounded-lg text-red-400 flex items-center gap-2">
-          <ExclamationCircleIcon />
+        <motion.div
+          initial={{ opacity: 0, y: -10 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="mb-6 p-4 bg-red-50 border border-red-200 rounded-xl text-red-600 flex items-center gap-2"
+        >
+          <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m9-.75a9 9 0 11-18 0 9 9 0 0118 0zm-9 3.75h.008v.008H12v-.008z" />
+          </svg>
           {errorMessage}
-        </div>
+        </motion.div>
       )}
 
       <div className="space-y-6">
         {/* Avatar Section */}
-        <div className="bg-slate-900 border border-slate-800 rounded-xl p-6">
-          <h2 className="text-lg font-semibold text-white mb-6">Profilbild</h2>
+        <motion.div
+          variants={itemVariants}
+          className="bg-white/80 backdrop-blur-sm border border-slate-200 rounded-2xl p-6 shadow-sm"
+        >
+          <div className="flex items-center gap-3 mb-6">
+            <div className="w-10 h-10 bg-indigo-100 rounded-xl flex items-center justify-center">
+              <Camera className="w-5 h-5 text-indigo-600" />
+            </div>
+            <div>
+              <h2 className="text-lg font-semibold text-slate-900">Profilbild</h2>
+              <p className="text-sm text-slate-500">Din avatar som visas i systemet</p>
+            </div>
+          </div>
 
           <div className="flex items-center gap-6">
             {/* Avatar */}
@@ -179,17 +206,21 @@ export default function ProfilePage() {
                 <img
                   src={profile.avatar_url}
                   alt="Profilbild"
-                  className="w-24 h-24 rounded-full object-cover border-2 border-slate-700"
+                  className="w-24 h-24 rounded-full object-cover border-2 border-slate-200 shadow-sm"
                 />
               ) : (
-                <div className="w-24 h-24 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center text-white text-2xl font-semibold border-2 border-slate-700">
+                <div className="w-24 h-24 rounded-full bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-white text-2xl font-semibold border-2 border-slate-200 shadow-sm">
                   {getInitials(profile?.full_name, user?.email)}
                 </div>
               )}
 
               {isUploadingAvatar && (
-                <div className="absolute inset-0 bg-black/50 rounded-full flex items-center justify-center">
-                  <LoadingSpinner />
+                <div className="absolute inset-0 bg-white/80 rounded-full flex items-center justify-center">
+                  <motion.div
+                    className="w-6 h-6 border-2 border-indigo-200 border-t-indigo-600 rounded-full"
+                    animate={{ rotate: 360 }}
+                    transition={{ duration: 1, repeat: Infinity, ease: 'linear' }}
+                  />
                 </div>
               )}
             </div>
@@ -207,9 +238,9 @@ export default function ProfilePage() {
                 />
                 <label
                   htmlFor="avatar-upload"
-                  className="inline-flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700 transition-colors cursor-pointer disabled:opacity-50"
+                  className="inline-flex items-center gap-2 px-4 py-2.5 bg-indigo-600 text-white rounded-xl font-medium hover:bg-indigo-700 transition-colors cursor-pointer"
                 >
-                  <CameraIcon />
+                  <Camera className="w-4 h-4" />
                   {profile?.avatar_url ? 'Byt bild' : 'Ladda upp bild'}
                 </label>
               </div>
@@ -218,8 +249,9 @@ export default function ProfilePage() {
                 <button
                   onClick={handleDeleteAvatar}
                   disabled={isUploadingAvatar}
-                  className="text-sm text-slate-400 hover:text-red-400 transition-colors disabled:opacity-50"
+                  className="flex items-center gap-2 text-sm text-slate-500 hover:text-red-500 transition-colors disabled:opacity-50"
                 >
+                  <Trash2 className="w-4 h-4" />
                   Ta bort bild
                 </button>
               )}
@@ -229,190 +261,215 @@ export default function ProfilePage() {
               </p>
             </div>
           </div>
-        </div>
+        </motion.div>
 
         {/* Profile Form */}
-        <form onSubmit={handleSave}>
-          <div className="bg-slate-900 border border-slate-800 rounded-xl p-6">
-            <h2 className="text-lg font-semibold text-white mb-6">Personlig information</h2>
-
-            <div className="space-y-5">
-              <div>
-                <label htmlFor="email" className="block text-sm font-medium text-slate-400 mb-2">
-                  E-postadress
-                </label>
-                <input
-                  type="email"
-                  id="email"
-                  value={user?.email || ''}
-                  disabled
-                  className="w-full px-4 py-3 bg-slate-800/50 border border-slate-700 rounded-lg text-slate-400 cursor-not-allowed"
-                />
-                <p className="mt-1 text-xs text-slate-500">
-                  E-postadressen kan inte ändras
-                </p>
+        <motion.div variants={itemVariants}>
+          <form onSubmit={handleSave}>
+            <div className="bg-white/80 backdrop-blur-sm border border-slate-200 rounded-2xl p-6 shadow-sm">
+              <div className="flex items-center gap-3 mb-6">
+                <div className="w-10 h-10 bg-emerald-100 rounded-xl flex items-center justify-center">
+                  <User className="w-5 h-5 text-emerald-600" />
+                </div>
+                <div>
+                  <h2 className="text-lg font-semibold text-slate-900">Personlig information</h2>
+                  <p className="text-sm text-slate-500">Uppdatera din profilinformation</p>
+                </div>
               </div>
 
-              <div>
-                <label htmlFor="fullName" className="block text-sm font-medium text-slate-400 mb-2">
-                  Fullständigt namn
-                </label>
-                <input
-                  type="text"
-                  id="fullName"
-                  value={fullName}
-                  onChange={(e) => setFullName(e.target.value)}
-                  placeholder="Ange ditt namn"
-                  className="w-full px-4 py-3 bg-slate-800 border border-slate-700 rounded-lg text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
-                />
+              <div className="space-y-5">
+                <div>
+                  <label htmlFor="email" className="block text-sm font-medium text-slate-700 mb-1">
+                    E-postadress
+                  </label>
+                  <div className="relative">
+                    <Mail className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                    <input
+                      type="email"
+                      id="email"
+                      value={user?.email || ''}
+                      disabled
+                      className="w-full pl-11 pr-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-slate-500 cursor-not-allowed"
+                    />
+                  </div>
+                  <p className="mt-1 text-xs text-slate-500">
+                    E-postadressen kan inte ändras
+                  </p>
+                </div>
+
+                <div>
+                  <label htmlFor="fullName" className="block text-sm font-medium text-slate-700 mb-1">
+                    Fullständigt namn
+                  </label>
+                  <div className="relative">
+                    <User className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                    <input
+                      type="text"
+                      id="fullName"
+                      value={fullName}
+                      onChange={(e) => setFullName(e.target.value)}
+                      placeholder="Ange ditt namn"
+                      className="w-full pl-11 pr-4 py-2.5 border border-slate-200 rounded-xl text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all"
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <label htmlFor="company" className="block text-sm font-medium text-slate-700 mb-1">
+                    Företag / Organisation
+                  </label>
+                  <div className="relative">
+                    <Building2 className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                    <input
+                      type="text"
+                      id="company"
+                      value={company}
+                      onChange={(e) => setCompany(e.target.value)}
+                      placeholder="Ange ditt företag"
+                      className="w-full pl-11 pr-4 py-2.5 border border-slate-200 rounded-xl text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all"
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <label htmlFor="phone" className="block text-sm font-medium text-slate-700 mb-1">
+                    Telefonnummer
+                  </label>
+                  <div className="relative">
+                    <Phone className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                    <input
+                      type="tel"
+                      id="phone"
+                      value={phone}
+                      onChange={(e) => setPhone(e.target.value)}
+                      placeholder="Ange ditt telefonnummer"
+                      className="w-full pl-11 pr-4 py-2.5 border border-slate-200 rounded-xl text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all"
+                    />
+                  </div>
+                </div>
               </div>
 
-              <div>
-                <label htmlFor="company" className="block text-sm font-medium text-slate-400 mb-2">
-                  Företag / Organisation
-                </label>
-                <input
-                  type="text"
-                  id="company"
-                  value={company}
-                  onChange={(e) => setCompany(e.target.value)}
-                  placeholder="Ange ditt företag"
-                  className="w-full px-4 py-3 bg-slate-800 border border-slate-700 rounded-lg text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
-                />
-              </div>
-
-              <div>
-                <label htmlFor="phone" className="block text-sm font-medium text-slate-400 mb-2">
-                  Telefonnummer
-                </label>
-                <input
-                  type="tel"
-                  id="phone"
-                  value={phone}
-                  onChange={(e) => setPhone(e.target.value)}
-                  placeholder="Ange ditt telefonnummer"
-                  className="w-full px-4 py-3 bg-slate-800 border border-slate-700 rounded-lg text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
-                />
+              <div className="mt-6 flex justify-end">
+                <button
+                  type="submit"
+                  disabled={isSaving}
+                  className="inline-flex items-center gap-2 px-4 py-2.5 bg-indigo-600 text-white rounded-xl font-medium hover:bg-indigo-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {isSaving ? (
+                    <>
+                      <motion.div
+                        className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full"
+                        animate={{ rotate: 360 }}
+                        transition={{ duration: 1, repeat: Infinity, ease: 'linear' }}
+                      />
+                      Sparar...
+                    </>
+                  ) : (
+                    <>
+                      <Save className="w-4 h-4" />
+                      Spara ändringar
+                    </>
+                  )}
+                </button>
               </div>
             </div>
-
-            <div className="mt-6 flex justify-end">
-              <button
-                type="submit"
-                disabled={isSaving}
-                className="inline-flex items-center gap-2 px-6 py-3 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                {isSaving ? (
-                  <>
-                    <LoadingSpinner />
-                    Sparar...
-                  </>
-                ) : (
-                  'Spara ändringar'
-                )}
-              </button>
-            </div>
-          </div>
-        </form>
+          </form>
+        </motion.div>
 
         {/* Account Info */}
-        <div className="bg-slate-900 border border-slate-800 rounded-xl p-6">
-          <h2 className="text-lg font-semibold text-white mb-6">Kontoinformation</h2>
+        <motion.div
+          variants={itemVariants}
+          className="bg-white/80 backdrop-blur-sm border border-slate-200 rounded-2xl p-6 shadow-sm"
+        >
+          <div className="flex items-center gap-3 mb-6">
+            <div className="w-10 h-10 bg-purple-100 rounded-xl flex items-center justify-center">
+              <Calendar className="w-5 h-5 text-purple-600" />
+            </div>
+            <div>
+              <h2 className="text-lg font-semibold text-slate-900">Kontoinformation</h2>
+              <p className="text-sm text-slate-500">Information om ditt konto</p>
+            </div>
+          </div>
 
-          <div className="space-y-4">
-            <div className="flex items-center justify-between p-4 bg-slate-800/50 rounded-lg">
-              <div>
-                <p className="text-sm text-slate-400">Konto-ID</p>
-                <p className="text-white font-mono text-sm mt-1">{user?.id}</p>
+          <div className="space-y-3">
+            <div className="flex items-center justify-between p-4 bg-slate-50 rounded-xl">
+              <div className="flex items-center gap-3">
+                <div className="w-8 h-8 bg-slate-200 rounded-lg flex items-center justify-center">
+                  <User className="w-4 h-4 text-slate-600" />
+                </div>
+                <div>
+                  <p className="text-sm text-slate-500">Konto-ID</p>
+                  <p className="text-slate-900 font-mono text-sm">{user?.id?.slice(0, 8)}...</p>
+                </div>
               </div>
             </div>
 
-            <div className="flex items-center justify-between p-4 bg-slate-800/50 rounded-lg">
-              <div>
-                <p className="text-sm text-slate-400">Konto skapat</p>
-                <p className="text-white mt-1">
-                  {user?.created_at
-                    ? new Date(user.created_at).toLocaleDateString('sv-SE', {
-                        year: 'numeric',
-                        month: 'long',
-                        day: 'numeric'
-                      })
-                    : 'Okänt'}
-                </p>
+            <div className="flex items-center justify-between p-4 bg-slate-50 rounded-xl">
+              <div className="flex items-center gap-3">
+                <div className="w-8 h-8 bg-slate-200 rounded-lg flex items-center justify-center">
+                  <Calendar className="w-4 h-4 text-slate-600" />
+                </div>
+                <div>
+                  <p className="text-sm text-slate-500">Konto skapat</p>
+                  <p className="text-slate-900">
+                    {user?.created_at
+                      ? new Date(user.created_at).toLocaleDateString('sv-SE', {
+                          year: 'numeric',
+                          month: 'long',
+                          day: 'numeric'
+                        })
+                      : 'Okänt'}
+                  </p>
+                </div>
               </div>
             </div>
 
-            <div className="flex items-center justify-between p-4 bg-slate-800/50 rounded-lg">
-              <div>
-                <p className="text-sm text-slate-400">Senast inloggad</p>
-                <p className="text-white mt-1">
-                  {user?.last_sign_in_at
-                    ? new Date(user.last_sign_in_at).toLocaleDateString('sv-SE', {
+            <div className="flex items-center justify-between p-4 bg-slate-50 rounded-xl">
+              <div className="flex items-center gap-3">
+                <div className="w-8 h-8 bg-slate-200 rounded-lg flex items-center justify-center">
+                  <Clock className="w-4 h-4 text-slate-600" />
+                </div>
+                <div>
+                  <p className="text-sm text-slate-500">Senast inloggad</p>
+                  <p className="text-slate-900">
+                    {user?.last_sign_in_at
+                      ? new Date(user.last_sign_in_at).toLocaleDateString('sv-SE', {
+                          year: 'numeric',
+                          month: 'long',
+                          day: 'numeric',
+                          hour: '2-digit',
+                          minute: '2-digit'
+                        })
+                      : 'Okänt'}
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            {profile?.updated_at && (
+              <div className="flex items-center justify-between p-4 bg-slate-50 rounded-xl">
+                <div className="flex items-center gap-3">
+                  <div className="w-8 h-8 bg-slate-200 rounded-lg flex items-center justify-center">
+                    <Save className="w-4 h-4 text-slate-600" />
+                  </div>
+                  <div>
+                    <p className="text-sm text-slate-500">Profil uppdaterad</p>
+                    <p className="text-slate-900">
+                      {new Date(profile.updated_at).toLocaleDateString('sv-SE', {
                         year: 'numeric',
                         month: 'long',
                         day: 'numeric',
                         hour: '2-digit',
                         minute: '2-digit'
-                      })
-                    : 'Okänt'}
-                </p>
-              </div>
-            </div>
-
-            {profile?.updated_at && (
-              <div className="flex items-center justify-between p-4 bg-slate-800/50 rounded-lg">
-                <div>
-                  <p className="text-sm text-slate-400">Profil uppdaterad</p>
-                  <p className="text-white mt-1">
-                    {new Date(profile.updated_at).toLocaleDateString('sv-SE', {
-                      year: 'numeric',
-                      month: 'long',
-                      day: 'numeric',
-                      hour: '2-digit',
-                      minute: '2-digit'
-                    })}
-                  </p>
+                      })}
+                    </p>
+                  </div>
                 </div>
               </div>
             )}
           </div>
-        </div>
+        </motion.div>
       </div>
-    </div>
-  )
-}
-
-// Icons
-function CheckCircleIcon() {
-  return (
-    <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
-      <path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-    </svg>
-  )
-}
-
-function ExclamationCircleIcon() {
-  return (
-    <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
-      <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m9-.75a9 9 0 11-18 0 9 9 0 0118 0zm-9 3.75h.008v.008H12v-.008z" />
-    </svg>
-  )
-}
-
-function CameraIcon() {
-  return (
-    <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
-      <path strokeLinecap="round" strokeLinejoin="round" d="M6.827 6.175A2.31 2.31 0 015.186 7.23c-.38.054-.757.112-1.134.175C2.999 7.58 2.25 8.507 2.25 9.574V18a2.25 2.25 0 002.25 2.25h15A2.25 2.25 0 0021.75 18V9.574c0-1.067-.75-1.994-1.802-2.169a47.865 47.865 0 00-1.134-.175 2.31 2.31 0 01-1.64-1.055l-.822-1.316a2.192 2.192 0 00-1.736-1.039 48.774 48.774 0 00-5.232 0 2.192 2.192 0 00-1.736 1.039l-.821 1.316z" />
-      <path strokeLinecap="round" strokeLinejoin="round" d="M16.5 12.75a4.5 4.5 0 11-9 0 4.5 4.5 0 019 0zM18.75 10.5h.008v.008h-.008V10.5z" />
-    </svg>
-  )
-}
-
-function LoadingSpinner() {
-  return (
-    <svg className="animate-spin h-5 w-5" fill="none" viewBox="0 0 24 24">
-      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
-    </svg>
+    </motion.div>
   )
 }
