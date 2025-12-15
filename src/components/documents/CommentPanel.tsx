@@ -192,13 +192,13 @@ export default function CommentPanel({
   }
 
   return (
-    <div className="w-80 bg-slate-900 border-l border-slate-700 flex flex-col h-full">
+    <div className="w-80 bg-white border-l border-slate-200 flex flex-col h-full">
       {/* Header */}
-      <div className="px-4 py-3 border-b border-slate-700 flex items-center justify-between">
-        <h3 className="font-semibold text-white">Kommentarer</h3>
+      <div className="px-4 py-3 border-b border-slate-200 flex items-center justify-between">
+        <h3 className="font-semibold text-slate-900">Kommentarer</h3>
         <button
           onClick={onClose}
-          className="p-1 text-slate-400 hover:text-white rounded"
+          className="p-1 text-slate-500 hover:text-slate-700 rounded"
         >
           <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
             <path strokeLinecap="round" strokeLinejoin="round" d="M6 18 18 6M6 6l12 12" />
@@ -207,13 +207,13 @@ export default function CommentPanel({
       </div>
 
       {/* Filter */}
-      <div className="px-4 py-2 border-b border-slate-700">
-        <label className="flex items-center gap-2 text-sm text-slate-400 cursor-pointer">
+      <div className="px-4 py-2 border-b border-slate-200">
+        <label className="flex items-center gap-2 text-sm text-slate-600 cursor-pointer">
           <input
             type="checkbox"
             checked={filterByPage}
             onChange={(e) => setFilterByPage(e.target.checked)}
-            className="rounded bg-slate-700 border-slate-600 text-blue-500"
+            className="rounded bg-white border-slate-300 text-blue-500"
           />
           Visa endast sida {currentPage}
         </label>
@@ -258,7 +258,7 @@ export default function CommentPanel({
       </div>
 
       {/* New comment form */}
-      <div className="p-4 border-t border-slate-700">
+      <div className="p-4 border-t border-slate-200">
         <form onSubmit={handleSubmit}>
           <div className="relative">
             <textarea
@@ -273,20 +273,20 @@ export default function CommentPanel({
                 }
               }}
               placeholder={`Kommentera på sida ${currentPage}...`}
-              className="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-white text-sm resize-none focus:outline-none focus:border-blue-500"
+              className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-slate-900 text-sm resize-none focus:outline-none focus:border-blue-500"
               rows={3}
             />
 
             {/* Mention dropdown */}
             {showMentionList && (filteredGroups.length > 0 || filteredMembers.length > 0) && (
-              <div className="absolute bottom-full left-0 w-full mb-1 bg-slate-800 border border-slate-700 rounded-lg shadow-lg max-h-64 overflow-y-auto z-20">
+              <div className="absolute bottom-full left-0 w-full mb-1 bg-white border border-slate-200 rounded-lg shadow-lg max-h-64 overflow-y-auto z-20">
                 <div className="p-2">
                   <input
                     type="text"
                     value={mentionSearch}
                     onChange={(e) => setMentionSearch(e.target.value)}
                     placeholder="Sök grupper eller personer..."
-                    className="w-full px-2 py-1 bg-slate-700 border border-slate-600 rounded text-sm text-white"
+                    className="w-full px-2 py-1 bg-slate-50 border border-slate-200 rounded text-sm text-slate-900"
                     autoFocus
                   />
                 </div>
@@ -294,7 +294,7 @@ export default function CommentPanel({
                 {/* Groups section */}
                 {filteredGroups.length > 0 && (
                   <>
-                    <div className="px-3 py-1.5 text-xs font-medium text-slate-500 border-b border-slate-700">
+                    <div className="px-3 py-1.5 text-xs font-medium text-slate-500 border-b border-slate-200">
                       Grupper
                     </div>
                     {filteredGroups.map((group) => (
@@ -302,7 +302,7 @@ export default function CommentPanel({
                         key={group.id}
                         type="button"
                         onClick={() => insertGroupMention(group, false)}
-                        className="w-full px-3 py-2 text-left text-sm text-white hover:bg-slate-700 flex items-center gap-2"
+                        className="w-full px-3 py-2 text-left text-sm text-slate-900 hover:bg-slate-100 flex items-center gap-2"
                       >
                         <div
                           className="w-6 h-6 rounded flex items-center justify-center text-xs text-white"
@@ -313,7 +313,7 @@ export default function CommentPanel({
                         <div className="flex-1">
                           <span className="font-medium">{group.name}</span>
                         </div>
-                        <span className="text-xs text-slate-400">
+                        <span className="text-xs text-slate-500">
                           {group.member_count} pers
                         </span>
                       </button>
@@ -323,13 +323,13 @@ export default function CommentPanel({
 
                 {/* Separator if both groups and members */}
                 {filteredGroups.length > 0 && filteredMembers.length > 0 && (
-                  <div className="border-t border-slate-700 my-1" />
+                  <div className="border-t border-slate-200 my-1" />
                 )}
 
                 {/* Members section */}
                 {filteredMembers.length > 0 && (
                   <>
-                    <div className="px-3 py-1.5 text-xs font-medium text-slate-500 border-b border-slate-700">
+                    <div className="px-3 py-1.5 text-xs font-medium text-slate-500 border-b border-slate-200">
                       Personer
                     </div>
                     {filteredMembers.map((member) => (
@@ -337,14 +337,14 @@ export default function CommentPanel({
                         key={member.id}
                         type="button"
                         onClick={() => insertMention(member, false)}
-                        className="w-full px-3 py-2 text-left text-sm text-white hover:bg-slate-700 flex items-center gap-2"
+                        className="w-full px-3 py-2 text-left text-sm text-slate-900 hover:bg-slate-100 flex items-center gap-2"
                       >
-                        <div className="w-6 h-6 rounded-full bg-blue-500 flex items-center justify-center text-xs">
+                        <div className="w-6 h-6 rounded-full bg-blue-500 flex items-center justify-center text-xs text-white">
                           {(member.full_name || member.email).charAt(0).toUpperCase()}
                         </div>
                         <div>
                           <div className="font-medium">{member.full_name || 'Inget namn'}</div>
-                          <div className="text-xs text-slate-400">{member.email}</div>
+                          <div className="text-xs text-slate-500">{member.email}</div>
                         </div>
                       </button>
                     ))}
@@ -362,7 +362,7 @@ export default function CommentPanel({
             <button
               type="button"
               onClick={() => setShowMentionList(!showMentionList)}
-              className="text-slate-400 hover:text-blue-400 text-sm flex items-center gap-1"
+              className="text-slate-500 hover:text-blue-500 text-sm flex items-center gap-1"
               title="Nämn någon (@)"
             >
               <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
@@ -373,7 +373,7 @@ export default function CommentPanel({
             <button
               type="submit"
               disabled={!newComment.trim() || submitting}
-              className="px-4 py-1.5 bg-blue-600 hover:bg-blue-500 disabled:bg-slate-700 disabled:text-slate-500 text-white text-sm rounded-lg transition-colors"
+              className="px-4 py-1.5 bg-blue-600 hover:bg-blue-500 disabled:bg-slate-200 disabled:text-slate-400 text-white text-sm rounded-lg transition-colors"
             >
               {submitting ? 'Skickar...' : 'Skicka'}
             </button>
@@ -438,7 +438,7 @@ function CommentItem({
   )
 
   return (
-    <div className={`rounded-lg ${comment.is_resolved ? 'bg-green-900/20 border border-green-800/50' : 'bg-slate-800'} p-3`}>
+    <div className={`rounded-lg ${comment.is_resolved ? 'bg-green-50 border border-green-200' : 'bg-slate-50 border border-slate-200'} p-3`}>
       {/* Header */}
       <div className="flex items-start justify-between mb-2">
         <div className="flex items-center gap-2">
@@ -446,13 +446,13 @@ function CommentItem({
             {(comment.author?.full_name || comment.author?.email || '?').charAt(0).toUpperCase()}
           </div>
           <div>
-            <div className="text-sm font-medium text-white">
+            <div className="text-sm font-medium text-slate-900">
               {comment.author?.full_name || comment.author?.email || 'Okänd'}
             </div>
             <div className="text-xs text-slate-500">
               {formatDate(comment.created_at)}
               {comment.page_number && (
-                <span className="ml-2 px-1.5 py-0.5 bg-slate-700 rounded text-slate-400">
+                <span className="ml-2 px-1.5 py-0.5 bg-slate-200 rounded text-slate-600">
                   Sida {comment.page_number}
                 </span>
               )}
@@ -462,7 +462,7 @@ function CommentItem({
         <div className="flex items-center gap-1">
           <button
             onClick={() => onResolve(comment.id, comment.is_resolved)}
-            className={`p-1 rounded ${comment.is_resolved ? 'text-green-400 hover:text-green-300' : 'text-slate-400 hover:text-green-400'}`}
+            className={`p-1 rounded ${comment.is_resolved ? 'text-green-600 hover:text-green-500' : 'text-slate-400 hover:text-green-500'}`}
             title={comment.is_resolved ? 'Markera som olöst' : 'Markera som löst'}
           >
             <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
@@ -471,7 +471,7 @@ function CommentItem({
           </button>
           <button
             onClick={() => onDelete(comment.id)}
-            className="p-1 text-slate-400 hover:text-red-400 rounded"
+            className="p-1 text-slate-400 hover:text-red-500 rounded"
             title="Radera"
           >
             <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
@@ -482,7 +482,7 @@ function CommentItem({
       </div>
 
       {/* Content */}
-      <p className="text-sm text-slate-300 whitespace-pre-wrap">{comment.content}</p>
+      <p className="text-sm text-slate-700 whitespace-pre-wrap">{comment.content}</p>
 
       {/* Mentions */}
       {comment.mentions && comment.mentions.length > 0 && (
@@ -490,7 +490,7 @@ function CommentItem({
           {comment.mentions.map((mention) => (
             <span
               key={mention.id}
-              className="text-xs px-1.5 py-0.5 bg-blue-500/20 text-blue-300 rounded"
+              className="text-xs px-1.5 py-0.5 bg-blue-100 text-blue-700 rounded"
             >
               @{mention.mentioned_user?.full_name || mention.mentioned_user?.email}
             </span>
@@ -502,7 +502,7 @@ function CommentItem({
       {!comment.is_resolved && replyingTo !== comment.id && (
         <button
           onClick={onReply}
-          className="mt-2 text-xs text-blue-400 hover:text-blue-300"
+          className="mt-2 text-xs text-blue-600 hover:text-blue-500"
         >
           Svara
         </button>
@@ -510,7 +510,7 @@ function CommentItem({
 
       {/* Reply form */}
       {replyingTo === comment.id && (
-        <div className="mt-3 pl-4 border-l-2 border-slate-700">
+        <div className="mt-3 pl-4 border-l-2 border-slate-200">
           <div className="relative">
             <textarea
               ref={replyInputRef}
@@ -522,13 +522,13 @@ function CommentItem({
                 }
               }}
               placeholder="Skriv ett svar..."
-              className="w-full px-2 py-1.5 bg-slate-700 border border-slate-600 rounded text-sm text-white resize-none focus:outline-none focus:border-blue-500"
+              className="w-full px-2 py-1.5 bg-white border border-slate-200 rounded text-sm text-slate-900 resize-none focus:outline-none focus:border-blue-500"
               rows={2}
               autoFocus
             />
 
             {showReplyMentions && (filteredReplyGroups.length > 0 || filteredReplyMembers.length > 0) && (
-              <div className="absolute bottom-full left-0 w-full mb-1 bg-slate-800 border border-slate-700 rounded shadow-lg max-h-48 overflow-y-auto z-10">
+              <div className="absolute bottom-full left-0 w-full mb-1 bg-white border border-slate-200 rounded shadow-lg max-h-48 overflow-y-auto z-10">
                 {/* Search input */}
                 <div className="p-1.5">
                   <input
@@ -536,7 +536,7 @@ function CommentItem({
                     value={replyMentionSearch}
                     onChange={(e) => setReplyMentionSearch(e.target.value)}
                     placeholder="Sök..."
-                    className="w-full px-2 py-1 bg-slate-700 border border-slate-600 rounded text-xs text-white"
+                    className="w-full px-2 py-1 bg-slate-50 border border-slate-200 rounded text-xs text-slate-900"
                     autoFocus
                   />
                 </div>
@@ -544,7 +544,7 @@ function CommentItem({
                 {/* Groups */}
                 {filteredReplyGroups.length > 0 && (
                   <>
-                    <div className="px-2 py-1 text-xs font-medium text-slate-500 border-b border-slate-700">Grupper</div>
+                    <div className="px-2 py-1 text-xs font-medium text-slate-500 border-b border-slate-200">Grupper</div>
                     {filteredReplyGroups.map((group) => (
                       <button
                         key={group.id}
@@ -554,7 +554,7 @@ function CommentItem({
                           setShowReplyMentions(false)
                           setReplyMentionSearch('')
                         }}
-                        className="w-full px-2 py-1.5 text-left text-xs text-white hover:bg-slate-700 flex items-center gap-2"
+                        className="w-full px-2 py-1.5 text-left text-xs text-slate-900 hover:bg-slate-100 flex items-center gap-2"
                       >
                         <div
                           className="w-4 h-4 rounded flex items-center justify-center text-[10px]"
@@ -563,7 +563,7 @@ function CommentItem({
                           👥
                         </div>
                         <span className="font-medium flex-1">{group.name}</span>
-                        <span className="text-slate-400">{group.member_count}</span>
+                        <span className="text-slate-500">{group.member_count}</span>
                       </button>
                     ))}
                   </>
@@ -571,13 +571,13 @@ function CommentItem({
 
                 {/* Separator */}
                 {filteredReplyGroups.length > 0 && filteredReplyMembers.length > 0 && (
-                  <div className="border-t border-slate-700 my-0.5" />
+                  <div className="border-t border-slate-200 my-0.5" />
                 )}
 
                 {/* Members */}
                 {filteredReplyMembers.length > 0 && (
                   <>
-                    <div className="px-2 py-1 text-xs font-medium text-slate-500 border-b border-slate-700">Personer</div>
+                    <div className="px-2 py-1 text-xs font-medium text-slate-500 border-b border-slate-200">Personer</div>
                     {filteredReplyMembers.map((member) => (
                       <button
                         key={member.id}
@@ -587,9 +587,9 @@ function CommentItem({
                           setShowReplyMentions(false)
                           setReplyMentionSearch('')
                         }}
-                        className="w-full px-2 py-1.5 text-left text-xs text-white hover:bg-slate-700 flex items-center gap-2"
+                        className="w-full px-2 py-1.5 text-left text-xs text-slate-900 hover:bg-slate-100 flex items-center gap-2"
                       >
-                        <div className="w-4 h-4 rounded-full bg-blue-500 flex items-center justify-center text-[10px]">
+                        <div className="w-4 h-4 rounded-full bg-blue-500 flex items-center justify-center text-[10px] text-white">
                           {(member.full_name || member.email).charAt(0).toUpperCase()}
                         </div>
                         <span className="font-medium">{member.full_name || member.email}</span>
@@ -604,13 +604,13 @@ function CommentItem({
             <button
               onClick={onSubmitReply}
               disabled={!replyContent.trim() || submitting}
-              className="px-2 py-1 bg-blue-600 hover:bg-blue-500 disabled:bg-slate-600 text-white text-xs rounded"
+              className="px-2 py-1 bg-blue-600 hover:bg-blue-500 disabled:bg-slate-200 disabled:text-slate-400 text-white text-xs rounded"
             >
               Svara
             </button>
             <button
               onClick={onCancelReply}
-              className="px-2 py-1 text-slate-400 hover:text-white text-xs"
+              className="px-2 py-1 text-slate-500 hover:text-slate-700 text-xs"
             >
               Avbryt
             </button>
@@ -620,19 +620,19 @@ function CommentItem({
 
       {/* Replies */}
       {comment.replies && comment.replies.length > 0 && (
-        <div className="mt-3 pl-4 border-l-2 border-slate-700 space-y-3">
+        <div className="mt-3 pl-4 border-l-2 border-slate-200 space-y-3">
           {comment.replies.map((reply) => (
-            <div key={reply.id} className="bg-slate-700/50 rounded p-2">
+            <div key={reply.id} className="bg-slate-100 rounded p-2">
               <div className="flex items-center gap-2 mb-1">
-                <div className="w-5 h-5 rounded-full bg-slate-600 flex items-center justify-center text-xs text-white">
+                <div className="w-5 h-5 rounded-full bg-slate-400 flex items-center justify-center text-xs text-white">
                   {(reply.author?.full_name || reply.author?.email || '?').charAt(0).toUpperCase()}
                 </div>
-                <span className="text-xs font-medium text-white">
+                <span className="text-xs font-medium text-slate-900">
                   {reply.author?.full_name || reply.author?.email}
                 </span>
                 <span className="text-xs text-slate-500">{formatDate(reply.created_at)}</span>
               </div>
-              <p className="text-xs text-slate-300">{reply.content}</p>
+              <p className="text-xs text-slate-700">{reply.content}</p>
             </div>
           ))}
         </div>

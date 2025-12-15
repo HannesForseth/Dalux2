@@ -693,7 +693,7 @@ export default function DocumentViewer({
       />
 
       {/* Modal */}
-      <div className="relative w-full max-w-7xl h-[95vh] mx-2 bg-white/95 backdrop-blur-xl border border-slate-200/50 rounded-2xl shadow-2xl flex flex-col overflow-hidden">
+      <div className="relative w-full max-w-[95vw] h-[95vh] mx-2 bg-white/95 backdrop-blur-xl border border-slate-200/50 rounded-2xl shadow-2xl flex flex-col overflow-hidden">
         {/* Header */}
         <div className="flex items-center justify-between px-6 py-4 border-b border-slate-200">
           <div className="flex items-center gap-4">
