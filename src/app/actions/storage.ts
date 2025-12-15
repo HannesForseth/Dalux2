@@ -19,6 +19,7 @@ interface UploadResult {
 
 /**
  * Upload a file to Supabase Storage
+ * Accepts either a File object (for internal use) or FormData (for server actions)
  */
 export async function uploadFile(
   bucket: StorageBucket,
@@ -65,6 +66,66 @@ export async function uploadFile(
     path: data.path,
     fullPath: data.fullPath,
     publicUrl: urlData?.publicUrl || null
+  }
+}
+
+/**
+ * Upload a file from FormData to Supabase Storage
+ * This is the proper way to handle file uploads in Server Actions
+ */
+export async function uploadFileFromFormData(
+  bucket: StorageBucket,
+  projectId: string,
+  formData: FormData,
+  subfolder?: string
+): Promise<UploadResult & { fileName: string; fileSize: number; fileType: string }> {
+  const supabase = await createClient()
+
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) {
+    throw new Error('Inte inloggad')
+  }
+
+  const file = formData.get('file') as File
+  if (!file || !(file instanceof File)) {
+    throw new Error('Ingen fil hittades')
+  }
+
+  // Generate unique filename
+  const timestamp = Date.now()
+  const cleanFileName = file.name.replace(/[^a-zA-Z0-9.-]/g, '_')
+  const fileName = `${timestamp}_${cleanFileName}`
+
+  // Build path: projectId/[subfolder/]filename
+  const path = subfolder
+    ? `${projectId}/${subfolder}/${fileName}`
+    : `${projectId}/${fileName}`
+
+  // Upload file
+  const { data, error } = await supabase.storage
+    .from(bucket)
+    .upload(path, file, {
+      cacheControl: '3600',
+      upsert: false
+    })
+
+  if (error) {
+    console.error('Storage upload error:', error)
+    throw new Error('Kunde inte ladda upp fil')
+  }
+
+  // Get public URL if bucket is public
+  const { data: urlData } = supabase.storage
+    .from(bucket)
+    .getPublicUrl(data.path)
+
+  return {
+    path: data.path,
+    fullPath: data.fullPath,
+    publicUrl: urlData?.publicUrl || null,
+    fileName: file.name,
+    fileSize: file.size,
+    fileType: file.type
   }
 }
 

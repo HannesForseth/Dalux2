@@ -13,7 +13,7 @@ import type {
   DeviationSeverity,
   DeviationCategory
 } from '@/types/database'
-import { uploadFile, deleteFile, getSignedUrl } from './storage'
+import { uploadFileFromFormData, deleteFile, getSignedUrl } from './storage'
 import { createDeviationMentionNotification } from './notifications'
 import { parseMentions, parseMentionsWithGroups } from '@/lib/utils/mentions'
 
@@ -464,7 +464,7 @@ export async function getDeviationAttachments(deviationId: string): Promise<Devi
 
 export async function addDeviationAttachment(
   deviationId: string,
-  file: File
+  formData: FormData
 ): Promise<DeviationAttachment> {
   const supabase = await createClient()
 
@@ -484,8 +484,8 @@ export async function addDeviationAttachment(
     throw new Error('Avvikelsen hittades inte')
   }
 
-  // Upload file to storage
-  const uploadResult = await uploadFile('deviation-attachments', deviation.project_id, file, deviationId)
+  // Upload file to storage using FormData
+  const uploadResult = await uploadFileFromFormData('deviation-attachments', deviation.project_id, formData, deviationId)
 
   // Create attachment record
   const { data: attachment, error } = await supabase
@@ -493,9 +493,9 @@ export async function addDeviationAttachment(
     .insert({
       deviation_id: deviationId,
       file_path: uploadResult.path,
-      file_name: file.name,
-      file_size: file.size,
-      file_type: file.type,
+      file_name: uploadResult.fileName,
+      file_size: uploadResult.fileSize,
+      file_type: uploadResult.fileType,
       uploaded_by: user.id,
     })
     .select()

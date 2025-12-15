@@ -583,7 +583,11 @@ function CreateRfiModal({
       })
       // Upload attachments if any
       if (files.length > 0) {
-        await Promise.all(files.map(file => addRfiAttachment(rfi.id, file)))
+        await Promise.all(files.map(file => {
+          const formData = new FormData()
+          formData.append('file', file)
+          return addRfiAttachment(rfi.id, formData)
+        }))
       }
       onCreated()
     } catch (error) {

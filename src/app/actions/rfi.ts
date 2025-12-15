@@ -11,7 +11,7 @@ import type {
   RfiStatus,
   RfiPriority
 } from '@/types/database'
-import { uploadFile, deleteFile, getSignedUrl } from './storage'
+import { uploadFileFromFormData, deleteFile, getSignedUrl } from './storage'
 
 export async function getProjectRfis(
   projectId: string,
@@ -345,7 +345,7 @@ export async function getRfiAttachments(rfiId: string): Promise<RfiAttachment[]>
 
 export async function addRfiAttachment(
   rfiId: string,
-  file: File
+  formData: FormData
 ): Promise<RfiAttachment> {
   const supabase = await createClient()
 
@@ -365,8 +365,8 @@ export async function addRfiAttachment(
     throw new Error('Frågan hittades inte')
   }
 
-  // Upload file to storage
-  const uploadResult = await uploadFile('rfi-attachments', rfi.project_id, file, rfiId)
+  // Upload file to storage using FormData
+  const uploadResult = await uploadFileFromFormData('rfi-attachments', rfi.project_id, formData, rfiId)
 
   // Create attachment record
   const { data: attachment, error } = await supabase
@@ -374,9 +374,9 @@ export async function addRfiAttachment(
     .insert({
       rfi_id: rfiId,
       file_path: uploadResult.path,
-      file_name: file.name,
-      file_size: file.size,
-      file_type: file.type,
+      file_name: uploadResult.fileName,
+      file_size: uploadResult.fileSize,
+      file_type: uploadResult.fileType,
       uploaded_by: user.id,
     })
     .select()

@@ -441,7 +441,9 @@ function IssueDetailModal({ issue, isOpen, onClose, onUpdate, members, groups }:
 
     setIsUploading(true)
     try {
-      await addIssueAttachment(issue.id, file)
+      const formData = new FormData()
+      formData.append('file', file)
+      await addIssueAttachment(issue.id, formData)
       await loadAttachments()
     } catch (error) {
       console.error('Upload failed:', error)
@@ -873,7 +875,11 @@ export default function ProjectIssuesPage() {
     const issue = await createIssue(projectId, data)
     // Upload attachments if any
     if (files.length > 0) {
-      await Promise.all(files.map(file => addIssueAttachment(issue.id, file)))
+      await Promise.all(files.map(file => {
+        const formData = new FormData()
+        formData.append('file', file)
+        return addIssueAttachment(issue.id, formData)
+      }))
     }
     await loadData()
   }

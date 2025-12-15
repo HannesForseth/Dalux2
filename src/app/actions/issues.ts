@@ -12,7 +12,7 @@ import type {
   IssueStatus,
   IssuePriority
 } from '@/types/database'
-import { uploadFile, deleteFile, getSignedUrl } from './storage'
+import { uploadFileFromFormData, deleteFile, getSignedUrl } from './storage'
 import { createIssueMentionNotification } from './notifications'
 import { parseMentions, parseMentionsWithGroups } from '@/lib/utils/mentions'
 
@@ -428,7 +428,7 @@ export async function getIssueAttachments(issueId: string): Promise<IssueAttachm
 
 export async function addIssueAttachment(
   issueId: string,
-  file: File
+  formData: FormData
 ): Promise<IssueAttachment> {
   const supabase = await createClient()
 
@@ -445,11 +445,11 @@ export async function addIssueAttachment(
     .single()
 
   if (!issue) {
-    throw new Error('Avvikelsen hittades inte')
+    throw new Error('Ärendet hittades inte')
   }
 
-  // Upload file to storage
-  const uploadResult = await uploadFile('issue-attachments', issue.project_id, file, issueId)
+  // Upload file to storage using FormData
+  const uploadResult = await uploadFileFromFormData('issue-attachments', issue.project_id, formData, issueId)
 
   // Create attachment record
   const { data: attachment, error } = await supabase
@@ -457,9 +457,9 @@ export async function addIssueAttachment(
     .insert({
       issue_id: issueId,
       file_path: uploadResult.path,
-      file_name: file.name,
-      file_size: file.size,
-      file_type: file.type,
+      file_name: uploadResult.fileName,
+      file_size: uploadResult.fileSize,
+      file_type: uploadResult.fileType,
       uploaded_by: user.id,
     })
     .select()

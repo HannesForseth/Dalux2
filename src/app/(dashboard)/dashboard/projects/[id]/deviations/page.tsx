@@ -473,7 +473,9 @@ function DeviationDetailModal({ deviation, isOpen, onClose, onUpdate, members, g
 
     setIsUploading(true)
     try {
-      await addDeviationAttachment(deviation.id, file)
+      const formData = new FormData()
+      formData.append('file', file)
+      await addDeviationAttachment(deviation.id, formData)
       await loadAttachments()
     } catch (error) {
       console.error('Upload failed:', error)
@@ -952,7 +954,11 @@ export default function ProjectDeviationsPage() {
     const deviation = await createDeviation(projectId, data)
     // Upload attachments if any
     if (files.length > 0) {
-      await Promise.all(files.map(file => addDeviationAttachment(deviation.id, file)))
+      await Promise.all(files.map(file => {
+        const formData = new FormData()
+        formData.append('file', file)
+        return addDeviationAttachment(deviation.id, formData)
+      }))
     }
     await loadData()
   }
