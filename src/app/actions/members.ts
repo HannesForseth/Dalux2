@@ -541,7 +541,7 @@ export async function acceptInvitation(token: string): Promise<{ projectId: stri
     .select('id, status')
     .eq('project_id', invitation.project_id)
     .eq('user_id', user.id)
-    .single()
+    .maybeSingle()
 
   if (existingMember?.status === 'active') {
     // Mark invitation as accepted anyway
