@@ -8,7 +8,8 @@ import { ArrowLeft, Users, CreditCard, Trash2, Settings, Building2, Save, Extern
 import Image from 'next/image'
 import { getProject, getUserRoleInProject, updateProject, deleteProject, uploadProjectImage, removeProjectImage } from '@/app/actions/projects'
 import { getProjectSubscription } from '@/app/actions/plans'
-import type { Project, RoleName, ProjectPlan } from '@/types/database'
+import type { Project, RoleName, ProjectPlan, ProjectSubscription, SubscriptionStatus } from '@/types/database'
+import { formatStorage } from '@/lib/stripe'
 import { canUpdateProject, canDeleteProject, isOwner } from '@/lib/permissions'
 
 const containerVariants = {
@@ -28,6 +29,7 @@ export default function ProjectSettingsPage() {
 
   const [project, setProject] = useState<Project | null>(null)
   const [currentPlan, setCurrentPlan] = useState<ProjectPlan | null>(null)
+  const [subscription, setSubscription] = useState<ProjectSubscription | null>(null)
   const [userRole, setUserRole] = useState<RoleName | null>(null)
   const [isLoading, setIsLoading] = useState(true)
   const [isSaving, setIsSaving] = useState(false)
@@ -36,6 +38,7 @@ export default function ProjectSettingsPage() {
   const [deleteConfirmText, setDeleteConfirmText] = useState('')
   const [successMessage, setSuccessMessage] = useState('')
   const [errorMessage, setErrorMessage] = useState('')
+  const [isOpeningPortal, setIsOpeningPortal] = useState(false)
 
   // Image state
   const [imageUrl, setImageUrl] = useState<string | null>(null)
@@ -62,6 +65,7 @@ export default function ProjectSettingsPage() {
       setProject(projectData)
       setUserRole(role as RoleName)
       setCurrentPlan(subscriptionData.plan)
+      setSubscription(subscriptionData.subscription)
 
       // Set form values
       if (projectData) {
@@ -164,6 +168,52 @@ export default function ProjectSettingsPage() {
       setErrorMessage(error instanceof Error ? error.message : 'Kunde inte ta bort bilden')
     } finally {
       setIsUploadingImage(false)
+    }
+  }
+
+  // Helper function for subscription status badge
+  function getStatusBadge(status: SubscriptionStatus): { label: string; className: string } {
+    const badges: Record<SubscriptionStatus, { label: string; className: string }> = {
+      active: { label: 'Aktiv', className: 'bg-green-100 text-green-700' },
+      past_due: { label: 'Försenad betalning', className: 'bg-yellow-100 text-yellow-700' },
+      canceled: { label: 'Avbruten', className: 'bg-red-100 text-red-700' },
+      trialing: { label: 'Provperiod', className: 'bg-blue-100 text-blue-700' },
+    }
+    return badges[status] || { label: status, className: 'bg-slate-100 text-slate-700' }
+  }
+
+  // Helper function for formatting Swedish date
+  function formatSwedishDate(dateString: string | null): string {
+    if (!dateString) return 'Ej tillgänglig'
+    return new Date(dateString).toLocaleDateString('sv-SE', {
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric',
+    })
+  }
+
+  // Handler for opening Stripe Customer Portal
+  async function handleOpenPortal() {
+    setIsOpeningPortal(true)
+    setErrorMessage('')
+
+    try {
+      const response = await fetch('/api/stripe/portal', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ project_id: projectId }),
+      })
+      const data = await response.json()
+
+      if (data.portal_url) {
+        window.location.href = data.portal_url
+      } else {
+        throw new Error(data.error || 'Kunde inte öppna betalningsportalen')
+      }
+    } catch (error) {
+      setErrorMessage(error instanceof Error ? error.message : 'Ett fel uppstod')
+    } finally {
+      setIsOpeningPortal(false)
     }
   }
 
@@ -414,10 +464,18 @@ export default function ProjectSettingsPage() {
             </div>
           </div>
 
+          {/* Plan Overview */}
           <div className="bg-slate-50 rounded-xl p-3 sm:p-4 mb-4">
-            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-4">
-              <div>
-                <p className="text-sm text-slate-500">Nuvarande plan</p>
+            <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3 sm:gap-4">
+              <div className="flex-1">
+                <div className="flex items-center gap-2 mb-1">
+                  <p className="text-sm text-slate-500">Nuvarande plan</p>
+                  {subscription?.status && (
+                    <span className={`px-2 py-0.5 text-xs font-medium rounded-full ${getStatusBadge(subscription.status).className}`}>
+                      {getStatusBadge(subscription.status).label}
+                    </span>
+                  )}
+                </div>
                 <p className="text-lg sm:text-xl font-bold text-slate-900">
                   {currentPlan?.display_name || 'Ingen plan'}
                 </p>
@@ -429,21 +487,76 @@ export default function ProjectSettingsPage() {
                     {' • '}
                     {currentPlan.included_users} användare
                     <span className="hidden sm:inline"> inkluderade</span>
-                    {currentPlan.storage_mb > 0 && ` • ${currentPlan.storage_mb} MB`}
+                    {currentPlan.storage_mb > 0 && ` • ${formatStorage(currentPlan.storage_mb)}`}
                   </p>
                 )}
               </div>
               {isProjectOwner && (
-                <Link
-                  href={`/projects/new?upgrade=${projectId}`}
-                  className="w-full sm:w-auto text-center px-4 py-2.5 bg-emerald-600 text-white rounded-xl font-medium hover:bg-emerald-700 transition-colors flex items-center justify-center gap-2"
-                >
-                  Ändra plan
-                  <ExternalLink className="w-4 h-4" />
-                </Link>
+                <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto">
+                  <Link
+                    href={`/projects/new?upgrade=${projectId}`}
+                    className="w-full sm:w-auto text-center px-4 py-2.5 bg-emerald-600 text-white rounded-xl font-medium hover:bg-emerald-700 transition-colors flex items-center justify-center gap-2"
+                  >
+                    Ändra plan
+                    <ExternalLink className="w-4 h-4" />
+                  </Link>
+                </div>
               )}
             </div>
           </div>
+
+          {/* Subscription Details (for paying customers) */}
+          {subscription?.stripe_subscription_id && (
+            <div className="bg-slate-50 rounded-xl p-3 sm:p-4 mb-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                {/* Next billing date */}
+                <div>
+                  <p className="text-xs text-slate-500 mb-1">Nästa faktura</p>
+                  <p className="text-sm font-medium text-slate-900">
+                    {formatSwedishDate(subscription.current_period_end)}
+                  </p>
+                </div>
+
+                {/* Extra users */}
+                {(subscription.extra_users ?? 0) > 0 && (
+                  <div>
+                    <p className="text-xs text-slate-500 mb-1">Extra användare</p>
+                    <p className="text-sm font-medium text-slate-900">
+                      +{subscription.extra_users} st
+                    </p>
+                  </div>
+                )}
+
+                {/* Extra storage */}
+                {(subscription.extra_storage_mb ?? 0) > 0 && (
+                  <div>
+                    <p className="text-xs text-slate-500 mb-1">Extra lagring</p>
+                    <p className="text-sm font-medium text-slate-900">
+                      +{formatStorage(subscription.extra_storage_mb ?? 0)}
+                    </p>
+                  </div>
+                )}
+
+                {/* Manage billing button */}
+                {isProjectOwner && subscription.stripe_customer_id && (
+                  <div className="sm:col-span-2 lg:col-span-1 flex items-end">
+                    <button
+                      onClick={handleOpenPortal}
+                      disabled={isOpeningPortal}
+                      className="w-full px-4 py-2 text-sm font-medium text-slate-700 bg-white border border-slate-300 rounded-xl hover:bg-slate-50 transition-colors flex items-center justify-center gap-2 disabled:opacity-50"
+                    >
+                      {isOpeningPortal ? (
+                        <span className="w-4 h-4 border-2 border-slate-300 border-t-slate-600 rounded-full animate-spin" />
+                      ) : (
+                        <CreditCard className="w-4 h-4" />
+                      )}
+                      Hantera betalning
+                    </button>
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
 
           {currentPlan?.features && (
             <div className="space-y-2">
