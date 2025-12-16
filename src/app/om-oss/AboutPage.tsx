@@ -453,8 +453,8 @@ export default function AboutPage() {
           <div className="flex items-center gap-6 text-sm text-slate-600">
             <Link href="/" className="hover:text-slate-900 transition-colors">Hem</Link>
             <Link href="/om-oss" className="hover:text-slate-900 transition-colors">Om oss</Link>
-            <Link href="/login" className="hover:text-slate-900 transition-colors">Logga in</Link>
-            <Link href="/register" className="hover:text-slate-900 transition-colors">Registrera</Link>
+            <Link href="/privacy-policy" className="hover:text-slate-900 transition-colors">Integritetspolicy</Link>
+            <Link href="/terms" className="hover:text-slate-900 transition-colors">Villkor</Link>
           </div>
           <p className="text-sm text-slate-500">
             &copy; {new Date().getFullYear()} Bloxr. Alla rättigheter förbehållna.

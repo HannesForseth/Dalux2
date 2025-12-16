@@ -572,8 +572,8 @@ export default function Home() {
             </Link>
 
             <div className="flex gap-8 text-slate-600">
-              <a href="#" className="hover:text-slate-900 transition-colors">Integritetspolicy</a>
-              <a href="#" className="hover:text-slate-900 transition-colors">Villkor</a>
+              <Link href="/privacy-policy" className="hover:text-slate-900 transition-colors">Integritetspolicy</Link>
+              <Link href="/terms" className="hover:text-slate-900 transition-colors">Villkor</Link>
               <a href="mailto:support@bloxr.se" className="hover:text-slate-900 transition-colors">Kontakt</a>
             </div>
 
