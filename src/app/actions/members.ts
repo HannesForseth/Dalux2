@@ -488,13 +488,14 @@ export async function getInvitationByToken(token: string): Promise<InvitationWit
       .eq('token', validatedToken)
       .is('accepted_at', null)
       .gt('expires_at', new Date().toISOString())
-      .single()
+      .maybeSingle()
 
     if (error) {
-      if (error.code === 'PGRST116') {
-        return null
-      }
       console.error('Error fetching invitation:', error)
+      return null
+    }
+
+    if (!data) {
       return null
     }
 
