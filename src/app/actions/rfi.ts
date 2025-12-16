@@ -2,6 +2,7 @@
 
 import { createClient } from '@/lib/supabase/server'
 import { revalidatePath } from 'next/cache'
+import { verifyProjectMembership } from '@/lib/auth-helpers'
 import type {
   Rfi,
   RfiWithDetails,
@@ -27,6 +28,13 @@ export async function getProjectRfis(
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) {
       console.error('getProjectRfis: User not authenticated')
+      return []
+    }
+
+    // Verify user has access to project
+    const hasAccess = await verifyProjectMembership(projectId, user.id)
+    if (!hasAccess) {
+      console.error('getProjectRfis: User not a member of project')
       return []
     }
 
@@ -92,6 +100,13 @@ export async function getRfi(rfiId: string): Promise<RfiWithDetails | null> {
       return null
     }
 
+    // Verify user has access to project
+    const hasAccess = await verifyProjectMembership(data.project_id, user.id)
+    if (!hasAccess) {
+      console.error('getRfi: User not a member of project')
+      return null
+    }
+
     return data as RfiWithDetails
   } catch (err) {
     console.error('getRfi unexpected error:', err)
@@ -108,6 +123,12 @@ export async function createRfi(
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) {
     throw new Error('Inte inloggad')
+  }
+
+  // Verify user has access to project
+  const hasAccess = await verifyProjectMembership(projectId, user.id)
+  if (!hasAccess) {
+    throw new Error('Du har inte tillgång till detta projekt')
   }
 
   const { data: rfi, error } = await supabase
@@ -159,6 +180,12 @@ export async function updateRfi(
     throw new Error('Frågan hittades inte')
   }
 
+  // Verify user has access to project
+  const hasAccess = await verifyProjectMembership(existing.project_id, user.id)
+  if (!hasAccess) {
+    throw new Error('Du har inte tillgång till detta projekt')
+  }
+
   const updateData: Record<string, unknown> = {
     ...data,
     updated_at: new Date().toISOString(),
@@ -202,6 +229,12 @@ export async function answerRfi(
     throw new Error('Frågan hittades inte')
   }
 
+  // Verify user has access to project
+  const hasAccess = await verifyProjectMembership(existing.project_id, user.id)
+  if (!hasAccess) {
+    throw new Error('Du har inte tillgång till detta projekt')
+  }
+
   const { data: rfi, error } = await supabase
     .from('rfis')
     .update({
@@ -243,6 +276,12 @@ export async function closeRfi(rfiId: string): Promise<Rfi> {
     throw new Error('Frågan hittades inte')
   }
 
+  // Verify user has access to project
+  const hasAccess = await verifyProjectMembership(existing.project_id, user.id)
+  if (!hasAccess) {
+    throw new Error('Du har inte tillgång till detta projekt')
+  }
+
   const { data: rfi, error } = await supabase
     .from('rfis')
     .update({
@@ -282,6 +321,12 @@ export async function deleteRfi(rfiId: string): Promise<void> {
     throw new Error('Frågan hittades inte')
   }
 
+  // Verify user has access to project
+  const hasAccess = await verifyProjectMembership(rfi.project_id, user.id)
+  if (!hasAccess) {
+    throw new Error('Du har inte tillgång till detta projekt')
+  }
+
   // Delete all attachments from storage first
   const { data: attachments } = await supabase
     .from('rfi_attachments')
@@ -319,6 +364,24 @@ export async function getRfiAttachments(rfiId: string): Promise<RfiAttachment[]>
 
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) {
+      return []
+    }
+
+    // Get RFI to verify project access
+    const { data: rfi } = await supabase
+      .from('rfis')
+      .select('project_id')
+      .eq('id', rfiId)
+      .single()
+
+    if (!rfi) {
+      return []
+    }
+
+    // Verify user has access to project
+    const hasAccess = await verifyProjectMembership(rfi.project_id, user.id)
+    if (!hasAccess) {
+      console.error('getRfiAttachments: User not a member of project')
       return []
     }
 
@@ -365,6 +428,12 @@ export async function addRfiAttachment(
     throw new Error('Frågan hittades inte')
   }
 
+  // Verify user has access to project
+  const hasAccess = await verifyProjectMembership(rfi.project_id, user.id)
+  if (!hasAccess) {
+    throw new Error('Du har inte tillgång till detta projekt')
+  }
+
   // Upload file to storage using FormData
   const uploadResult = await uploadFileFromFormData('rfi-attachments', rfi.project_id, formData, rfiId)
 
@@ -404,15 +473,24 @@ export async function deleteRfiAttachment(attachmentId: string): Promise<void> {
     throw new Error('Inte inloggad')
   }
 
-  // Get attachment info
+  // Get attachment info with RFI to verify project access
   const { data: attachment } = await supabase
     .from('rfi_attachments')
-    .select('file_path')
+    .select('file_path, rfi_id, rfis!inner(project_id)')
     .eq('id', attachmentId)
     .single()
 
   if (!attachment) {
     throw new Error('Bilagan hittades inte')
+  }
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const projectId = (attachment.rfis as any)?.project_id
+  if (projectId) {
+    const hasAccess = await verifyProjectMembership(projectId, user.id)
+    if (!hasAccess) {
+      throw new Error('Du har inte tillgång till detta projekt')
+    }
   }
 
   // Delete from storage
@@ -444,12 +522,21 @@ export async function getRfiAttachmentDownloadUrl(attachmentId: string): Promise
 
   const { data: attachment } = await supabase
     .from('rfi_attachments')
-    .select('file_path')
+    .select('file_path, rfi_id, rfis!inner(project_id)')
     .eq('id', attachmentId)
     .single()
 
   if (!attachment) {
     throw new Error('Bilagan hittades inte')
+  }
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const projectId = (attachment.rfis as any)?.project_id
+  if (projectId) {
+    const hasAccess = await verifyProjectMembership(projectId, user.id)
+    if (!hasAccess) {
+      throw new Error('Du har inte tillgång till detta projekt')
+    }
   }
 
   return getSignedUrl('rfi-attachments', attachment.file_path, 3600)
@@ -468,6 +555,13 @@ export async function getRfiStats(projectId: string): Promise<{
 
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) {
+      return { total: 0, open: 0, pending: 0, answered: 0, closed: 0 }
+    }
+
+    // Verify user has access to project
+    const hasAccess = await verifyProjectMembership(projectId, user.id)
+    if (!hasAccess) {
+      console.error('getRfiStats: User not a member of project')
       return { total: 0, open: 0, pending: 0, answered: 0, closed: 0 }
     }
 
@@ -503,6 +597,13 @@ export async function getRfiCategories(projectId: string): Promise<string[]> {
 
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) {
+      return []
+    }
+
+    // Verify user has access to project
+    const hasAccess = await verifyProjectMembership(projectId, user.id)
+    if (!hasAccess) {
+      console.error('getRfiCategories: User not a member of project')
       return []
     }
 

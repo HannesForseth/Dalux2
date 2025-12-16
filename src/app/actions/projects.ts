@@ -2,6 +2,13 @@
 
 import { createClient } from '@/lib/supabase/server'
 import { revalidatePath } from 'next/cache'
+import { verifyProjectMembership } from '@/lib/auth-helpers'
+import {
+  createProjectSchema,
+  updateProjectSchema,
+  uuidSchema,
+  validateInput
+} from '@/lib/validations'
 import type {
   Project,
   CreateProjectData,
@@ -33,6 +40,9 @@ export async function getMyProjects(): Promise<Project[]> {
 
 export async function getProject(projectId: string): Promise<Project | null> {
   try {
+    // Validate input
+    const validatedId = validateInput(uuidSchema, projectId)
+
     const supabase = await createClient()
 
     const { data: { user } } = await supabase.auth.getUser()
@@ -41,10 +51,17 @@ export async function getProject(projectId: string): Promise<Project | null> {
       return null
     }
 
+    // Verify user has access to project
+    const hasAccess = await verifyProjectMembership(validatedId, user.id)
+    if (!hasAccess) {
+      console.error('getProject: User not a member of project')
+      return null
+    }
+
     const { data, error } = await supabase
       .from('projects')
       .select('*')
-      .eq('id', projectId)
+      .eq('id', validatedId)
       .single()
 
     if (error) {
@@ -63,6 +80,9 @@ export async function getProject(projectId: string): Promise<Project | null> {
 }
 
 export async function getProjectWithMembers(projectId: string): Promise<ProjectWithMembers | null> {
+  // Validate input
+  const validatedId = validateInput(uuidSchema, projectId)
+
   const supabase = await createClient()
 
   const { data: { user } } = await supabase.auth.getUser()
@@ -70,11 +90,17 @@ export async function getProjectWithMembers(projectId: string): Promise<ProjectW
     throw new Error('Inte inloggad')
   }
 
+  // Verify user has access to project
+  const hasAccess = await verifyProjectMembership(validatedId, user.id)
+  if (!hasAccess) {
+    throw new Error('Du har inte tillgång till detta projekt')
+  }
+
   // Get project
   const { data: project, error: projectError } = await supabase
     .from('projects')
     .select('*')
-    .eq('id', projectId)
+    .eq('id', validatedId)
     .single()
 
   if (projectError) {
@@ -94,7 +120,7 @@ export async function getProjectWithMembers(projectId: string): Promise<ProjectW
       profile:profiles!project_members_user_id_fkey(*),
       role:project_roles(*)
     `)
-    .eq('project_id', projectId)
+    .eq('project_id', validatedId)
     .eq('status', 'active')
 
   if (membersError) {
@@ -109,6 +135,9 @@ export async function getProjectWithMembers(projectId: string): Promise<ProjectW
 }
 
 export async function createProject(data: CreateProjectData): Promise<Project> {
+  // Validate input
+  const validatedData = validateInput(createProjectSchema, data)
+
   const supabase = await createClient()
 
   const { data: { user } } = await supabase.auth.getUser()
@@ -120,7 +149,7 @@ export async function createProject(data: CreateProjectData): Promise<Project> {
   const { data: project, error: projectError } = await supabase
     .from('projects')
     .insert({
-      ...data,
+      ...validatedData,
       created_by: user.id,
     })
     .select()
@@ -173,6 +202,10 @@ export async function updateProject(
   projectId: string,
   data: UpdateProjectData
 ): Promise<Project> {
+  // Validate input
+  const validatedId = validateInput(uuidSchema, projectId)
+  const validatedData = validateInput(updateProjectSchema, data)
+
   const supabase = await createClient()
 
   const { data: { user } } = await supabase.auth.getUser()
@@ -180,10 +213,25 @@ export async function updateProject(
     throw new Error('Inte inloggad')
   }
 
+  // Verify user has access to project (admin or owner)
+  const { data: membership } = await supabase
+    .from('project_members')
+    .select('role:project_roles(name)')
+    .eq('project_id', validatedId)
+    .eq('user_id', user.id)
+    .eq('status', 'active')
+    .single()
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const roleName = (membership?.role as any)?.name as string | undefined
+  if (!roleName || !['owner', 'admin'].includes(roleName)) {
+    throw new Error('Du har inte behörighet att uppdatera detta projekt')
+  }
+
   const { data: project, error } = await supabase
     .from('projects')
-    .update(data)
-    .eq('id', projectId)
+    .update(validatedData)
+    .eq('id', validatedId)
     .select()
     .single()
 
@@ -194,12 +242,15 @@ export async function updateProject(
 
   revalidatePath('/dashboard')
   revalidatePath('/dashboard/projects')
-  revalidatePath(`/dashboard/projects/${projectId}`)
+  revalidatePath(`/dashboard/projects/${validatedId}`)
 
   return project
 }
 
 export async function deleteProject(projectId: string): Promise<void> {
+  // Validate input
+  const validatedId = validateInput(uuidSchema, projectId)
+
   const supabase = await createClient()
 
   const { data: { user } } = await supabase.auth.getUser()
@@ -207,10 +258,25 @@ export async function deleteProject(projectId: string): Promise<void> {
     throw new Error('Inte inloggad')
   }
 
+  // Verify user is owner of project
+  const { data: membership } = await supabase
+    .from('project_members')
+    .select('role:project_roles(name)')
+    .eq('project_id', validatedId)
+    .eq('user_id', user.id)
+    .eq('status', 'active')
+    .single()
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const roleName = (membership?.role as any)?.name as string | undefined
+  if (roleName !== 'owner') {
+    throw new Error('Endast projektägaren kan ta bort projektet')
+  }
+
   const { error } = await supabase
     .from('projects')
     .delete()
-    .eq('id', projectId)
+    .eq('id', validatedId)
 
   if (error) {
     console.error('Error deleting project:', error)
@@ -334,6 +400,21 @@ export async function removeProjectImage(projectId: string): Promise<{ success: 
     return { success: false, error: 'Inte inloggad' }
   }
 
+  // Verify user has access to project (admin or owner)
+  const { data: membership } = await supabase
+    .from('project_members')
+    .select('role:project_roles(name)')
+    .eq('project_id', projectId)
+    .eq('user_id', user.id)
+    .eq('status', 'active')
+    .single()
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const roleName = (membership?.role as any)?.name as string | undefined
+  if (!roleName || !['owner', 'admin'].includes(roleName)) {
+    return { success: false, error: 'Du har inte behörighet att ändra projektbilden' }
+  }
+
   // Get current image URL
   const { data: project } = await supabase
     .from('projects')
@@ -444,6 +525,12 @@ export async function getProjectStats(projectId: string): Promise<ProjectStats> 
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) {
     throw new Error('Inte inloggad')
+  }
+
+  // Verify user has access to project
+  const hasAccess = await verifyProjectMembership(projectId, user.id)
+  if (!hasAccess) {
+    throw new Error('Du har inte tillgång till detta projekt')
   }
 
   // Calculate date thresholds
@@ -613,6 +700,12 @@ export async function getProjectActivity(projectId: string, limit: number = 20):
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) {
     throw new Error('Inte inloggad')
+  }
+
+  // Verify user has access to project
+  const hasAccess = await verifyProjectMembership(projectId, user.id)
+  if (!hasAccess) {
+    throw new Error('Du har inte tillgång till detta projekt')
   }
 
   const activities: ActivityItem[] = []

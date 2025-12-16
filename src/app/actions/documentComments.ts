@@ -2,6 +2,7 @@
 
 import { createClient } from '@/lib/supabase/server'
 import { revalidatePath } from 'next/cache'
+import { verifyProjectMembership } from '@/lib/auth-helpers'
 import { createMentionNotification } from './notifications'
 
 export interface DocumentComment {
@@ -59,6 +60,25 @@ export async function getDocumentComments(
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) {
       console.error('getDocumentComments: User not authenticated')
+      return []
+    }
+
+    // Get document to verify project access
+    const { data: doc } = await supabase
+      .from('documents')
+      .select('project_id')
+      .eq('id', documentId)
+      .single()
+
+    if (!doc) {
+      console.error('getDocumentComments: Document not found')
+      return []
+    }
+
+    // Verify user has access to project
+    const hasAccess = await verifyProjectMembership(doc.project_id, user.id)
+    if (!hasAccess) {
+      console.error('getDocumentComments: User not a member of project')
       return []
     }
 
@@ -124,6 +144,22 @@ export async function getDocumentCommentsForPage(
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) return []
 
+    // Get document to verify project access
+    const { data: doc } = await supabase
+      .from('documents')
+      .select('project_id')
+      .eq('id', documentId)
+      .single()
+
+    if (!doc) return []
+
+    // Verify user has access to project
+    const hasAccess = await verifyProjectMembership(doc.project_id, user.id)
+    if (!hasAccess) {
+      console.error('getDocumentCommentsForPage: User not a member of project')
+      return []
+    }
+
     const { data, error } = await supabase
       .from('document_comments')
       .select(`
@@ -162,6 +198,12 @@ export async function createDocumentComment(
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) {
     throw new Error('Inte inloggad')
+  }
+
+  // Verify user has access to project
+  const hasAccess = await verifyProjectMembership(projectId, user.id)
+  if (!hasAccess) {
+    throw new Error('Du har inte tillgång till detta projekt')
   }
 
   // Create the comment
@@ -293,6 +335,12 @@ export async function updateDocumentComment(
     throw new Error('Kommentaren hittades inte')
   }
 
+  // Verify user has access to project
+  const hasAccess = await verifyProjectMembership(existing.project_id, user.id)
+  if (!hasAccess) {
+    throw new Error('Du har inte tillgång till detta projekt')
+  }
+
   if (existing.author_id !== user.id) {
     throw new Error('Du kan bara redigera dina egna kommentarer')
   }
@@ -361,6 +409,12 @@ export async function deleteDocumentComment(commentId: string): Promise<void> {
     throw new Error('Kommentaren hittades inte')
   }
 
+  // Verify user has access to project
+  const hasAccess = await verifyProjectMembership(existing.project_id, user.id)
+  if (!hasAccess) {
+    throw new Error('Du har inte tillgång till detta projekt')
+  }
+
   if (existing.author_id !== user.id) {
     throw new Error('Du kan bara radera dina egna kommentarer')
   }
@@ -404,6 +458,12 @@ export async function resolveDocumentComment(
     throw new Error('Kommentaren hittades inte')
   }
 
+  // Verify user has access to project
+  const hasAccess = await verifyProjectMembership(existing.project_id, user.id)
+  if (!hasAccess) {
+    throw new Error('Du har inte tillgång till detta projekt')
+  }
+
   const { data: comment, error } = await supabase
     .from('document_comments')
     .update({
@@ -437,6 +497,13 @@ export async function getProjectMembersForMentions(
 
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) return []
+
+    // Verify user has access to project
+    const hasAccess = await verifyProjectMembership(projectId, user.id)
+    if (!hasAccess) {
+      console.error('getProjectMembersForMentions: User not a member of project')
+      return []
+    }
 
     // First get project member user IDs
     const { data: members, error: membersError } = await supabase

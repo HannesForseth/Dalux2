@@ -1,6 +1,7 @@
 'use server'
 
 import { createClient } from '@/lib/supabase/server'
+import { verifyProjectMembership } from '@/lib/auth-helpers'
 import type { StatusHistoryWithUser, StatusHistoryEntityType } from '@/types/database'
 
 export async function getStatusHistory(
@@ -12,6 +13,42 @@ export async function getStatusHistory(
 
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) {
+      return []
+    }
+
+    // Get the entity to find its project_id and verify access
+    let projectId: string | null = null
+
+    if (entityType === 'deviation') {
+      const { data: deviation } = await supabase
+        .from('deviations')
+        .select('project_id')
+        .eq('id', entityId)
+        .single()
+      projectId = deviation?.project_id || null
+    } else if (entityType === 'issue') {
+      const { data: issue } = await supabase
+        .from('issues')
+        .select('project_id')
+        .eq('id', entityId)
+        .single()
+      projectId = issue?.project_id || null
+    } else if (entityType === 'rfi') {
+      const { data: rfi } = await supabase
+        .from('rfis')
+        .select('project_id')
+        .eq('id', entityId)
+        .single()
+      projectId = rfi?.project_id || null
+    }
+
+    if (!projectId) {
+      return []
+    }
+
+    // Verify user has access to project
+    const hasAccess = await verifyProjectMembership(projectId, user.id)
+    if (!hasAccess) {
       return []
     }
 

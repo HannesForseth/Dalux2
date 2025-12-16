@@ -2,6 +2,7 @@
 
 import { createClient } from '@/lib/supabase/server'
 import { revalidatePath, unstable_noStore as noStore } from 'next/cache'
+import { verifyProjectMembership } from '@/lib/auth-helpers'
 import type {
   Protocol,
   ProtocolWithDetails,
@@ -47,6 +48,13 @@ export async function getProjectProtocols(
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) {
       console.error('getProjectProtocols: User not authenticated')
+      return []
+    }
+
+    // Verify user has access to project
+    const hasAccess = await verifyProjectMembership(projectId, user.id)
+    if (!hasAccess) {
+      console.error('getProjectProtocols: User not a member of project')
       return []
     }
 
@@ -103,6 +111,13 @@ export async function getProtocol(protocolId: string): Promise<ProtocolWithDetai
     if (protocolError) {
       if (protocolError.code === 'PGRST116') return null
       console.error('Error fetching protocol:', protocolError)
+      return null
+    }
+
+    // Verify user has access to project
+    const hasAccess = await verifyProjectMembership(protocol.project_id, user.id)
+    if (!hasAccess) {
+      console.error('getProtocol: User not a member of project')
       return null
     }
 
@@ -215,6 +230,12 @@ export async function createProtocol(
     throw new Error('Inte inloggad')
   }
 
+  // Verify user has access to project
+  const hasAccess = await verifyProjectMembership(projectId, user.id)
+  if (!hasAccess) {
+    throw new Error('Du har inte tillgång till detta projekt')
+  }
+
   const { data: protocol, error } = await supabase
     .from('protocols')
     .insert({
@@ -252,6 +273,23 @@ export async function updateProtocol(
     throw new Error('Inte inloggad')
   }
 
+  // Get protocol to verify project membership
+  const { data: existing } = await supabase
+    .from('protocols')
+    .select('project_id')
+    .eq('id', protocolId)
+    .single()
+
+  if (!existing) {
+    throw new Error('Protokollet hittades inte')
+  }
+
+  // Verify user has access to project
+  const hasAccess = await verifyProjectMembership(existing.project_id, user.id)
+  if (!hasAccess) {
+    throw new Error('Du har inte tillgång till detta projekt')
+  }
+
   const { data: protocol, error } = await supabase
     .from('protocols')
     .update({
@@ -285,6 +323,16 @@ export async function deleteProtocol(protocolId: string): Promise<void> {
     .select('project_id')
     .eq('id', protocolId)
     .single()
+
+  if (!protocol) {
+    throw new Error('Protokollet hittades inte')
+  }
+
+  // Verify user has access to project
+  const hasAccess = await verifyProjectMembership(protocol.project_id, user.id)
+  if (!hasAccess) {
+    throw new Error('Du har inte tillgång till detta projekt')
+  }
 
   const { error } = await supabase
     .from('protocols')
@@ -320,6 +368,23 @@ export async function addAttendee(
     throw new Error('Inte inloggad')
   }
 
+  // Get protocol to verify project membership
+  const { data: protocol } = await supabase
+    .from('protocols')
+    .select('project_id')
+    .eq('id', protocolId)
+    .single()
+
+  if (!protocol) {
+    throw new Error('Protokollet hittades inte')
+  }
+
+  // Verify user has access to project
+  const hasAccess = await verifyProjectMembership(protocol.project_id, user.id)
+  if (!hasAccess) {
+    throw new Error('Du har inte tillgång till detta projekt')
+  }
+
   const { data: attendee, error } = await supabase
     .from('protocol_attendees')
     .insert({
@@ -353,6 +418,28 @@ export async function updateAttendee(
     throw new Error('Inte inloggad')
   }
 
+  // Get attendee with protocol to verify project membership
+  const { data: existing } = await supabase
+    .from('protocol_attendees')
+    .select('protocol_id, protocols(project_id)')
+    .eq('id', attendeeId)
+    .single()
+
+  if (!existing) {
+    throw new Error('Deltagaren hittades inte')
+  }
+
+  const protocol = existing.protocols as unknown as { project_id: string } | null
+  if (!protocol) {
+    throw new Error('Protokollet hittades inte')
+  }
+
+  // Verify user has access to project
+  const hasAccess = await verifyProjectMembership(protocol.project_id, user.id)
+  if (!hasAccess) {
+    throw new Error('Du har inte tillgång till detta projekt')
+  }
+
   const { data: attendee, error } = await supabase
     .from('protocol_attendees')
     .update(data)
@@ -376,6 +463,28 @@ export async function removeAttendee(attendeeId: string): Promise<void> {
     throw new Error('Inte inloggad')
   }
 
+  // Get attendee with protocol to verify project membership
+  const { data: existing } = await supabase
+    .from('protocol_attendees')
+    .select('protocol_id, protocols(project_id)')
+    .eq('id', attendeeId)
+    .single()
+
+  if (!existing) {
+    throw new Error('Deltagaren hittades inte')
+  }
+
+  const protocol = existing.protocols as unknown as { project_id: string } | null
+  if (!protocol) {
+    throw new Error('Protokollet hittades inte')
+  }
+
+  // Verify user has access to project
+  const hasAccess = await verifyProjectMembership(protocol.project_id, user.id)
+  if (!hasAccess) {
+    throw new Error('Du har inte tillgång till detta projekt')
+  }
+
   const { error } = await supabase
     .from('protocol_attendees')
     .delete()
@@ -396,6 +505,23 @@ export async function addMultipleAttendees(
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) {
     throw new Error('Inte inloggad')
+  }
+
+  // Get protocol to verify project membership
+  const { data: protocol } = await supabase
+    .from('protocols')
+    .select('project_id')
+    .eq('id', protocolId)
+    .single()
+
+  if (!protocol) {
+    throw new Error('Protokollet hittades inte')
+  }
+
+  // Verify user has access to project
+  const hasAccess = await verifyProjectMembership(protocol.project_id, user.id)
+  if (!hasAccess) {
+    throw new Error('Du har inte tillgång till detta projekt')
   }
 
   const attendeesToInsert = attendees.map(a => ({
@@ -436,6 +562,23 @@ export async function addAgendaItem(
     throw new Error('Inte inloggad')
   }
 
+  // Get protocol to verify project membership
+  const { data: protocol } = await supabase
+    .from('protocols')
+    .select('project_id')
+    .eq('id', protocolId)
+    .single()
+
+  if (!protocol) {
+    throw new Error('Protokollet hittades inte')
+  }
+
+  // Verify user has access to project
+  const hasAccess = await verifyProjectMembership(protocol.project_id, user.id)
+  if (!hasAccess) {
+    throw new Error('Du har inte tillgång till detta projekt')
+  }
+
   const { data: item, error } = await supabase
     .from('protocol_agenda_items')
     .insert({
@@ -469,6 +612,28 @@ export async function updateAgendaItem(
     throw new Error('Inte inloggad')
   }
 
+  // Get agenda item with protocol to verify project membership
+  const { data: existing } = await supabase
+    .from('protocol_agenda_items')
+    .select('protocol_id, protocols(project_id)')
+    .eq('id', itemId)
+    .single()
+
+  if (!existing) {
+    throw new Error('Dagordningspunkten hittades inte')
+  }
+
+  const protocol = existing.protocols as unknown as { project_id: string } | null
+  if (!protocol) {
+    throw new Error('Protokollet hittades inte')
+  }
+
+  // Verify user has access to project
+  const hasAccess = await verifyProjectMembership(protocol.project_id, user.id)
+  if (!hasAccess) {
+    throw new Error('Du har inte tillgång till detta projekt')
+  }
+
   const { data: item, error } = await supabase
     .from('protocol_agenda_items')
     .update(data)
@@ -492,6 +657,28 @@ export async function deleteAgendaItem(itemId: string): Promise<void> {
     throw new Error('Inte inloggad')
   }
 
+  // Get agenda item with protocol to verify project membership
+  const { data: existing } = await supabase
+    .from('protocol_agenda_items')
+    .select('protocol_id, protocols(project_id)')
+    .eq('id', itemId)
+    .single()
+
+  if (!existing) {
+    throw new Error('Dagordningspunkten hittades inte')
+  }
+
+  const protocol = existing.protocols as unknown as { project_id: string } | null
+  if (!protocol) {
+    throw new Error('Protokollet hittades inte')
+  }
+
+  // Verify user has access to project
+  const hasAccess = await verifyProjectMembership(protocol.project_id, user.id)
+  if (!hasAccess) {
+    throw new Error('Du har inte tillgång till detta projekt')
+  }
+
   const { error } = await supabase
     .from('protocol_agenda_items')
     .delete()
@@ -511,6 +698,30 @@ export async function reorderAgendaItems(
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) {
     throw new Error('Inte inloggad')
+  }
+
+  if (items.length === 0) return
+
+  // Get first item with protocol to verify project membership
+  const { data: firstItem } = await supabase
+    .from('protocol_agenda_items')
+    .select('protocol_id, protocols(project_id)')
+    .eq('id', items[0].id)
+    .single()
+
+  if (!firstItem) {
+    throw new Error('Dagordningspunkten hittades inte')
+  }
+
+  const protocol = firstItem.protocols as unknown as { project_id: string } | null
+  if (!protocol) {
+    throw new Error('Protokollet hittades inte')
+  }
+
+  // Verify user has access to project
+  const hasAccess = await verifyProjectMembership(protocol.project_id, user.id)
+  if (!hasAccess) {
+    throw new Error('Du har inte tillgång till detta projekt')
   }
 
   for (const item of items) {
@@ -539,6 +750,23 @@ export async function addDecision(
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) {
     throw new Error('Inte inloggad')
+  }
+
+  // Get protocol to verify project membership
+  const { data: protocol } = await supabase
+    .from('protocols')
+    .select('project_id')
+    .eq('id', protocolId)
+    .single()
+
+  if (!protocol) {
+    throw new Error('Protokollet hittades inte')
+  }
+
+  // Verify user has access to project
+  const hasAccess = await verifyProjectMembership(protocol.project_id, user.id)
+  if (!hasAccess) {
+    throw new Error('Du har inte tillgång till detta projekt')
   }
 
   // Get next decision number
@@ -580,6 +808,28 @@ export async function deleteDecision(decisionId: string): Promise<void> {
     throw new Error('Inte inloggad')
   }
 
+  // Get decision with protocol to verify project membership
+  const { data: existing } = await supabase
+    .from('protocol_decisions')
+    .select('protocol_id, protocols(project_id)')
+    .eq('id', decisionId)
+    .single()
+
+  if (!existing) {
+    throw new Error('Beslutet hittades inte')
+  }
+
+  const protocol = existing.protocols as unknown as { project_id: string } | null
+  if (!protocol) {
+    throw new Error('Protokollet hittades inte')
+  }
+
+  // Verify user has access to project
+  const hasAccess = await verifyProjectMembership(protocol.project_id, user.id)
+  if (!hasAccess) {
+    throw new Error('Du har inte tillgång till detta projekt')
+  }
+
   const { error } = await supabase
     .from('protocol_decisions')
     .delete()
@@ -604,6 +854,23 @@ export async function addActionItem(
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) {
     throw new Error('Inte inloggad')
+  }
+
+  // Get protocol to verify project membership
+  const { data: protocol } = await supabase
+    .from('protocols')
+    .select('project_id')
+    .eq('id', protocolId)
+    .single()
+
+  if (!protocol) {
+    throw new Error('Protokollet hittades inte')
+  }
+
+  // Verify user has access to project
+  const hasAccess = await verifyProjectMembership(protocol.project_id, user.id)
+  if (!hasAccess) {
+    throw new Error('Du har inte tillgång till detta projekt')
   }
 
   // Get next action number
@@ -652,6 +919,28 @@ export async function updateActionItem(
     throw new Error('Inte inloggad')
   }
 
+  // Get action item with protocol to verify project membership
+  const { data: existing } = await supabase
+    .from('protocol_action_items')
+    .select('protocol_id, protocols(project_id)')
+    .eq('id', actionId)
+    .single()
+
+  if (!existing) {
+    throw new Error('Åtgärdspunkten hittades inte')
+  }
+
+  const protocol = existing.protocols as unknown as { project_id: string } | null
+  if (!protocol) {
+    throw new Error('Protokollet hittades inte')
+  }
+
+  // Verify user has access to project
+  const hasAccess = await verifyProjectMembership(protocol.project_id, user.id)
+  if (!hasAccess) {
+    throw new Error('Du har inte tillgång till detta projekt')
+  }
+
   const updateData: Record<string, unknown> = {
     ...data,
     updated_at: new Date().toISOString()
@@ -688,6 +977,28 @@ export async function deleteActionItem(actionId: string): Promise<void> {
     throw new Error('Inte inloggad')
   }
 
+  // Get action item with protocol to verify project membership
+  const { data: existing } = await supabase
+    .from('protocol_action_items')
+    .select('protocol_id, protocols(project_id)')
+    .eq('id', actionId)
+    .single()
+
+  if (!existing) {
+    throw new Error('Åtgärdspunkten hittades inte')
+  }
+
+  const protocol = existing.protocols as unknown as { project_id: string } | null
+  if (!protocol) {
+    throw new Error('Protokollet hittades inte')
+  }
+
+  // Verify user has access to project
+  const hasAccess = await verifyProjectMembership(protocol.project_id, user.id)
+  if (!hasAccess) {
+    throw new Error('Du har inte tillgång till detta projekt')
+  }
+
   const { error } = await supabase
     .from('protocol_action_items')
     .delete()
@@ -708,6 +1019,23 @@ export async function bulkAddActionItems(
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) {
     throw new Error('Inte inloggad')
+  }
+
+  // Get protocol to verify project membership
+  const { data: protocol } = await supabase
+    .from('protocols')
+    .select('project_id')
+    .eq('id', protocolId)
+    .single()
+
+  if (!protocol) {
+    throw new Error('Protokollet hittades inte')
+  }
+
+  // Verify user has access to project
+  const hasAccess = await verifyProjectMembership(protocol.project_id, user.id)
+  if (!hasAccess) {
+    throw new Error('Du har inte tillgång till detta projekt')
   }
 
   // Get current max action number
@@ -790,6 +1118,23 @@ export async function addLink(
     throw new Error('Inte inloggad')
   }
 
+  // Get protocol to verify project membership
+  const { data: protocol } = await supabase
+    .from('protocols')
+    .select('project_id')
+    .eq('id', protocolId)
+    .single()
+
+  if (!protocol) {
+    throw new Error('Protokollet hittades inte')
+  }
+
+  // Verify user has access to project
+  const hasAccess = await verifyProjectMembership(protocol.project_id, user.id)
+  if (!hasAccess) {
+    throw new Error('Du har inte tillgång till detta projekt')
+  }
+
   const { data: link, error } = await supabase
     .from('protocol_links')
     .insert({
@@ -818,6 +1163,28 @@ export async function removeLink(linkId: string): Promise<void> {
     throw new Error('Inte inloggad')
   }
 
+  // Get link with protocol to verify project membership
+  const { data: existing } = await supabase
+    .from('protocol_links')
+    .select('protocol_id, protocols(project_id)')
+    .eq('id', linkId)
+    .single()
+
+  if (!existing) {
+    throw new Error('Länken hittades inte')
+  }
+
+  const protocol = existing.protocols as unknown as { project_id: string } | null
+  if (!protocol) {
+    throw new Error('Protokollet hittades inte')
+  }
+
+  // Verify user has access to project
+  const hasAccess = await verifyProjectMembership(protocol.project_id, user.id)
+  if (!hasAccess) {
+    throw new Error('Du har inte tillgång till detta projekt')
+  }
+
   const { error } = await supabase
     .from('protocol_links')
     .delete()
@@ -838,6 +1205,24 @@ export async function getProtocolAttachments(protocolId: string): Promise<Protoc
 
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) {
+    return []
+  }
+
+  // Get protocol to verify project membership
+  const { data: protocol } = await supabase
+    .from('protocols')
+    .select('project_id')
+    .eq('id', protocolId)
+    .single()
+
+  if (!protocol) {
+    return []
+  }
+
+  // Verify user has access to project
+  const hasAccess = await verifyProjectMembership(protocol.project_id, user.id)
+  if (!hasAccess) {
+    console.error('getProtocolAttachments: User not a member of project')
     return []
   }
 
@@ -865,6 +1250,12 @@ export async function addProtocolAttachment(
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) {
     throw new Error('Inte inloggad')
+  }
+
+  // Verify user has access to project
+  const hasAccess = await verifyProjectMembership(projectId, user.id)
+  if (!hasAccess) {
+    throw new Error('Du har inte tillgång till detta projekt')
   }
 
   // Upload file to storage
@@ -908,16 +1299,29 @@ export async function deleteProtocolAttachment(attachmentId: string): Promise<vo
     throw new Error('Inte inloggad')
   }
 
-  // Get attachment to find file path
+  // Get attachment with protocol to verify project membership
   const { data: attachment } = await supabase
     .from('protocol_attachments')
-    .select('file_path')
+    .select('file_path, protocol_id, protocols(project_id)')
     .eq('id', attachmentId)
     .single()
 
-  if (attachment) {
-    await deleteFile('protocol-attachments', attachment.file_path)
+  if (!attachment) {
+    throw new Error('Bilagan hittades inte')
   }
+
+  const protocol = attachment.protocols as unknown as { project_id: string } | null
+  if (!protocol) {
+    throw new Error('Protokollet hittades inte')
+  }
+
+  // Verify user has access to project
+  const hasAccess = await verifyProjectMembership(protocol.project_id, user.id)
+  if (!hasAccess) {
+    throw new Error('Du har inte tillgång till detta projekt')
+  }
+
+  await deleteFile('protocol-attachments', attachment.file_path)
 
   const { error } = await supabase
     .from('protocol_attachments')
@@ -948,6 +1352,13 @@ export async function getProjectProtocolStats(projectId: string): Promise<{
 
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) {
+    return { total: 0, draft: 0, finalized: 0, pendingActions: 0 }
+  }
+
+  // Verify user has access to project
+  const hasAccess = await verifyProjectMembership(projectId, user.id)
+  if (!hasAccess) {
+    console.error('getProjectProtocolStats: User not a member of project')
     return { total: 0, draft: 0, finalized: 0, pendingActions: 0 }
   }
 
@@ -994,6 +1405,23 @@ export async function markProtocolAsViewed(protocolId: string): Promise<void> {
     return // Tyst fail om ej inloggad
   }
 
+  // Get protocol to verify project membership
+  const { data: protocol } = await supabase
+    .from('protocols')
+    .select('project_id')
+    .eq('id', protocolId)
+    .single()
+
+  if (!protocol) {
+    return // Tyst fail om protokoll inte finns
+  }
+
+  // Verify user has access to project
+  const hasAccess = await verifyProjectMembership(protocol.project_id, user.id)
+  if (!hasAccess) {
+    return // Tyst fail om ej medlem
+  }
+
   // Upsert - insert eller ignorera om redan finns
   const { error } = await supabase
     .from('protocol_views')
@@ -1023,6 +1451,12 @@ export async function getUnseenProtocolCount(projectId: string): Promise<number>
 
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) {
+    return 0
+  }
+
+  // Verify user has access to project
+  const hasAccess = await verifyProjectMembership(projectId, user.id)
+  if (!hasAccess) {
     return 0
   }
 

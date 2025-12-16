@@ -2,6 +2,7 @@
 
 import { createClient } from '@/lib/supabase/server'
 import { unstable_noStore as noStore } from 'next/cache'
+import { verifyProjectMembership } from '@/lib/auth-helpers'
 import type {
   ProtocolTemplate,
   ProtocolTemplateWithDetails,
@@ -112,6 +113,12 @@ export async function saveProtocolAsTemplate(
   if (protocolError || !protocol) {
     console.error('Error fetching protocol:', protocolError)
     throw new Error('Kunde inte hämta protokoll')
+  }
+
+  // Verify user has access to the protocol's project
+  const hasAccess = await verifyProjectMembership(protocol.project_id, user.id)
+  if (!hasAccess) {
+    throw new Error('Du har inte tillgång till detta projekt')
   }
 
   // Create the template

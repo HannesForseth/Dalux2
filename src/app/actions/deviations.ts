@@ -16,6 +16,30 @@ import type {
 import { uploadFileFromFormData, deleteFile, getSignedUrl } from './storage'
 import { createDeviationMentionNotification } from './notifications'
 import { parseMentions, parseMentionsWithGroups } from '@/lib/utils/mentions'
+import { verifyProjectMembership } from '@/lib/auth-helpers'
+import {
+  uuidSchema,
+  createDeviationSchema,
+  updateDeviationSchema,
+  createCommentSchema,
+  validateInput
+} from '@/lib/validations'
+import { z } from 'zod'
+
+// Local validation schemas
+const deviationFiltersSchema = z.object({
+  status: z.enum(['open', 'investigating', 'action_required', 'corrected', 'verified', 'closed', 'all']).optional(),
+  severity: z.enum(['minor', 'major', 'critical', 'all']).optional(),
+  category: z.enum(['safety', 'quality', 'environment', 'documentation', 'schedule', 'cost', 'other', 'all']).optional(),
+  assignedTo: uuidSchema.optional(),
+}).optional()
+
+const addDeviationCommentSchema = z.object({
+  deviationId: uuidSchema,
+  content: z.string().min(1, 'Kommentar krävs').max(5000, 'Kommentaren är för lång'),
+})
+
+const statusChangeCommentSchema = z.string().max(1000, 'Kommentaren är för lång').optional()
 
 export async function getProjectDeviations(
   projectId: string,
@@ -27,11 +51,22 @@ export async function getProjectDeviations(
   }
 ): Promise<DeviationWithDetails[]> {
   try {
+    // Validate input
+    const validatedProjectId = validateInput(uuidSchema, projectId)
+    const validatedFilters = validateInput(deviationFiltersSchema, filters)
+
     const supabase = await createClient()
 
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) {
       console.error('getProjectDeviations: User not authenticated')
+      return []
+    }
+
+    // Verify user has access to project
+    const hasAccess = await verifyProjectMembership(validatedProjectId, user.id)
+    if (!hasAccess) {
+      console.error('getProjectDeviations: User not a member of project')
       return []
     }
 
@@ -44,20 +79,20 @@ export async function getProjectDeviations(
         corrector:profiles!deviations_corrected_by_fkey(*),
         verifier:profiles!deviations_verified_by_fkey(*)
       `)
-      .eq('project_id', projectId)
+      .eq('project_id', validatedProjectId)
       .order('created_at', { ascending: false })
 
-    if (filters?.status && filters.status !== 'all') {
-      query = query.eq('status', filters.status)
+    if (validatedFilters?.status && validatedFilters.status !== 'all') {
+      query = query.eq('status', validatedFilters.status)
     }
-    if (filters?.severity && filters.severity !== 'all') {
-      query = query.eq('severity', filters.severity)
+    if (validatedFilters?.severity && validatedFilters.severity !== 'all') {
+      query = query.eq('severity', validatedFilters.severity)
     }
-    if (filters?.category && filters.category !== 'all') {
-      query = query.eq('category', filters.category)
+    if (validatedFilters?.category && validatedFilters.category !== 'all') {
+      query = query.eq('category', validatedFilters.category)
     }
-    if (filters?.assignedTo) {
-      query = query.eq('assigned_to', filters.assignedTo)
+    if (validatedFilters?.assignedTo) {
+      query = query.eq('assigned_to', validatedFilters.assignedTo)
     }
 
     const { data, error } = await query
@@ -76,6 +111,9 @@ export async function getProjectDeviations(
 
 export async function getDeviation(deviationId: string): Promise<DeviationWithDetails | null> {
   try {
+    // Validate input
+    const validatedDeviationId = validateInput(uuidSchema, deviationId)
+
     const supabase = await createClient()
 
     const { data: { user } } = await supabase.auth.getUser()
@@ -93,12 +131,19 @@ export async function getDeviation(deviationId: string): Promise<DeviationWithDe
         corrector:profiles!deviations_corrected_by_fkey(*),
         verifier:profiles!deviations_verified_by_fkey(*)
       `)
-      .eq('id', deviationId)
+      .eq('id', validatedDeviationId)
       .single()
 
     if (error) {
       if (error.code === 'PGRST116') return null
       console.error('Error fetching deviation:', error)
+      return null
+    }
+
+    // Verify user has access to the deviation's project
+    const hasAccess = await verifyProjectMembership(data.project_id, user.id)
+    if (!hasAccess) {
+      console.error('getDeviation: User not a member of project')
       return null
     }
 
@@ -113,6 +158,10 @@ export async function createDeviation(
   projectId: string,
   data: CreateDeviationData
 ): Promise<Deviation> {
+  // Validate input
+  const validatedProjectId = validateInput(uuidSchema, projectId)
+  const validatedData = validateInput(createDeviationSchema.omit({ project_id: true }), data)
+
   const supabase = await createClient()
 
   const { data: { user } } = await supabase.auth.getUser()
@@ -123,16 +172,16 @@ export async function createDeviation(
   const { data: deviation, error } = await supabase
     .from('deviations')
     .insert({
-      project_id: projectId,
-      title: data.title,
-      description: data.description || null,
-      category: data.category,
-      severity: data.severity || 'minor',
+      project_id: validatedProjectId,
+      title: validatedData.title,
+      description: validatedData.description || null,
+      category: validatedData.category,
+      severity: validatedData.severity || 'minor',
       status: 'open',
-      location: data.location || null,
-      drawing_reference: data.drawing_reference || null,
-      assigned_to: data.assigned_to || null,
-      due_date: data.due_date || null,
+      location: validatedData.location || null,
+      drawing_reference: (data as { drawing_reference?: string }).drawing_reference || null,
+      assigned_to: validatedData.assigned_to || null,
+      due_date: validatedData.due_date || null,
       reported_by: user.id,
     })
     .select()
@@ -143,7 +192,7 @@ export async function createDeviation(
     throw new Error('Kunde inte skapa avvikelsen')
   }
 
-  revalidatePath(`/dashboard/projects/${projectId}/deviations`)
+  revalidatePath(`/dashboard/projects/${validatedProjectId}/deviations`)
   return deviation
 }
 
@@ -152,6 +201,11 @@ export async function updateDeviation(
   data: UpdateDeviationData,
   statusChangeComment?: string
 ): Promise<Deviation> {
+  // Validate input
+  const validatedDeviationId = validateInput(uuidSchema, deviationId)
+  const validatedData = validateInput(updateDeviationSchema, data)
+  const validatedComment = validateInput(statusChangeCommentSchema, statusChangeComment)
+
   const supabase = await createClient()
 
   const { data: { user } } = await supabase.auth.getUser()
@@ -163,7 +217,7 @@ export async function updateDeviation(
   const { data: existing } = await supabase
     .from('deviations')
     .select('project_id, status')
-    .eq('id', deviationId)
+    .eq('id', validatedDeviationId)
     .single()
 
   if (!existing) {
@@ -172,34 +226,34 @@ export async function updateDeviation(
 
   // Build update data with status-specific timestamps
   const updateData: Record<string, unknown> = {
-    ...data,
+    ...validatedData,
     updated_at: new Date().toISOString(),
   }
 
   // Track if status is changing for audit trail
-  const statusChanged = data.status && data.status !== existing.status
+  const statusChanged = validatedData.status && validatedData.status !== existing.status
 
   // Handle status transitions and set appropriate timestamps
   if (statusChanged) {
     const now = new Date().toISOString()
 
     // Set corrected_at when moving to corrected
-    if (data.status === 'corrected') {
+    if (validatedData.status === 'corrected') {
       updateData.corrected_at = now
       updateData.corrected_by = user.id
     }
     // Set verified_at when moving to verified
-    else if (data.status === 'verified') {
+    else if (validatedData.status === 'verified') {
       updateData.verified_at = now
       updateData.verified_by = user.id
     }
     // Set closed_at when moving to closed
-    else if (data.status === 'closed') {
+    else if (validatedData.status === 'closed') {
       updateData.closed_at = now
     }
 
     // Clear timestamps if moving backwards
-    if (['open', 'investigating', 'action_required'].includes(data.status!)) {
+    if (['open', 'investigating', 'action_required'].includes(validatedData.status!)) {
       updateData.corrected_at = null
       updateData.corrected_by = null
       updateData.verified_at = null
@@ -211,7 +265,7 @@ export async function updateDeviation(
   const { data: deviation, error } = await supabase
     .from('deviations')
     .update(updateData)
-    .eq('id', deviationId)
+    .eq('id', validatedDeviationId)
     .select()
     .single()
 
@@ -221,16 +275,16 @@ export async function updateDeviation(
   }
 
   // Log status change to audit trail
-  if (statusChanged && data.status) {
+  if (statusChanged && validatedData.status) {
     const { error: historyError } = await supabase
       .from('status_history')
       .insert({
         entity_type: 'deviation',
-        entity_id: deviationId,
+        entity_id: validatedDeviationId,
         old_status: existing.status,
-        new_status: data.status,
+        new_status: validatedData.status,
         changed_by: user.id,
-        comment: statusChangeComment || null,
+        comment: validatedComment || null,
       })
 
     if (historyError) {
@@ -244,6 +298,9 @@ export async function updateDeviation(
 }
 
 export async function deleteDeviation(deviationId: string): Promise<void> {
+  // Validate input
+  const validatedDeviationId = validateInput(uuidSchema, deviationId)
+
   const supabase = await createClient()
 
   const { data: { user } } = await supabase.auth.getUser()
@@ -255,7 +312,7 @@ export async function deleteDeviation(deviationId: string): Promise<void> {
   const { data: deviation } = await supabase
     .from('deviations')
     .select('project_id')
-    .eq('id', deviationId)
+    .eq('id', validatedDeviationId)
     .single()
 
   if (!deviation) {
@@ -266,7 +323,7 @@ export async function deleteDeviation(deviationId: string): Promise<void> {
   const { data: attachments } = await supabase
     .from('deviation_attachments')
     .select('file_path')
-    .eq('deviation_id', deviationId)
+    .eq('deviation_id', validatedDeviationId)
 
   if (attachments) {
     for (const attachment of attachments) {
@@ -282,7 +339,7 @@ export async function deleteDeviation(deviationId: string): Promise<void> {
   const { error } = await supabase
     .from('deviations')
     .delete()
-    .eq('id', deviationId)
+    .eq('id', validatedDeviationId)
 
   if (error) {
     console.error('Error deleting deviation:', error)
@@ -295,10 +352,29 @@ export async function deleteDeviation(deviationId: string): Promise<void> {
 // Deviation Comments
 export async function getDeviationComments(deviationId: string): Promise<DeviationComment[]> {
   try {
+    // Validate input
+    const validatedDeviationId = validateInput(uuidSchema, deviationId)
+
     const supabase = await createClient()
 
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) {
+      return []
+    }
+
+    // Get deviation to find project_id
+    const { data: deviation } = await supabase
+      .from('deviations')
+      .select('project_id')
+      .eq('id', validatedDeviationId)
+      .single()
+
+    if (!deviation) return []
+
+    // Verify user has access to project
+    const hasAccess = await verifyProjectMembership(deviation.project_id, user.id)
+    if (!hasAccess) {
+      console.error('getDeviationComments: User not a member of project')
       return []
     }
 
@@ -308,7 +384,7 @@ export async function getDeviationComments(deviationId: string): Promise<Deviati
         *,
         author:profiles!deviation_comments_author_id_fkey(*)
       `)
-      .eq('deviation_id', deviationId)
+      .eq('deviation_id', validatedDeviationId)
       .order('created_at', { ascending: true })
 
     if (error) {
@@ -334,6 +410,9 @@ export async function addDeviationComment(
     projectId: string
   }
 ): Promise<DeviationComment> {
+  // Validate input
+  const validated = validateInput(addDeviationCommentSchema, { deviationId, content })
+
   const supabase = await createClient()
 
   const { data: { user } } = await supabase.auth.getUser()
@@ -351,8 +430,8 @@ export async function addDeviationComment(
   const { data: comment, error } = await supabase
     .from('deviation_comments')
     .insert({
-      deviation_id: deviationId,
-      content,
+      deviation_id: validated.deviationId,
+      content: validated.content,
       author_id: user.id,
     })
     .select()
@@ -369,7 +448,7 @@ export async function addDeviationComment(
     const allMentionedUserIds = new Set<string>()
 
     if (mentionData.groups && mentionData.groups.length > 0) {
-      const { userIds, groupIds } = parseMentionsWithGroups(content, mentionData.members, mentionData.groups)
+      const { userIds, groupIds } = parseMentionsWithGroups(validated.content, mentionData.members, mentionData.groups)
 
       // Add directly mentioned users
       userIds.forEach(id => allMentionedUserIds.add(id))
@@ -389,7 +468,7 @@ export async function addDeviationComment(
       }
     } else {
       // Fallback to regular parsing
-      const mentionedUserIds = parseMentions(content, mentionData.members)
+      const mentionedUserIds = parseMentions(validated.content, mentionData.members)
       mentionedUserIds.forEach(id => allMentionedUserIds.add(id))
     }
 
@@ -400,10 +479,10 @@ export async function addDeviationComment(
           mentionedUserId,
           authorProfile?.full_name || 'Någon',
           mentionData.projectId,
-          deviationId,
+          validated.deviationId,
           mentionData.deviationNumber,
           mentionData.deviationTitle,
-          content
+          validated.content
         )
       }
     }
@@ -413,6 +492,9 @@ export async function addDeviationComment(
 }
 
 export async function deleteDeviationComment(commentId: string): Promise<void> {
+  // Validate input
+  const validatedCommentId = validateInput(uuidSchema, commentId)
+
   const supabase = await createClient()
 
   const { data: { user } } = await supabase.auth.getUser()
@@ -423,7 +505,7 @@ export async function deleteDeviationComment(commentId: string): Promise<void> {
   const { error } = await supabase
     .from('deviation_comments')
     .delete()
-    .eq('id', commentId)
+    .eq('id', validatedCommentId)
 
   if (error) {
     console.error('Error deleting comment:', error)
@@ -434,10 +516,29 @@ export async function deleteDeviationComment(commentId: string): Promise<void> {
 // Deviation Attachments
 export async function getDeviationAttachments(deviationId: string): Promise<DeviationAttachment[]> {
   try {
+    // Validate input
+    const validatedDeviationId = validateInput(uuidSchema, deviationId)
+
     const supabase = await createClient()
 
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) {
+      return []
+    }
+
+    // Get deviation to find project_id
+    const { data: deviation } = await supabase
+      .from('deviations')
+      .select('project_id')
+      .eq('id', validatedDeviationId)
+      .single()
+
+    if (!deviation) return []
+
+    // Verify user has access to project
+    const hasAccess = await verifyProjectMembership(deviation.project_id, user.id)
+    if (!hasAccess) {
+      console.error('getDeviationAttachments: User not a member of project')
       return []
     }
 
@@ -447,7 +548,7 @@ export async function getDeviationAttachments(deviationId: string): Promise<Devi
         *,
         uploader:profiles!deviation_attachments_uploaded_by_fkey(*)
       `)
-      .eq('deviation_id', deviationId)
+      .eq('deviation_id', validatedDeviationId)
       .order('created_at', { ascending: false })
 
     if (error) {
@@ -466,6 +567,9 @@ export async function addDeviationAttachment(
   deviationId: string,
   formData: FormData
 ): Promise<DeviationAttachment> {
+  // Validate input
+  const validatedDeviationId = validateInput(uuidSchema, deviationId)
+
   const supabase = await createClient()
 
   const { data: { user } } = await supabase.auth.getUser()
@@ -477,7 +581,7 @@ export async function addDeviationAttachment(
   const { data: deviation } = await supabase
     .from('deviations')
     .select('project_id')
-    .eq('id', deviationId)
+    .eq('id', validatedDeviationId)
     .single()
 
   if (!deviation) {
@@ -485,13 +589,13 @@ export async function addDeviationAttachment(
   }
 
   // Upload file to storage using FormData
-  const uploadResult = await uploadFileFromFormData('deviation-attachments', deviation.project_id, formData, deviationId)
+  const uploadResult = await uploadFileFromFormData('deviation-attachments', deviation.project_id, formData, validatedDeviationId)
 
   // Create attachment record
   const { data: attachment, error } = await supabase
     .from('deviation_attachments')
     .insert({
-      deviation_id: deviationId,
+      deviation_id: validatedDeviationId,
       file_path: uploadResult.path,
       file_name: uploadResult.fileName,
       file_size: uploadResult.fileSize,
@@ -516,6 +620,9 @@ export async function addDeviationAttachment(
 }
 
 export async function deleteDeviationAttachment(attachmentId: string): Promise<void> {
+  // Validate input
+  const validatedAttachmentId = validateInput(uuidSchema, attachmentId)
+
   const supabase = await createClient()
 
   const { data: { user } } = await supabase.auth.getUser()
@@ -527,7 +634,7 @@ export async function deleteDeviationAttachment(attachmentId: string): Promise<v
   const { data: attachment } = await supabase
     .from('deviation_attachments')
     .select('file_path')
-    .eq('id', attachmentId)
+    .eq('id', validatedAttachmentId)
     .single()
 
   if (!attachment) {
@@ -545,7 +652,7 @@ export async function deleteDeviationAttachment(attachmentId: string): Promise<v
   const { error } = await supabase
     .from('deviation_attachments')
     .delete()
-    .eq('id', attachmentId)
+    .eq('id', validatedAttachmentId)
 
   if (error) {
     console.error('Error deleting attachment:', error)
@@ -554,6 +661,9 @@ export async function deleteDeviationAttachment(attachmentId: string): Promise<v
 }
 
 export async function getDeviationAttachmentUrl(attachmentId: string): Promise<string> {
+  // Validate input
+  const validatedAttachmentId = validateInput(uuidSchema, attachmentId)
+
   const supabase = await createClient()
 
   const { data: { user } } = await supabase.auth.getUser()
@@ -564,7 +674,7 @@ export async function getDeviationAttachmentUrl(attachmentId: string): Promise<s
   const { data: attachment } = await supabase
     .from('deviation_attachments')
     .select('file_path')
-    .eq('id', attachmentId)
+    .eq('id', validatedAttachmentId)
     .single()
 
   if (!attachment) {
@@ -590,6 +700,9 @@ export async function getDeviationStats(projectId: string): Promise<{
   }
 }> {
   try {
+    // Validate input
+    const validatedProjectId = validateInput(uuidSchema, projectId)
+
     const supabase = await createClient()
 
     const { data: { user } } = await supabase.auth.getUser()
@@ -601,10 +714,21 @@ export async function getDeviationStats(projectId: string): Promise<{
       }
     }
 
+    // Verify user has access to project
+    const hasAccess = await verifyProjectMembership(validatedProjectId, user.id)
+    if (!hasAccess) {
+      console.error('getDeviationStats: User not a member of project')
+      return {
+        total: 0, open: 0, investigating: 0, actionRequired: 0,
+        corrected: 0, verified: 0, closed: 0,
+        bySeverity: { minor: 0, major: 0, critical: 0 }
+      }
+    }
+
     const { data, error } = await supabase
       .from('deviations')
       .select('status, severity')
-      .eq('project_id', projectId)
+      .eq('project_id', validatedProjectId)
 
     if (error) {
       console.error('Error fetching deviation stats:', error)

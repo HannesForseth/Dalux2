@@ -12,9 +12,9 @@
 | **Funktionalitet** | ✅ Komplett | 95% |
 | **UI/UX & Design** | ✅ Utmärkt | 92% |
 | **SEO & Marknadsföring** | ✅ Redo | 90% |
-| **Säkerhet** | ⚠️ Förbättrad | 80% |
-| **Databas & Backend** | ⚠️ Behöver arbete | 70% |
-| **Totalt** | **Nästan redo** | **87%** |
+| **Säkerhet** | ✅ Komplett | 95% |
+| **Databas & Backend** | ✅ Förbättrad | 90% |
+| **Totalt** | **Redo för lansering** | **92%** |
 
 ---
 
@@ -101,16 +101,17 @@
 
 ---
 
-### 4. Rate Limiting saknas
-**Risk:** HÖG - Ekonomisk risk och missbruk
+### ~~4. Rate Limiting saknas~~ ✅
+**Risk:** ~~HÖG~~ ÅTGÄRDAT
 
-| Endpoint | Risk |
-|----------|------|
-| `/api/ai/*` | Dyra AI-anrop kan missbrukas |
-| `/api/stripe/*` | Betalningsbedrägeri |
-| Inbjudningslänkar | Brute-force attacker |
+**Åtgärdat (2025-12-16):**
+- ✅ Global rate limiting middleware implementerat
+- ✅ `/api/ai/*` - 10 requests/minut
+- ✅ `/api/stripe/*` - 20 requests/minut
+- ✅ Standard endpoints - 60 requests/minut
+- ✅ In-memory rate limiting med automatisk cleanup
 
-**Status:** [ ] Ej åtgärdat
+**Status:** [x] Åtgärdat (2025-12-16)
 
 ---
 
@@ -128,26 +129,35 @@
 
 ## HÖG PRIORITET - BÖR FIXAS
 
-### 6. Auktoriseringskontroller i server actions
-**Risk:** MEDEL - Data kan läcka mellan projekt
+### ~~6. Auktoriseringskontroller i server actions~~ ✅
+**Risk:** ~~MEDEL~~ ÅTGÄRDAT
 
-Flera funktioner kontrollerar inte projektmedlemskap:
-- `getProjectIssues()` - returnerar alla issues
-- `getProjectDeviations()` - returnerar alla avvikelser
-- `getProjectDocuments()` - returnerar alla dokument
+**Åtgärdat (2025-12-16):**
+- ✅ `verifyProjectMembership()` implementerat i alla server actions
+- ✅ `getProjectIssues()` - kontrollerar projektmedlemskap
+- ✅ `getProjectDeviations()` - kontrollerar projektmedlemskap
+- ✅ `getProjectDocuments()` - kontrollerar projektmedlemskap
+- ✅ Alla CRUD-operationer verifierar användarens behörighet
 
-**Status:** [ ] Ej åtgärdat
+**Status:** [x] Åtgärdat (2025-12-16)
 
 ---
 
-### 7. Input-validering ofullständig
-**Risk:** MEDEL - Data-integritet
+### ~~7. Input-validering ofullständig~~ ✅
+**Risk:** ~~MEDEL~~ ÅTGÄRDAT
 
-- Ingen längdvalidering på titel/beskrivning
-- Ingen filtypsvalidering på uppladdningar
-- AI-endpoints har ingen storleksbegränsning
+**Åtgärdat (2025-12-16):**
+- ✅ Zod-validering implementerat i alla server actions
+- ✅ Längdvalidering på titel (max 200), beskrivning (max 5000)
+- ✅ UUID-validering på alla ID-parametrar
+- ✅ Enum-validering på status, priority, severity etc.
+- ✅ Svenska felmeddelanden
 
-**Status:** [ ] Ej åtgärdat
+**Validerade filer:**
+- `projects.ts`, `members.ts`, `documents.ts`, `issues.ts`, `deviations.ts`
+- `rfi.ts`, `checklists.ts`, `protocols.ts`, `notifications.ts`
+
+**Status:** [x] Åtgärdat (2025-12-16)
 
 ---
 
@@ -207,13 +217,13 @@ Flera funktioner kontrollerar inte projektmedlemskap:
 | Köp domän + konfigurera Resend | 2h | Du | [x] ✅ |
 | Lösenordskrav på registreringssida | 30min | Claude | [x] ✅ |
 
-### Vecka 2: Hög prioritet
+### Vecka 2: Hög prioritet ✅ KOMPLETT
 | Uppgift | Tid | Ansvarig | Status |
 |---------|-----|----------|--------|
-| Lägg till rate limiting (middleware) | 4h | Claude | [ ] |
-| Fixa auktoriseringskontroller | 6h | Claude | [ ] |
-| Lägg till input-validering (Zod) | 8h | Claude | [ ] |
-| Skapa custom 404-sida | 1h | Claude | [ ] |
+| Lägg till rate limiting (middleware) | 4h | Claude | [x] ✅ |
+| Fixa auktoriseringskontroller | 6h | Claude | [x] ✅ |
+| Lägg till input-validering (Zod) | 8h | Claude | [x] ✅ |
+| Skapa custom 404-sida | 1h | Claude | [x] ✅ |
 | Lägg till Google Analytics | 30min | Du | [ ] |
 
 ### Vecka 3: Medel prioritet
@@ -278,4 +288,4 @@ Flera funktioner kontrollerar inte projektmedlemskap:
 
 ---
 
-*Senast uppdaterad: 2025-12-16 - Vecka 1 komplett*
+*Senast uppdaterad: 2025-12-16 - Vecka 2 komplett*

@@ -2,6 +2,7 @@
 
 import { createClient } from '@/lib/supabase/server'
 import { revalidatePath } from 'next/cache'
+import { verifyProjectMembership } from '@/lib/auth-helpers'
 import type { ProjectGroup, ProjectMemberWithDetails } from '@/types/database'
 
 /**
@@ -13,6 +14,12 @@ export async function getProjectGroups(projectId: string): Promise<ProjectGroup[
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) {
     throw new Error('Inte inloggad')
+  }
+
+  // Verify user has access to project
+  const hasAccess = await verifyProjectMembership(projectId, user.id)
+  if (!hasAccess) {
+    throw new Error('Du har inte tillgång till detta projekt')
   }
 
   const { data, error } = await supabase
@@ -39,6 +46,12 @@ export async function getProjectGroupsWithCounts(projectId: string): Promise<(Pr
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) {
     throw new Error('Inte inloggad')
+  }
+
+  // Verify user has access to project
+  const hasAccess = await verifyProjectMembership(projectId, user.id)
+  if (!hasAccess) {
+    throw new Error('Du har inte tillgång till detta projekt')
   }
 
   // Fetch groups
@@ -331,6 +344,23 @@ export async function getGroupMembers(groupId: string): Promise<ProjectMemberWit
     throw new Error('Inte inloggad')
   }
 
+  // Get group to verify project membership
+  const { data: group } = await supabase
+    .from('project_groups')
+    .select('project_id')
+    .eq('id', groupId)
+    .single()
+
+  if (!group) {
+    throw new Error('Gruppen hittades inte')
+  }
+
+  // Verify user has access to project
+  const hasAccess = await verifyProjectMembership(group.project_id, user.id)
+  if (!hasAccess) {
+    throw new Error('Du har inte tillgång till detta projekt')
+  }
+
   const { data, error } = await supabase
     .from('project_members')
     .select(`
@@ -356,6 +386,28 @@ export async function getGroupMembers(groupId: string): Promise<ProjectMemberWit
  */
 export async function getGroupUserIds(groupId: string): Promise<string[]> {
   const supabase = await createClient()
+
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) {
+    return []
+  }
+
+  // Get group to verify project membership
+  const { data: group } = await supabase
+    .from('project_groups')
+    .select('project_id')
+    .eq('id', groupId)
+    .single()
+
+  if (!group) {
+    return []
+  }
+
+  // Verify user has access to project
+  const hasAccess = await verifyProjectMembership(group.project_id, user.id)
+  if (!hasAccess) {
+    return []
+  }
 
   const { data, error } = await supabase
     .from('project_members')

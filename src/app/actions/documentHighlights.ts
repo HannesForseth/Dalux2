@@ -2,6 +2,7 @@
 
 import { createClient } from '@/lib/supabase/server'
 import { revalidatePath } from 'next/cache'
+import { verifyProjectMembership } from '@/lib/auth-helpers'
 import type {
   DocumentHighlight,
   DocumentHighlightWithCreator,
@@ -19,6 +20,25 @@ export async function getDocumentHighlights(
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) {
       console.error('getDocumentHighlights: User not authenticated')
+      return []
+    }
+
+    // Get document to verify project access
+    const { data: doc } = await supabase
+      .from('documents')
+      .select('project_id')
+      .eq('id', documentId)
+      .single()
+
+    if (!doc) {
+      console.error('getDocumentHighlights: Document not found')
+      return []
+    }
+
+    // Verify user has access to project
+    const hasAccess = await verifyProjectMembership(doc.project_id, user.id)
+    if (!hasAccess) {
+      console.error('getDocumentHighlights: User not a member of project')
       return []
     }
 
@@ -56,6 +76,24 @@ export async function getHighlightsByPage(
       return []
     }
 
+    // Get document to verify project access
+    const { data: doc } = await supabase
+      .from('documents')
+      .select('project_id')
+      .eq('id', documentId)
+      .single()
+
+    if (!doc) {
+      return []
+    }
+
+    // Verify user has access to project
+    const hasAccess = await verifyProjectMembership(doc.project_id, user.id)
+    if (!hasAccess) {
+      console.error('getHighlightsByPage: User not a member of project')
+      return []
+    }
+
     const { data, error } = await supabase
       .from('document_highlights')
       .select(`
@@ -88,6 +126,12 @@ export async function createHighlight(
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) {
     throw new Error('Inte inloggad')
+  }
+
+  // Verify user has access to project
+  const hasAccess = await verifyProjectMembership(projectId, user.id)
+  if (!hasAccess) {
+    throw new Error('Du har inte tillgång till detta projekt')
   }
 
   const { data: highlight, error } = await supabase
@@ -135,6 +179,12 @@ export async function updateHighlight(
 
   if (!existing) {
     throw new Error('Markeringen hittades inte')
+  }
+
+  // Verify user has access to project
+  const hasAccess = await verifyProjectMembership(existing.project_id, user.id)
+  if (!hasAccess) {
+    throw new Error('Du har inte tillgång till detta projekt')
   }
 
   // Check ownership
@@ -188,6 +238,12 @@ export async function deleteHighlight(highlightId: string): Promise<void> {
     throw new Error('Markeringen hittades inte')
   }
 
+  // Verify user has access to project
+  const hasAccess = await verifyProjectMembership(highlight.project_id, user.id)
+  if (!hasAccess) {
+    throw new Error('Du har inte tillgång till detta projekt')
+  }
+
   // Check ownership
   if (highlight.created_by !== user.id) {
     throw new Error('Du kan bara ta bort dina egna markeringar')
@@ -216,6 +272,24 @@ export async function getHighlightStats(documentId: string): Promise<{
 
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) {
+      return { total: 0, byColor: { yellow: 0, green: 0, blue: 0, pink: 0, orange: 0 }, byPage: {} }
+    }
+
+    // Get document to verify project access
+    const { data: doc } = await supabase
+      .from('documents')
+      .select('project_id')
+      .eq('id', documentId)
+      .single()
+
+    if (!doc) {
+      return { total: 0, byColor: { yellow: 0, green: 0, blue: 0, pink: 0, orange: 0 }, byPage: {} }
+    }
+
+    // Verify user has access to project
+    const hasAccess = await verifyProjectMembership(doc.project_id, user.id)
+    if (!hasAccess) {
+      console.error('getHighlightStats: User not a member of project')
       return { total: 0, byColor: { yellow: 0, green: 0, blue: 0, pink: 0, orange: 0 }, byPage: {} }
     }
 

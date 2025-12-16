@@ -2,6 +2,7 @@
 
 import { createClient } from '@/lib/supabase/server'
 import { revalidatePath } from 'next/cache'
+import { verifyProjectMembership } from '@/lib/auth-helpers'
 import type {
   DocumentMeasurement,
   DocumentMeasurementWithCreator,
@@ -25,6 +26,25 @@ export async function getDocumentMeasurements(
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) {
       console.error('getDocumentMeasurements: User not authenticated')
+      return []
+    }
+
+    // Get document to verify project access
+    const { data: doc } = await supabase
+      .from('documents')
+      .select('project_id')
+      .eq('id', documentId)
+      .single()
+
+    if (!doc) {
+      console.error('getDocumentMeasurements: Document not found')
+      return []
+    }
+
+    // Verify user has access to project
+    const hasAccess = await verifyProjectMembership(doc.project_id, user.id)
+    if (!hasAccess) {
+      console.error('getDocumentMeasurements: User not a member of project')
       return []
     }
 
@@ -63,6 +83,22 @@ export async function getMeasurementsByPage(
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) return []
 
+    // Get document to verify project access
+    const { data: doc } = await supabase
+      .from('documents')
+      .select('project_id')
+      .eq('id', documentId)
+      .single()
+
+    if (!doc) return []
+
+    // Verify user has access to project
+    const hasAccess = await verifyProjectMembership(doc.project_id, user.id)
+    if (!hasAccess) {
+      console.error('getMeasurementsByPage: User not a member of project')
+      return []
+    }
+
     const { data, error } = await supabase
       .from('document_measurements')
       .select(`
@@ -98,6 +134,12 @@ export async function createMeasurement(
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) {
     throw new Error('Inte inloggad')
+  }
+
+  // Verify user has access to project
+  const hasAccess = await verifyProjectMembership(projectId, user.id)
+  if (!hasAccess) {
+    throw new Error('Du har inte tillgång till detta projekt')
   }
 
   // Get calibration for this page
@@ -171,6 +213,12 @@ export async function updateMeasurement(
     throw new Error('Mätningen hittades inte')
   }
 
+  // Verify user has access to project
+  const hasAccess = await verifyProjectMembership(existing.project_id, user.id)
+  if (!hasAccess) {
+    throw new Error('Du har inte tillgång till detta projekt')
+  }
+
   if (existing.created_by !== user.id) {
     throw new Error('Du kan bara redigera dina egna mätningar')
   }
@@ -220,6 +268,23 @@ export async function updateMeasurementValue(
     throw new Error('Inte inloggad')
   }
 
+  // Get the measurement to verify project access
+  const { data: existing } = await supabase
+    .from('document_measurements')
+    .select('project_id')
+    .eq('id', measurementId)
+    .single()
+
+  if (!existing) {
+    throw new Error('Mätningen hittades inte')
+  }
+
+  // Verify user has access to project
+  const hasAccess = await verifyProjectMembership(existing.project_id, user.id)
+  if (!hasAccess) {
+    throw new Error('Du har inte tillgång till detta projekt')
+  }
+
   const { error } = await supabase
     .from('document_measurements')
     .update({
@@ -251,6 +316,12 @@ export async function deleteMeasurement(measurementId: string): Promise<void> {
 
   if (!existing) {
     throw new Error('Mätningen hittades inte')
+  }
+
+  // Verify user has access to project
+  const hasAccess = await verifyProjectMembership(existing.project_id, user.id)
+  if (!hasAccess) {
+    throw new Error('Du har inte tillgång till detta projekt')
   }
 
   if (existing.created_by !== user.id) {
@@ -288,6 +359,22 @@ export async function getScaleCalibration(
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) return null
 
+    // Get document to verify project access
+    const { data: doc } = await supabase
+      .from('documents')
+      .select('project_id')
+      .eq('id', documentId)
+      .single()
+
+    if (!doc) return null
+
+    // Verify user has access to project
+    const hasAccess = await verifyProjectMembership(doc.project_id, user.id)
+    if (!hasAccess) {
+      console.error('getScaleCalibration: User not a member of project')
+      return null
+    }
+
     const { data, error } = await supabase
       .from('document_scale_calibrations')
       .select('*')
@@ -321,6 +408,12 @@ export async function setScaleCalibration(
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) {
     throw new Error('Inte inloggad')
+  }
+
+  // Verify user has access to project
+  const hasAccess = await verifyProjectMembership(projectId, user.id)
+  if (!hasAccess) {
+    throw new Error('Du har inte tillgång till detta projekt')
   }
 
   // Calculate pixels per unit based on the calibration line
@@ -377,6 +470,12 @@ export async function deleteScaleCalibration(
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) {
     throw new Error('Inte inloggad')
+  }
+
+  // Verify user has access to project
+  const hasAccess = await verifyProjectMembership(projectId, user.id)
+  if (!hasAccess) {
+    throw new Error('Du har inte tillgång till detta projekt')
   }
 
   const { error } = await supabase

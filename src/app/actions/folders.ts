@@ -2,6 +2,7 @@
 
 import { createClient } from '@/lib/supabase/server'
 import { revalidatePath } from 'next/cache'
+import { verifyProjectMembership } from '@/lib/auth-helpers'
 
 export interface Folder {
   id: string
@@ -32,6 +33,13 @@ export async function getProjectFolders(projectId: string): Promise<Folder[]> {
       return []
     }
 
+    // Verify user has access to project
+    const hasAccess = await verifyProjectMembership(projectId, user.id)
+    if (!hasAccess) {
+      console.error('getProjectFolders: User not a member of project')
+      return []
+    }
+
     const { data, error } = await supabase
       .from('folders')
       .select('*')
@@ -59,6 +67,12 @@ export async function createFolder(
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) {
     throw new Error('Inte inloggad')
+  }
+
+  // Verify user has access to project
+  const hasAccess = await verifyProjectMembership(projectId, user.id)
+  if (!hasAccess) {
+    throw new Error('Du har inte tillgång till detta projekt')
   }
 
   // Normalize path - ensure it starts and ends with /
@@ -112,6 +126,12 @@ export async function createMultipleFolders(
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) {
     throw new Error('Inte inloggad')
+  }
+
+  // Verify user has access to project
+  const hasAccess = await verifyProjectMembership(projectId, user.id)
+  if (!hasAccess) {
+    throw new Error('Du har inte tillgång till detta projekt')
   }
 
   // Normalize all paths and prepare for insert
@@ -182,6 +202,12 @@ export async function updateFolder(
     throw new Error('Mappen hittades inte')
   }
 
+  // Verify user has access to project
+  const hasAccess = await verifyProjectMembership(existing.project_id, user.id)
+  if (!hasAccess) {
+    throw new Error('Du har inte tillgång till detta projekt')
+  }
+
   // If name is changing, we need to update the path
   let updateData: Record<string, unknown> = {
     updated_at: new Date().toISOString(),
@@ -236,6 +262,12 @@ export async function deleteFolderById(folderId: string): Promise<void> {
     throw new Error('Mappen hittades inte')
   }
 
+  // Verify user has access to project
+  const hasAccess = await verifyProjectMembership(folder.project_id, user.id)
+  if (!hasAccess) {
+    throw new Error('Du har inte tillgång till detta projekt')
+  }
+
   // Check if there are documents in this folder
   const { data: docs } = await supabase
     .from('documents')
@@ -281,6 +313,12 @@ export async function deleteFolder(projectId: string, path: string): Promise<voi
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) {
     throw new Error('Inte inloggad')
+  }
+
+  // Verify user has access to project
+  const hasAccess = await verifyProjectMembership(projectId, user.id)
+  if (!hasAccess) {
+    throw new Error('Du har inte tillgång till detta projekt')
   }
 
   // Normalize path
@@ -345,6 +383,12 @@ export async function renameFolder(projectId: string, path: string, newName: str
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) {
     throw new Error('Inte inloggad')
+  }
+
+  // Verify user has access to project
+  const hasAccess = await verifyProjectMembership(projectId, user.id)
+  if (!hasAccess) {
+    throw new Error('Du har inte tillgång till detta projekt')
   }
 
   // Normalize path
@@ -449,6 +493,13 @@ export async function getAllFolderPaths(projectId: string): Promise<string[]> {
 
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) {
+      return ['/']
+    }
+
+    // Verify user has access to project
+    const hasAccess = await verifyProjectMembership(projectId, user.id)
+    if (!hasAccess) {
+      console.error('getAllFolderPaths: User not a member of project')
       return ['/']
     }
 

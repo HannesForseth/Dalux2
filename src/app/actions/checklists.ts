@@ -2,6 +2,7 @@
 
 import { createClient } from '@/lib/supabase/server'
 import { revalidatePath } from 'next/cache'
+import { verifyProjectMembership } from '@/lib/auth-helpers'
 import type {
   Checklist,
   ChecklistWithDetails,
@@ -21,6 +22,13 @@ export async function getProjectChecklists(
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) {
       console.error('getProjectChecklists: User not authenticated')
+      return []
+    }
+
+    // Verify user has access to project
+    const hasAccess = await verifyProjectMembership(projectId, user.id)
+    if (!hasAccess) {
+      console.error('getProjectChecklists: User not a member of project')
       return []
     }
 
@@ -80,6 +88,13 @@ export async function getChecklist(checklistId: string): Promise<ChecklistWithDe
       return null
     }
 
+    // Verify user has access to project
+    const hasAccess = await verifyProjectMembership(data.project_id, user.id)
+    if (!hasAccess) {
+      console.error('getChecklist: User not a member of project')
+      return null
+    }
+
     // Sort items by sort_order
     if (data.items) {
       data.items.sort((a: ChecklistItem, b: ChecklistItem) => a.sort_order - b.sort_order)
@@ -102,6 +117,12 @@ export async function createChecklist(
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) {
     throw new Error('Inte inloggad')
+  }
+
+  // Verify user has access to project
+  const hasAccess = await verifyProjectMembership(projectId, user.id)
+  if (!hasAccess) {
+    throw new Error('Du har inte tillgång till detta projekt')
   }
 
   // Create the checklist
@@ -170,6 +191,12 @@ export async function updateChecklist(
     throw new Error('Checklistan hittades inte')
   }
 
+  // Verify user has access to project
+  const hasAccess = await verifyProjectMembership(existing.project_id, user.id)
+  if (!hasAccess) {
+    throw new Error('Du har inte tillgång till detta projekt')
+  }
+
   // If status is changing to completed, set completed_by and completed_at
   const updateData: Record<string, unknown> = {
     ...data,
@@ -219,6 +246,12 @@ export async function deleteChecklist(checklistId: string): Promise<void> {
     throw new Error('Checklistan hittades inte')
   }
 
+  // Verify user has access to project
+  const hasAccess = await verifyProjectMembership(checklist.project_id, user.id)
+  if (!hasAccess) {
+    throw new Error('Du har inte tillgång till detta projekt')
+  }
+
   // Delete the checklist (cascade will delete items)
   const { error } = await supabase
     .from('checklists')
@@ -243,6 +276,23 @@ export async function addChecklistItem(
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) {
     throw new Error('Inte inloggad')
+  }
+
+  // Get checklist to verify project access
+  const { data: checklist } = await supabase
+    .from('checklists')
+    .select('project_id')
+    .eq('id', checklistId)
+    .single()
+
+  if (!checklist) {
+    throw new Error('Checklistan hittades inte')
+  }
+
+  // Verify user has access to project
+  const hasAccess = await verifyProjectMembership(checklist.project_id, user.id)
+  if (!hasAccess) {
+    throw new Error('Du har inte tillgång till detta projekt')
   }
 
   // Get the current max sort_order
@@ -288,6 +338,26 @@ export async function updateChecklistItem(
     throw new Error('Inte inloggad')
   }
 
+  // Get item with checklist to verify project access
+  const { data: existingItem } = await supabase
+    .from('checklist_items')
+    .select('checklist_id, checklists!inner(project_id)')
+    .eq('id', itemId)
+    .single()
+
+  if (!existingItem) {
+    throw new Error('Punkten hittades inte')
+  }
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const projectId = (existingItem.checklists as any)?.project_id
+  if (projectId) {
+    const hasAccess = await verifyProjectMembership(projectId, user.id)
+    if (!hasAccess) {
+      throw new Error('Du har inte tillgång till detta projekt')
+    }
+  }
+
   const { data: item, error } = await supabase
     .from('checklist_items')
     .update(data)
@@ -311,6 +381,26 @@ export async function deleteChecklistItem(itemId: string): Promise<void> {
     throw new Error('Inte inloggad')
   }
 
+  // Get item with checklist to verify project access
+  const { data: existingItem } = await supabase
+    .from('checklist_items')
+    .select('checklist_id, checklists!inner(project_id)')
+    .eq('id', itemId)
+    .single()
+
+  if (!existingItem) {
+    throw new Error('Punkten hittades inte')
+  }
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const projectId = (existingItem.checklists as any)?.project_id
+  if (projectId) {
+    const hasAccess = await verifyProjectMembership(projectId, user.id)
+    if (!hasAccess) {
+      throw new Error('Du har inte tillgång till detta projekt')
+    }
+  }
+
   const { error } = await supabase
     .from('checklist_items')
     .delete()
@@ -330,15 +420,24 @@ export async function toggleChecklistItem(itemId: string): Promise<ChecklistItem
     throw new Error('Inte inloggad')
   }
 
-  // Get current item state
+  // Get current item state with checklist to verify project access
   const { data: current } = await supabase
     .from('checklist_items')
-    .select('is_checked')
+    .select('is_checked, checklists!inner(project_id)')
     .eq('id', itemId)
     .single()
 
   if (!current) {
     throw new Error('Punkten hittades inte')
+  }
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const projectId = (current.checklists as any)?.project_id
+  if (projectId) {
+    const hasAccess = await verifyProjectMembership(projectId, user.id)
+    if (!hasAccess) {
+      throw new Error('Du har inte tillgång till detta projekt')
+    }
   }
 
   const newCheckedState = !current.is_checked
@@ -373,6 +472,23 @@ export async function reorderChecklistItems(
     throw new Error('Inte inloggad')
   }
 
+  // Get checklist to verify project access
+  const { data: checklist } = await supabase
+    .from('checklists')
+    .select('project_id')
+    .eq('id', checklistId)
+    .single()
+
+  if (!checklist) {
+    throw new Error('Checklistan hittades inte')
+  }
+
+  // Verify user has access to project
+  const hasAccess = await verifyProjectMembership(checklist.project_id, user.id)
+  if (!hasAccess) {
+    throw new Error('Du har inte tillgång till detta projekt')
+  }
+
   // Update sort_order for each item
   const updates = itemIds.map((id, index) =>
     supabase
@@ -398,6 +514,13 @@ export async function getChecklistStats(projectId: string): Promise<{
 
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) {
+      return { total: 0, draft: 0, inProgress: 0, completed: 0, approved: 0 }
+    }
+
+    // Verify user has access to project
+    const hasAccess = await verifyProjectMembership(projectId, user.id)
+    if (!hasAccess) {
+      console.error('getChecklistStats: User not a member of project')
       return { total: 0, draft: 0, inProgress: 0, completed: 0, approved: 0 }
     }
 

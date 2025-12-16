@@ -2,6 +2,12 @@
 
 import { createClient } from '@/lib/supabase/server'
 import { revalidatePath } from 'next/cache'
+import { verifyProjectMembership } from '@/lib/auth-helpers'
+import {
+  uuidSchema,
+  validateInput
+} from '@/lib/validations'
+import { z } from 'zod'
 import type {
   Document,
   DocumentWithUploader,
@@ -12,16 +18,77 @@ import type {
 } from '@/types/database'
 import { uploadFile, deleteFile, getSignedUrl, getSignedUploadUrl, type SignedUploadUrlResult } from './storage'
 
+// Local validation schemas
+const folderPathSchema = z.string().max(500, 'Sökvägen är för lång').optional()
+
+const moveDocumentSchema = z.object({
+  documentId: uuidSchema,
+  newFolderPath: z.string().max(500, 'Sökvägen är för lång'),
+})
+
+const moveMultipleSchema = z.object({
+  documentIds: z.array(uuidSchema).min(1, 'Minst ett dokument krävs'),
+  newFolderPath: z.string().max(500, 'Sökvägen är för lång'),
+})
+
+const restoreVersionSchema = z.object({
+  documentId: uuidSchema,
+  versionId: uuidSchema,
+})
+
+const comparisonSchema = z.object({
+  documentId: uuidSchema,
+  version1: z.number().int().positive('Version måste vara ett positivt tal'),
+  version2: z.number().int().positive('Version måste vara ett positivt tal'),
+})
+
+const createDocumentAfterUploadSchema = z.object({
+  projectId: uuidSchema,
+  filePath: z.string().min(1, 'Filsökväg krävs'),
+  fileSize: z.number().int().positive('Filstorlek måste vara positiv'),
+  fileType: z.string().min(1, 'Filtyp krävs'),
+})
+
+const createVersionAfterUploadSchema = z.object({
+  documentId: uuidSchema,
+  filePath: z.string().min(1, 'Filsökväg krävs'),
+  fileSize: z.number().int().positive('Filstorlek måste vara positiv'),
+  fileType: z.string().min(1, 'Filtyp krävs'),
+  changeNote: z.string().max(500, 'Ändringsnotering är för lång').optional(),
+})
+
+const checkDuplicateDocumentSchema = z.object({
+  projectId: uuidSchema,
+  fileName: z.string().min(1, 'Filnamn krävs').max(255, 'Filnamnet är för långt'),
+  folderPath: z.string().max(500, 'Sökvägen är för lång'),
+})
+
+const getDocumentUploadUrlSchema = z.object({
+  projectId: uuidSchema,
+  fileName: z.string().min(1, 'Filnamn krävs').max(255, 'Filnamnet är för långt'),
+})
+
 export async function getProjectDocuments(
   projectId: string,
   folderPath?: string
 ): Promise<DocumentWithUploader[]> {
   try {
+    // Validate input
+    const validatedProjectId = validateInput(uuidSchema, projectId)
+    const validatedFolderPath = folderPath ? validateInput(folderPathSchema, folderPath) : undefined
+
     const supabase = await createClient()
 
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) {
       console.error('getProjectDocuments: User not authenticated')
+      return []
+    }
+
+    // Verify user has access to project
+    const hasAccess = await verifyProjectMembership(validatedProjectId, user.id)
+    if (!hasAccess) {
+      console.error('getProjectDocuments: User not a member of project')
       return []
     }
 
@@ -31,11 +98,11 @@ export async function getProjectDocuments(
         *,
         uploader:profiles!documents_uploaded_by_fkey(*)
       `)
-      .eq('project_id', projectId)
+      .eq('project_id', validatedProjectId)
       .order('created_at', { ascending: false })
 
-    if (folderPath) {
-      query = query.eq('folder_path', folderPath)
+    if (validatedFolderPath) {
+      query = query.eq('folder_path', validatedFolderPath)
     }
 
     const { data, error } = await query
@@ -54,6 +121,9 @@ export async function getProjectDocuments(
 
 export async function getDocument(documentId: string): Promise<DocumentWithUploader | null> {
   try {
+    // Validate input
+    const validatedId = validateInput(uuidSchema, documentId)
+
     const supabase = await createClient()
 
     const { data: { user } } = await supabase.auth.getUser()
@@ -68,12 +138,19 @@ export async function getDocument(documentId: string): Promise<DocumentWithUploa
         *,
         uploader:profiles!documents_uploaded_by_fkey(*)
       `)
-      .eq('id', documentId)
+      .eq('id', validatedId)
       .single()
 
     if (error) {
       if (error.code === 'PGRST116') return null
       console.error('Error fetching document:', error)
+      return null
+    }
+
+    // Verify user has access to project
+    const hasAccess = await verifyProjectMembership(data.project_id, user.id)
+    if (!hasAccess) {
+      console.error('getDocument: User not a member of project')
       return null
     }
 
@@ -89,6 +166,9 @@ export async function uploadDocument(
   file: File,
   metadata: CreateDocumentData
 ): Promise<Document> {
+  // Validate input
+  const validatedProjectId = validateInput(uuidSchema, projectId)
+
   const supabase = await createClient()
 
   const { data: { user } } = await supabase.auth.getUser()
@@ -97,13 +177,13 @@ export async function uploadDocument(
   }
 
   // Upload file to storage
-  const uploadResult = await uploadFile('documents', projectId, file)
+  const uploadResult = await uploadFile('documents', validatedProjectId, file)
 
   // Create document record
   const { data, error } = await supabase
     .from('documents')
     .insert({
-      project_id: projectId,
+      project_id: validatedProjectId,
       name: metadata.name || file.name,
       description: metadata.description || null,
       file_path: uploadResult.path,
@@ -126,7 +206,7 @@ export async function uploadDocument(
     throw new Error('Kunde inte spara dokumentet')
   }
 
-  revalidatePath(`/dashboard/projects/${projectId}/documents`)
+  revalidatePath(`/dashboard/projects/${validatedProjectId}/documents`)
   return data
 }
 
@@ -134,6 +214,9 @@ export async function updateDocument(
   documentId: string,
   data: UpdateDocumentData
 ): Promise<Document> {
+  // Validate input
+  const validatedId = validateInput(uuidSchema, documentId)
+
   const supabase = await createClient()
 
   const { data: { user } } = await supabase.auth.getUser()
@@ -145,7 +228,7 @@ export async function updateDocument(
   const { data: existing } = await supabase
     .from('documents')
     .select('project_id')
-    .eq('id', documentId)
+    .eq('id', validatedId)
     .single()
 
   if (!existing) {
@@ -158,7 +241,7 @@ export async function updateDocument(
       ...data,
       updated_at: new Date().toISOString(),
     })
-    .eq('id', documentId)
+    .eq('id', validatedId)
     .select()
     .single()
 
@@ -172,6 +255,9 @@ export async function updateDocument(
 }
 
 export async function deleteDocument(documentId: string): Promise<void> {
+  // Validate input
+  const validatedId = validateInput(uuidSchema, documentId)
+
   const supabase = await createClient()
 
   const { data: { user } } = await supabase.auth.getUser()
@@ -183,7 +269,7 @@ export async function deleteDocument(documentId: string): Promise<void> {
   const { data: document } = await supabase
     .from('documents')
     .select('project_id, file_path')
-    .eq('id', documentId)
+    .eq('id', validatedId)
     .single()
 
   if (!document) {
@@ -201,7 +287,7 @@ export async function deleteDocument(documentId: string): Promise<void> {
   const { error } = await supabase
     .from('documents')
     .delete()
-    .eq('id', documentId)
+    .eq('id', validatedId)
 
   if (error) {
     console.error('Error deleting document:', error)
@@ -212,6 +298,9 @@ export async function deleteDocument(documentId: string): Promise<void> {
 }
 
 export async function getDocumentDownloadUrl(documentId: string): Promise<string> {
+  // Validate input
+  const validatedId = validateInput(uuidSchema, documentId)
+
   const supabase = await createClient()
 
   const { data: { user } } = await supabase.auth.getUser()
@@ -221,12 +310,18 @@ export async function getDocumentDownloadUrl(documentId: string): Promise<string
 
   const { data: document } = await supabase
     .from('documents')
-    .select('file_path')
-    .eq('id', documentId)
+    .select('file_path, project_id')
+    .eq('id', validatedId)
     .single()
 
   if (!document) {
     throw new Error('Dokumentet hittades inte')
+  }
+
+  // Verify user has access to project
+  const hasAccess = await verifyProjectMembership(document.project_id, user.id)
+  if (!hasAccess) {
+    throw new Error('Du har inte tillgång till detta projekt')
   }
 
   return getSignedUrl('documents', document.file_path, 3600) // 1 hour expiry
@@ -234,6 +329,9 @@ export async function getDocumentDownloadUrl(documentId: string): Promise<string
 
 export async function getDocumentFolders(projectId: string): Promise<string[]> {
   try {
+    // Validate input
+    const validatedId = validateInput(uuidSchema, projectId)
+
     const supabase = await createClient()
 
     const { data: { user } } = await supabase.auth.getUser()
@@ -241,10 +339,17 @@ export async function getDocumentFolders(projectId: string): Promise<string[]> {
       return ['/']
     }
 
+    // Verify user has access to project
+    const hasAccess = await verifyProjectMembership(validatedId, user.id)
+    if (!hasAccess) {
+      console.error('getDocumentFolders: User not a member of project')
+      return ['/']
+    }
+
     const { data, error } = await supabase
       .from('documents')
       .select('folder_path')
-      .eq('project_id', projectId)
+      .eq('project_id', validatedId)
 
     if (error) {
       console.error('Error fetching folders:', error)
@@ -265,6 +370,9 @@ export async function moveDocument(
   documentId: string,
   newFolderPath: string
 ): Promise<Document> {
+  // Validate input
+  const validated = validateInput(moveDocumentSchema, { documentId, newFolderPath })
+
   const supabase = await createClient()
 
   const { data: { user } } = await supabase.auth.getUser()
@@ -276,7 +384,7 @@ export async function moveDocument(
   const { data: existing } = await supabase
     .from('documents')
     .select('project_id, folder_path')
-    .eq('id', documentId)
+    .eq('id', validated.documentId)
     .single()
 
   if (!existing) {
@@ -284,7 +392,7 @@ export async function moveDocument(
   }
 
   // Normalize path
-  let normalizedPath = newFolderPath
+  let normalizedPath = validated.newFolderPath
   if (!normalizedPath.startsWith('/')) {
     normalizedPath = '/' + normalizedPath
   }
@@ -298,7 +406,7 @@ export async function moveDocument(
       folder_path: normalizedPath,
       updated_at: new Date().toISOString(),
     })
-    .eq('id', documentId)
+    .eq('id', validated.documentId)
     .select()
     .single()
 
@@ -315,6 +423,9 @@ export async function moveMultipleDocuments(
   documentIds: string[],
   newFolderPath: string
 ): Promise<void> {
+  // Validate input
+  const validated = validateInput(moveMultipleSchema, { documentIds, newFolderPath })
+
   const supabase = await createClient()
 
   const { data: { user } } = await supabase.auth.getUser()
@@ -323,7 +434,7 @@ export async function moveMultipleDocuments(
   }
 
   // Normalize path
-  let normalizedPath = newFolderPath
+  let normalizedPath = validated.newFolderPath
   if (!normalizedPath.startsWith('/')) {
     normalizedPath = '/' + normalizedPath
   }
@@ -335,7 +446,7 @@ export async function moveMultipleDocuments(
   const { data: firstDoc } = await supabase
     .from('documents')
     .select('project_id')
-    .eq('id', documentIds[0])
+    .eq('id', validated.documentIds[0])
     .single()
 
   const { error } = await supabase
@@ -344,7 +455,7 @@ export async function moveMultipleDocuments(
       folder_path: normalizedPath,
       updated_at: new Date().toISOString(),
     })
-    .in('id', documentIds)
+    .in('id', validated.documentIds)
 
   if (error) {
     console.error('Error moving documents:', error)
@@ -358,6 +469,9 @@ export async function moveMultipleDocuments(
 
 export async function getDocumentStats(projectId: string): Promise<{ count: number; totalSize: number }> {
   try {
+    // Validate input
+    const validatedId = validateInput(uuidSchema, projectId)
+
     const supabase = await createClient()
 
     const { data: { user } } = await supabase.auth.getUser()
@@ -365,10 +479,17 @@ export async function getDocumentStats(projectId: string): Promise<{ count: numb
       return { count: 0, totalSize: 0 }
     }
 
+    // Verify user has access to project
+    const hasAccess = await verifyProjectMembership(validatedId, user.id)
+    if (!hasAccess) {
+      console.error('getDocumentStats: User not a member of project')
+      return { count: 0, totalSize: 0 }
+    }
+
     const { data, error } = await supabase
       .from('documents')
       .select('file_size')
-      .eq('project_id', projectId)
+      .eq('project_id', validatedId)
 
     if (error) {
       console.error('Error fetching document stats:', error)
@@ -396,11 +517,32 @@ export async function getDocumentVersions(
   documentId: string
 ): Promise<DocumentVersionWithUploader[]> {
   try {
+    // Validate input
+    const validatedId = validateInput(uuidSchema, documentId)
+
     const supabase = await createClient()
 
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) {
       console.error('getDocumentVersions: User not authenticated')
+      return []
+    }
+
+    // Fetch document to verify project access
+    const { data: document } = await supabase
+      .from('documents')
+      .select('project_id')
+      .eq('id', validatedId)
+      .single()
+
+    if (!document) {
+      return []
+    }
+
+    // Verify user has access to project
+    const hasAccess = await verifyProjectMembership(document.project_id, user.id)
+    if (!hasAccess) {
+      console.error('getDocumentVersions: User not a member of project')
       return []
     }
 
@@ -410,7 +552,7 @@ export async function getDocumentVersions(
         *,
         uploader:profiles!document_versions_uploaded_by_fkey(*)
       `)
-      .eq('document_id', documentId)
+      .eq('document_id', validatedId)
       .order('version', { ascending: false })
 
     if (error) {
@@ -436,6 +578,9 @@ export async function uploadNewVersion(
   file: File,
   changeNote?: string
 ): Promise<Document> {
+  // Validate input
+  const validatedId = validateInput(uuidSchema, documentId)
+
   const supabase = await createClient()
 
   const { data: { user } } = await supabase.auth.getUser()
@@ -447,7 +592,7 @@ export async function uploadNewVersion(
   const { data: existingDoc, error: fetchError } = await supabase
     .from('documents')
     .select('*')
-    .eq('id', documentId)
+    .eq('id', validatedId)
     .single()
 
   if (fetchError || !existingDoc) {
@@ -458,7 +603,7 @@ export async function uploadNewVersion(
   const { error: versionError } = await supabase
     .from('document_versions')
     .insert({
-      document_id: documentId,
+      document_id: validatedId,
       version: existingDoc.version,
       file_path: existingDoc.file_path,
       file_size: existingDoc.file_size,
@@ -484,7 +629,7 @@ export async function uploadNewVersion(
       version: existingDoc.version + 1,
       updated_at: new Date().toISOString(),
     })
-    .eq('id', documentId)
+    .eq('id', validatedId)
     .select()
     .single()
 
@@ -507,6 +652,9 @@ export async function restoreVersion(
   documentId: string,
   versionId: string
 ): Promise<Document> {
+  // Validate input
+  const validated = validateInput(restoreVersionSchema, { documentId, versionId })
+
   const supabase = await createClient()
 
   const { data: { user } } = await supabase.auth.getUser()
@@ -518,7 +666,7 @@ export async function restoreVersion(
   const { data: existingDoc, error: fetchDocError } = await supabase
     .from('documents')
     .select('*')
-    .eq('id', documentId)
+    .eq('id', validated.documentId)
     .single()
 
   if (fetchDocError || !existingDoc) {
@@ -529,7 +677,7 @@ export async function restoreVersion(
   const { data: versionToRestore, error: fetchVersionError } = await supabase
     .from('document_versions')
     .select('*')
-    .eq('id', versionId)
+    .eq('id', validated.versionId)
     .single()
 
   if (fetchVersionError || !versionToRestore) {
@@ -540,7 +688,7 @@ export async function restoreVersion(
   const { error: versionError } = await supabase
     .from('document_versions')
     .insert({
-      document_id: documentId,
+      document_id: validated.documentId,
       version: existingDoc.version,
       file_path: existingDoc.file_path,
       file_size: existingDoc.file_size,
@@ -562,7 +710,7 @@ export async function restoreVersion(
       version: existingDoc.version + 1,
       updated_at: new Date().toISOString(),
     })
-    .eq('id', documentId)
+    .eq('id', validated.documentId)
     .select()
     .single()
 
@@ -579,6 +727,9 @@ export async function restoreVersion(
  * Get download URL for a specific version
  */
 export async function getVersionDownloadUrl(versionId: string): Promise<string> {
+  // Validate input
+  const validatedVersionId = validateInput(uuidSchema, versionId)
+
   const supabase = await createClient()
 
   const { data: { user } } = await supabase.auth.getUser()
@@ -588,12 +739,29 @@ export async function getVersionDownloadUrl(versionId: string): Promise<string> 
 
   const { data: version, error } = await supabase
     .from('document_versions')
-    .select('file_path')
-    .eq('id', versionId)
+    .select('file_path, document_id')
+    .eq('id', validatedVersionId)
     .single()
 
   if (error || !version) {
     throw new Error('Versionen hittades inte')
+  }
+
+  // Get document to verify project access
+  const { data: document } = await supabase
+    .from('documents')
+    .select('project_id')
+    .eq('id', version.document_id)
+    .single()
+
+  if (!document) {
+    throw new Error('Dokumentet hittades inte')
+  }
+
+  // Verify user has access to project
+  const hasAccess = await verifyProjectMembership(document.project_id, user.id)
+  if (!hasAccess) {
+    throw new Error('Du har inte tillgång till detta projekt')
   }
 
   return getSignedUrl('documents', version.file_path, 3600) // 1 hour expiry
@@ -609,6 +777,9 @@ export async function checkDuplicateDocument(
   folderPath: string
 ): Promise<Document | null> {
   try {
+    // Validate input
+    const validated = validateInput(checkDuplicateDocumentSchema, { projectId, fileName, folderPath })
+
     const supabase = await createClient()
 
     const { data: { user } } = await supabase.auth.getUser()
@@ -616,8 +787,15 @@ export async function checkDuplicateDocument(
       return null
     }
 
+    // Verify user has access to project
+    const hasAccess = await verifyProjectMembership(validated.projectId, user.id)
+    if (!hasAccess) {
+      console.error('checkDuplicateDocument: User not a member of project')
+      return null
+    }
+
     // Normalize folder path
-    let normalizedPath = folderPath
+    let normalizedPath = validated.folderPath
     if (!normalizedPath.startsWith('/')) {
       normalizedPath = '/' + normalizedPath
     }
@@ -628,8 +806,8 @@ export async function checkDuplicateDocument(
     const { data, error } = await supabase
       .from('documents')
       .select('*')
-      .eq('project_id', projectId)
-      .eq('name', fileName)
+      .eq('project_id', validated.projectId)
+      .eq('name', validated.fileName)
       .eq('folder_path', normalizedPath)
       .single()
 
@@ -654,6 +832,9 @@ export async function getComparisonUrls(
   version1: number,
   version2: number
 ): Promise<{ url1: string; url2: string }> {
+  // Validate input
+  const validated = validateInput(comparisonSchema, { documentId, version1, version2 })
+
   const supabase = await createClient()
 
   const { data: { user } } = await supabase.auth.getUser()
@@ -664,12 +845,18 @@ export async function getComparisonUrls(
   // Get the document for current version info
   const { data: document, error: docError } = await supabase
     .from('documents')
-    .select('version, file_path')
-    .eq('id', documentId)
+    .select('version, file_path, project_id')
+    .eq('id', validated.documentId)
     .single()
 
   if (docError || !document) {
     throw new Error('Dokumentet hittades inte')
+  }
+
+  // Verify user has access to project
+  const hasAccess = await verifyProjectMembership(document.project_id, user.id)
+  if (!hasAccess) {
+    throw new Error('Du har inte tillgång till detta projekt')
   }
 
   // Helper to get URL for a specific version
@@ -682,7 +869,7 @@ export async function getComparisonUrls(
       const { data: versionData, error: versionError } = await supabase
         .from('document_versions')
         .select('file_path')
-        .eq('document_id', documentId)
+        .eq('document_id', validated.documentId)
         .eq('version', version)
         .single()
 
@@ -695,8 +882,8 @@ export async function getComparisonUrls(
   }
 
   const [url1, url2] = await Promise.all([
-    getUrlForVersion(version1),
-    getUrlForVersion(version2)
+    getUrlForVersion(validated.version1),
+    getUrlForVersion(validated.version2)
   ])
 
   return { url1, url2 }
@@ -718,6 +905,9 @@ export async function getDocumentUploadUrl(
   projectId: string,
   fileName: string
 ): Promise<DocumentUploadUrlResult> {
+  // Validate input
+  const validated = validateInput(getDocumentUploadUrlSchema, { projectId, fileName })
+
   const supabase = await createClient()
 
   const { data: { user } } = await supabase.auth.getUser()
@@ -729,7 +919,7 @@ export async function getDocumentUploadUrl(
   const { data: membership } = await supabase
     .from('project_members')
     .select('id')
-    .eq('project_id', projectId)
+    .eq('project_id', validated.projectId)
     .eq('user_id', user.id)
     .single()
 
@@ -737,7 +927,7 @@ export async function getDocumentUploadUrl(
     throw new Error('Du har inte tillgång till detta projekt')
   }
 
-  const result = await getSignedUploadUrl('documents', projectId, fileName)
+  const result = await getSignedUploadUrl('documents', validated.projectId, validated.fileName)
 
   return {
     ...result,
@@ -756,6 +946,9 @@ export async function createDocumentAfterUpload(
   fileType: string,
   metadata: CreateDocumentData
 ): Promise<Document> {
+  // Validate input
+  const validated = validateInput(createDocumentAfterUploadSchema, { projectId, filePath, fileSize, fileType })
+
   const supabase = await createClient()
 
   const { data: { user } } = await supabase.auth.getUser()
@@ -767,12 +960,12 @@ export async function createDocumentAfterUpload(
   const { data, error } = await supabase
     .from('documents')
     .insert({
-      project_id: projectId,
+      project_id: validated.projectId,
       name: metadata.name,
       description: metadata.description || null,
-      file_path: filePath,
-      file_size: fileSize,
-      file_type: fileType,
+      file_path: validated.filePath,
+      file_size: validated.fileSize,
+      file_type: validated.fileType,
       folder_path: metadata.folder_path || '/',
       uploaded_by: user.id,
     })
@@ -782,7 +975,7 @@ export async function createDocumentAfterUpload(
   if (error) {
     // Try to clean up uploaded file on error
     try {
-      await deleteFile('documents', filePath)
+      await deleteFile('documents', validated.filePath)
     } catch {
       // Ignore cleanup errors
     }
@@ -790,7 +983,7 @@ export async function createDocumentAfterUpload(
     throw new Error('Kunde inte spara dokumentet')
   }
 
-  revalidatePath(`/dashboard/projects/${projectId}/documents`)
+  revalidatePath(`/dashboard/projects/${validated.projectId}/documents`)
   return data
 }
 
@@ -800,6 +993,9 @@ export async function createDocumentAfterUpload(
 export async function getVersionUploadUrl(
   documentId: string
 ): Promise<DocumentUploadUrlResult & { projectId: string }> {
+  // Validate input
+  const validatedDocumentId = validateInput(uuidSchema, documentId)
+
   const supabase = await createClient()
 
   const { data: { user } } = await supabase.auth.getUser()
@@ -811,7 +1007,7 @@ export async function getVersionUploadUrl(
   const { data: document, error } = await supabase
     .from('documents')
     .select('project_id, name')
-    .eq('id', documentId)
+    .eq('id', validatedDocumentId)
     .single()
 
   if (error || !document) {
@@ -838,6 +1034,9 @@ export async function createVersionAfterUpload(
   fileType: string,
   changeNote?: string
 ): Promise<Document> {
+  // Validate input
+  const validated = validateInput(createVersionAfterUploadSchema, { documentId, filePath, fileSize, fileType, changeNote })
+
   const supabase = await createClient()
 
   const { data: { user } } = await supabase.auth.getUser()
@@ -849,7 +1048,7 @@ export async function createVersionAfterUpload(
   const { data: existingDoc, error: fetchError } = await supabase
     .from('documents')
     .select('*')
-    .eq('id', documentId)
+    .eq('id', validated.documentId)
     .single()
 
   if (fetchError || !existingDoc) {
@@ -860,11 +1059,11 @@ export async function createVersionAfterUpload(
   const { error: versionError } = await supabase
     .from('document_versions')
     .insert({
-      document_id: documentId,
+      document_id: validated.documentId,
       version: existingDoc.version,
       file_path: existingDoc.file_path,
       file_size: existingDoc.file_size,
-      change_note: changeNote || null,
+      change_note: validated.changeNote || null,
       uploaded_by: user.id,
     })
 
@@ -877,13 +1076,13 @@ export async function createVersionAfterUpload(
   const { data: updatedDoc, error: updateError } = await supabase
     .from('documents')
     .update({
-      file_path: filePath,
-      file_size: fileSize,
-      file_type: fileType,
+      file_path: validated.filePath,
+      file_size: validated.fileSize,
+      file_type: validated.fileType,
       version: existingDoc.version + 1,
       updated_at: new Date().toISOString(),
     })
-    .eq('id', documentId)
+    .eq('id', validated.documentId)
     .select()
     .single()
 

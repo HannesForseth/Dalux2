@@ -3,6 +3,13 @@
 import { createClient } from '@/lib/supabase/server'
 import { revalidatePath } from 'next/cache'
 import { sendInvitationEmail } from '@/lib/email'
+import { verifyProjectMembership } from '@/lib/auth-helpers'
+import {
+  uuidSchema,
+  emailSchema,
+  validateInput
+} from '@/lib/validations'
+import { z } from 'zod'
 import type {
   ProjectMember,
   ProjectMemberWithDetails,
@@ -12,13 +19,43 @@ import type {
   ProjectRole
 } from '@/types/database'
 
+// Local validation schemas
+const inviteMemberInputSchema = z.object({
+  email: emailSchema,
+  role_id: uuidSchema,
+  company_id: uuidSchema.optional().nullable(),
+})
+
+const updateMemberRoleInputSchema = z.object({
+  projectId: uuidSchema,
+  userId: uuidSchema,
+  roleId: uuidSchema,
+})
+
+const removeMemberInputSchema = z.object({
+  projectId: uuidSchema,
+  userId: uuidSchema,
+})
+
+const tokenSchema = z.string().min(1, 'Token krävs')
+
 export async function getProjectMembers(projectId: string): Promise<ProjectMemberWithDetails[]> {
   try {
+    // Validate input
+    const validatedId = validateInput(uuidSchema, projectId)
+
     const supabase = await createClient()
 
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) {
       console.error('getProjectMembers: User not authenticated')
+      return []
+    }
+
+    // Verify user has access to project
+    const hasAccess = await verifyProjectMembership(validatedId, user.id)
+    if (!hasAccess) {
+      console.error('getProjectMembers: User not a member of project')
       return []
     }
 
@@ -31,7 +68,7 @@ export async function getProjectMembers(projectId: string): Promise<ProjectMembe
         role:project_roles(*),
         group:project_groups(*)
       `)
-      .eq('project_id', projectId)
+      .eq('project_id', validatedId)
       .eq('status', 'active')
       .order('joined_at', { ascending: true })
 
@@ -72,6 +109,10 @@ export async function inviteMember(
   projectId: string,
   data: InviteMemberData
 ): Promise<{ type: 'added' | 'invited'; member?: ProjectMember; invitation?: Invitation }> {
+  // Validate input
+  const validatedProjectId = validateInput(uuidSchema, projectId)
+  const validatedData = validateInput(inviteMemberInputSchema, data)
+
   const supabase = await createClient()
 
   const { data: { user } } = await supabase.auth.getUser()
@@ -79,25 +120,31 @@ export async function inviteMember(
     throw new Error('Inte inloggad')
   }
 
+  // Verify user has access to project
+  const hasAccess = await verifyProjectMembership(validatedProjectId, user.id)
+  if (!hasAccess) {
+    throw new Error('Du har inte tillgång till detta projekt')
+  }
+
   // Check if user with this email already exists
   const { data: existingProfile } = await supabase
     .from('profiles')
     .select('id')
     .eq('id', (
-      await supabase.rpc('get_user_id_by_email', { email_input: data.email })
+      await supabase.rpc('get_user_id_by_email', { email_input: validatedData.email })
     ).data)
     .single()
 
   // Try to find user by email in auth.users (via a function or direct query)
   const { data: authUser } = await supabase
-    .rpc('get_user_id_by_email', { email_input: data.email })
+    .rpc('get_user_id_by_email', { email_input: validatedData.email })
 
   if (authUser) {
     // User exists - check if already a member
     const { data: existingMember } = await supabase
       .from('project_members')
       .select('id, status')
-      .eq('project_id', projectId)
+      .eq('project_id', validatedProjectId)
       .eq('user_id', authUser)
       .single()
 
@@ -109,7 +156,7 @@ export async function inviteMember(
       const { data: member, error } = await supabase
         .from('project_members')
         .update({
-          role_id: data.role_id,
+          role_id: validatedData.role_id,
           status: 'active',
           joined_at: new Date().toISOString(),
         })
@@ -119,7 +166,7 @@ export async function inviteMember(
 
       if (error) throw new Error('Kunde inte återaktivera medlem')
 
-      revalidatePath(`/dashboard/projects/${projectId}`)
+      revalidatePath(`/dashboard/projects/${validatedProjectId}`)
       return { type: 'added', member }
     }
 
@@ -127,9 +174,9 @@ export async function inviteMember(
     const { data: member, error } = await supabase
       .from('project_members')
       .insert({
-        project_id: projectId,
+        project_id: validatedProjectId,
         user_id: authUser,
-        role_id: data.role_id,
+        role_id: validatedData.role_id,
         invited_by: user.id,
         joined_at: new Date().toISOString(),
         status: 'active',
@@ -142,7 +189,7 @@ export async function inviteMember(
       throw new Error('Kunde inte lägga till medlem')
     }
 
-    revalidatePath(`/dashboard/projects/${projectId}`)
+    revalidatePath(`/dashboard/projects/${validatedProjectId}`)
     return { type: 'added', member }
   }
 
@@ -151,8 +198,8 @@ export async function inviteMember(
   const { data: existingInvitation } = await supabase
     .from('invitations')
     .select('id')
-    .eq('project_id', projectId)
-    .eq('email', data.email)
+    .eq('project_id', validatedProjectId)
+    .eq('email', validatedData.email)
     .is('accepted_at', null)
     .gt('expires_at', new Date().toISOString())
     .single()
@@ -165,13 +212,13 @@ export async function inviteMember(
   const { data: project } = await supabase
     .from('projects')
     .select('name')
-    .eq('id', projectId)
+    .eq('id', validatedProjectId)
     .single()
 
   const { data: role } = await supabase
     .from('project_roles')
     .select('display_name')
-    .eq('id', data.role_id)
+    .eq('id', validatedData.role_id)
     .single()
 
   // Get inviter's profile name
@@ -184,10 +231,10 @@ export async function inviteMember(
   const { data: invitation, error } = await supabase
     .from('invitations')
     .insert({
-      email: data.email,
-      project_id: projectId,
-      role_id: data.role_id,
-      company_id: data.company_id || null,
+      email: validatedData.email,
+      project_id: validatedProjectId,
+      role_id: validatedData.role_id,
+      company_id: validatedData.company_id || null,
       invited_by: user.id,
     })
     .select()
@@ -201,7 +248,7 @@ export async function inviteMember(
   // Send invitation email
   try {
     await sendInvitationEmail({
-      to: data.email,
+      to: validatedData.email,
       token: invitation.token,
       projectName: project?.name || 'Projekt',
       inviterName: inviterProfile?.full_name || user.email || 'En kollega',
@@ -213,11 +260,14 @@ export async function inviteMember(
     // The user can copy the invite link manually
   }
 
-  revalidatePath(`/dashboard/projects/${projectId}`)
+  revalidatePath(`/dashboard/projects/${validatedProjectId}`)
   return { type: 'invited', invitation }
 }
 
 export async function removeMember(projectId: string, userId: string): Promise<void> {
+  // Validate input
+  const validated = validateInput(removeMemberInputSchema, { projectId, userId })
+
   const supabase = await createClient()
 
   const { data: { user } } = await supabase.auth.getUser()
@@ -225,8 +275,14 @@ export async function removeMember(projectId: string, userId: string): Promise<v
     throw new Error('Inte inloggad')
   }
 
+  // Verify user has access to project
+  const hasAccess = await verifyProjectMembership(validated.projectId, user.id)
+  if (!hasAccess) {
+    throw new Error('Du har inte tillgång till detta projekt')
+  }
+
   // Can't remove yourself
-  if (userId === user.id) {
+  if (validated.userId === user.id) {
     throw new Error('Du kan inte ta bort dig själv från projektet')
   }
 
@@ -237,8 +293,8 @@ export async function removeMember(projectId: string, userId: string): Promise<v
       role_id,
       project_roles!project_members_role_id_fkey(name)
     `)
-    .eq('project_id', projectId)
-    .eq('user_id', userId)
+    .eq('project_id', validated.projectId)
+    .eq('user_id', validated.userId)
     .single()
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -250,15 +306,15 @@ export async function removeMember(projectId: string, userId: string): Promise<v
   const { error } = await supabase
     .from('project_members')
     .update({ status: 'removed' })
-    .eq('project_id', projectId)
-    .eq('user_id', userId)
+    .eq('project_id', validated.projectId)
+    .eq('user_id', validated.userId)
 
   if (error) {
     console.error('Error removing member:', error)
     throw new Error('Kunde inte ta bort medlem')
   }
 
-  revalidatePath(`/dashboard/projects/${projectId}`)
+  revalidatePath(`/dashboard/projects/${validated.projectId}`)
 }
 
 export async function updateMemberRole(
@@ -266,6 +322,9 @@ export async function updateMemberRole(
   userId: string,
   roleId: string
 ): Promise<void> {
+  // Validate input
+  const validated = validateInput(updateMemberRoleInputSchema, { projectId, userId, roleId })
+
   const supabase = await createClient()
 
   const { data: { user } } = await supabase.auth.getUser()
@@ -273,8 +332,14 @@ export async function updateMemberRole(
     throw new Error('Inte inloggad')
   }
 
+  // Verify user has access to project
+  const hasAccess = await verifyProjectMembership(validated.projectId, user.id)
+  if (!hasAccess) {
+    throw new Error('Du har inte tillgång till detta projekt')
+  }
+
   // Can't change your own role
-  if (userId === user.id) {
+  if (validated.userId === user.id) {
     throw new Error('Du kan inte ändra din egen roll')
   }
 
@@ -285,8 +350,8 @@ export async function updateMemberRole(
       role_id,
       project_roles!project_members_role_id_fkey(name)
     `)
-    .eq('project_id', projectId)
-    .eq('user_id', userId)
+    .eq('project_id', validated.projectId)
+    .eq('user_id', validated.userId)
     .single()
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -299,7 +364,7 @@ export async function updateMemberRole(
   const { data: newRole } = await supabase
     .from('project_roles')
     .select('name')
-    .eq('id', roleId)
+    .eq('id', validated.roleId)
     .single()
 
   if (newRole?.name === 'owner') {
@@ -308,25 +373,35 @@ export async function updateMemberRole(
 
   const { error } = await supabase
     .from('project_members')
-    .update({ role_id: roleId })
-    .eq('project_id', projectId)
-    .eq('user_id', userId)
+    .update({ role_id: validated.roleId })
+    .eq('project_id', validated.projectId)
+    .eq('user_id', validated.userId)
 
   if (error) {
     console.error('Error updating member role:', error)
     throw new Error('Kunde inte uppdatera roll')
   }
 
-  revalidatePath(`/dashboard/projects/${projectId}`)
+  revalidatePath(`/dashboard/projects/${validated.projectId}`)
 }
 
 export async function getProjectInvitations(projectId: string): Promise<InvitationWithDetails[]> {
   try {
+    // Validate input
+    const validatedId = validateInput(uuidSchema, projectId)
+
     const supabase = await createClient()
 
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) {
       console.error('getProjectInvitations: User not authenticated')
+      return []
+    }
+
+    // Verify user has access to project
+    const hasAccess = await verifyProjectMembership(validatedId, user.id)
+    if (!hasAccess) {
+      console.error('getProjectInvitations: User not a member of project')
       return []
     }
 
@@ -338,7 +413,7 @@ export async function getProjectInvitations(projectId: string): Promise<Invitati
         role:project_roles(*),
         inviter:profiles!invitations_invited_by_fkey(*)
       `)
-      .eq('project_id', projectId)
+      .eq('project_id', validatedId)
       .is('accepted_at', null)
       .gt('expires_at', new Date().toISOString())
       .order('created_at', { ascending: false })
@@ -356,6 +431,9 @@ export async function getProjectInvitations(projectId: string): Promise<Invitati
 }
 
 export async function cancelInvitation(invitationId: string): Promise<void> {
+  // Validate input
+  const validatedId = validateInput(uuidSchema, invitationId)
+
   const supabase = await createClient()
 
   const { data: { user } } = await supabase.auth.getUser()
@@ -366,26 +444,37 @@ export async function cancelInvitation(invitationId: string): Promise<void> {
   const { data: invitation } = await supabase
     .from('invitations')
     .select('project_id')
-    .eq('id', invitationId)
+    .eq('id', validatedId)
     .single()
+
+  if (!invitation) {
+    throw new Error('Inbjudan hittades inte')
+  }
+
+  // Verify user has access to project
+  const hasAccess = await verifyProjectMembership(invitation.project_id, user.id)
+  if (!hasAccess) {
+    throw new Error('Du har inte tillgång till detta projekt')
+  }
 
   const { error } = await supabase
     .from('invitations')
     .delete()
-    .eq('id', invitationId)
+    .eq('id', validatedId)
 
   if (error) {
     console.error('Error canceling invitation:', error)
     throw new Error('Kunde inte avbryta inbjudan')
   }
 
-  if (invitation) {
-    revalidatePath(`/dashboard/projects/${invitation.project_id}`)
-  }
+  revalidatePath(`/dashboard/projects/${invitation.project_id}`)
 }
 
 export async function getInvitationByToken(token: string): Promise<InvitationWithDetails | null> {
   try {
+    // Validate input
+    const validatedToken = validateInput(tokenSchema, token)
+
     const supabase = await createClient()
 
     const { data, error } = await supabase
@@ -396,7 +485,7 @@ export async function getInvitationByToken(token: string): Promise<InvitationWit
         role:project_roles(*),
         inviter:profiles!invitations_invited_by_fkey(*)
       `)
-      .eq('token', token)
+      .eq('token', validatedToken)
       .is('accepted_at', null)
       .gt('expires_at', new Date().toISOString())
       .single()
@@ -417,6 +506,9 @@ export async function getInvitationByToken(token: string): Promise<InvitationWit
 }
 
 export async function acceptInvitation(token: string): Promise<{ projectId: string }> {
+  // Validate input
+  const validatedToken = validateInput(tokenSchema, token)
+
   const supabase = await createClient()
 
   const { data: { user } } = await supabase.auth.getUser()
@@ -428,7 +520,7 @@ export async function acceptInvitation(token: string): Promise<{ projectId: stri
   const { data: invitation, error: invError } = await supabase
     .from('invitations')
     .select('*')
-    .eq('token', token)
+    .eq('token', validatedToken)
     .is('accepted_at', null)
     .gt('expires_at', new Date().toISOString())
     .single()

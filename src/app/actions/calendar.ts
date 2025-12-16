@@ -2,6 +2,7 @@
 
 import { createClient } from '@/lib/supabase/server'
 import { revalidatePath } from 'next/cache'
+import { verifyProjectMembership } from '@/lib/auth-helpers'
 
 // Calendar event types
 export type CalendarEventType =
@@ -77,6 +78,12 @@ export async function getCalendarEvents(
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) {
     throw new Error('Inte inloggad')
+  }
+
+  // Verify user has access to project
+  const hasAccess = await verifyProjectMembership(projectId, user.id)
+  if (!hasAccess) {
+    throw new Error('Du har inte tillgång till detta projekt')
   }
 
   const events: CalendarEvent[] = []
@@ -309,6 +316,12 @@ export async function createCalendarEvent(
     throw new Error('Inte inloggad')
   }
 
+  // Verify user has access to project
+  const hasAccess = await verifyProjectMembership(data.project_id, user.id)
+  if (!hasAccess) {
+    throw new Error('Du har inte tillgång till detta projekt')
+  }
+
   const { data: event, error } = await supabase
     .from('calendar_events')
     .insert({
@@ -353,6 +366,23 @@ export async function updateCalendarEvent(
     throw new Error('Inte inloggad')
   }
 
+  // First get the event to verify access
+  const { data: existingEvent } = await supabase
+    .from('calendar_events')
+    .select('project_id')
+    .eq('id', eventId)
+    .single()
+
+  if (!existingEvent) {
+    throw new Error('Händelsen hittades inte')
+  }
+
+  // Verify user has access to project
+  const hasAccess = await verifyProjectMembership(existingEvent.project_id, user.id)
+  if (!hasAccess) {
+    throw new Error('Du har inte tillgång till detta projekt')
+  }
+
   const { data: event, error } = await supabase
     .from('calendar_events')
     .update({
@@ -383,12 +413,22 @@ export async function deleteCalendarEvent(eventId: string): Promise<void> {
     throw new Error('Inte inloggad')
   }
 
-  // Get event first to get project_id for revalidation
+  // Get event first to get project_id for verification and revalidation
   const { data: event } = await supabase
     .from('calendar_events')
     .select('project_id')
     .eq('id', eventId)
     .single()
+
+  if (!event) {
+    throw new Error('Händelsen hittades inte')
+  }
+
+  // Verify user has access to project
+  const hasAccess = await verifyProjectMembership(event.project_id, user.id)
+  if (!hasAccess) {
+    throw new Error('Du har inte tillgång till detta projekt')
+  }
 
   const { error } = await supabase
     .from('calendar_events')
@@ -400,9 +440,7 @@ export async function deleteCalendarEvent(eventId: string): Promise<void> {
     throw new Error('Kunde inte radera kalenderhändelse')
   }
 
-  if (event) {
-    revalidatePath(`/dashboard/projects/${event.project_id}`)
-  }
+  revalidatePath(`/dashboard/projects/${event.project_id}`)
 }
 
 /**
@@ -430,6 +468,12 @@ export async function getCalendarEvent(eventId: string): Promise<CustomCalendarE
     throw new Error('Kunde inte hämta kalenderhändelse')
   }
 
+  // Verify user has access to project
+  const hasAccess = await verifyProjectMembership(data.project_id, user.id)
+  if (!hasAccess) {
+    throw new Error('Du har inte tillgång till detta projekt')
+  }
+
   return data
 }
 
@@ -442,6 +486,12 @@ export async function getCustomCalendarEvents(projectId: string): Promise<Custom
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) {
     throw new Error('Inte inloggad')
+  }
+
+  // Verify user has access to project
+  const hasAccess = await verifyProjectMembership(projectId, user.id)
+  if (!hasAccess) {
+    throw new Error('Du har inte tillgång till detta projekt')
   }
 
   const { data, error } = await supabase

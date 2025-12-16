@@ -2,6 +2,14 @@
 
 import { createClient } from '@/lib/supabase/server'
 import { revalidatePath } from 'next/cache'
+import {
+  uuidSchema,
+  createIssueSchema,
+  updateIssueSchema,
+  createCommentSchema,
+  validateInput
+} from '@/lib/validations'
+import { z } from 'zod'
 import type {
   Issue,
   IssueWithDetails,
@@ -15,6 +23,21 @@ import type {
 import { uploadFileFromFormData, deleteFile, getSignedUrl } from './storage'
 import { createIssueMentionNotification } from './notifications'
 import { parseMentions, parseMentionsWithGroups } from '@/lib/utils/mentions'
+import { verifyProjectMembership } from '@/lib/auth-helpers'
+
+// Local validation schemas
+const issueFiltersSchema = z.object({
+  status: z.enum(['open', 'in_progress', 'resolved', 'closed', 'all']).optional(),
+  priority: z.enum(['low', 'medium', 'high', 'critical', 'all']).optional(),
+  assignedTo: uuidSchema.optional(),
+}).optional()
+
+const addCommentSchema = z.object({
+  issueId: uuidSchema,
+  content: z.string().min(1, 'Kommentar krävs').max(5000, 'Kommentaren är för lång'),
+})
+
+const statusChangeCommentSchema = z.string().max(1000, 'Kommentaren är för lång').optional()
 
 export async function getProjectIssues(
   projectId: string,
@@ -25,11 +48,22 @@ export async function getProjectIssues(
   }
 ): Promise<IssueWithDetails[]> {
   try {
+    // Validate input
+    const validatedProjectId = validateInput(uuidSchema, projectId)
+    const validatedFilters = filters ? validateInput(issueFiltersSchema, filters) : undefined
+
     const supabase = await createClient()
 
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) {
       console.error('getProjectIssues: User not authenticated')
+      return []
+    }
+
+    // Verify user has access to project
+    const hasAccess = await verifyProjectMembership(validatedProjectId, user.id)
+    if (!hasAccess) {
+      console.error('getProjectIssues: User not a member of project')
       return []
     }
 
@@ -40,17 +74,17 @@ export async function getProjectIssues(
         reporter:profiles!issues_reported_by_fkey(*),
         assignee:profiles!issues_assigned_to_fkey(*)
       `)
-      .eq('project_id', projectId)
+      .eq('project_id', validatedProjectId)
       .order('created_at', { ascending: false })
 
-    if (filters?.status && filters.status !== 'all') {
-      query = query.eq('status', filters.status)
+    if (validatedFilters?.status && validatedFilters.status !== 'all') {
+      query = query.eq('status', validatedFilters.status)
     }
-    if (filters?.priority && filters.priority !== 'all') {
-      query = query.eq('priority', filters.priority)
+    if (validatedFilters?.priority && validatedFilters.priority !== 'all') {
+      query = query.eq('priority', validatedFilters.priority)
     }
-    if (filters?.assignedTo) {
-      query = query.eq('assigned_to', filters.assignedTo)
+    if (validatedFilters?.assignedTo) {
+      query = query.eq('assigned_to', validatedFilters.assignedTo)
     }
 
     const { data, error } = await query
@@ -69,6 +103,9 @@ export async function getProjectIssues(
 
 export async function getIssue(issueId: string): Promise<IssueWithDetails | null> {
   try {
+    // Validate input
+    const validatedIssueId = validateInput(uuidSchema, issueId)
+
     const supabase = await createClient()
 
     const { data: { user } } = await supabase.auth.getUser()
@@ -84,12 +121,19 @@ export async function getIssue(issueId: string): Promise<IssueWithDetails | null
         reporter:profiles!issues_reported_by_fkey(*),
         assignee:profiles!issues_assigned_to_fkey(*)
       `)
-      .eq('id', issueId)
+      .eq('id', validatedIssueId)
       .single()
 
     if (error) {
       if (error.code === 'PGRST116') return null
       console.error('Error fetching issue:', error)
+      return null
+    }
+
+    // Verify user has access to the issue's project
+    const hasAccess = await verifyProjectMembership(data.project_id, user.id)
+    if (!hasAccess) {
+      console.error('getIssue: User not a member of project')
       return null
     }
 
@@ -104,6 +148,10 @@ export async function createIssue(
   projectId: string,
   data: CreateIssueData
 ): Promise<Issue> {
+  // Validate input
+  const validatedProjectId = validateInput(uuidSchema, projectId)
+  const validatedData = validateInput(createIssueSchema, { ...data, project_id: validatedProjectId })
+
   const supabase = await createClient()
 
   const { data: { user } } = await supabase.auth.getUser()
@@ -114,14 +162,14 @@ export async function createIssue(
   const { data: issue, error } = await supabase
     .from('issues')
     .insert({
-      project_id: projectId,
-      title: data.title,
-      description: data.description || null,
-      status: data.status || 'open',
-      priority: data.priority || 'medium',
-      location: data.location || null,
-      assigned_to: data.assigned_to || null,
-      due_date: data.due_date || null,
+      project_id: validatedProjectId,
+      title: validatedData.title,
+      description: validatedData.description || null,
+      status: validatedData.status || 'open',
+      priority: validatedData.priority || 'medium',
+      location: validatedData.location || null,
+      assigned_to: validatedData.assigned_to || null,
+      due_date: validatedData.due_date || null,
       reported_by: user.id,
     })
     .select()
@@ -132,7 +180,7 @@ export async function createIssue(
     throw new Error('Kunde inte skapa avvikelsen')
   }
 
-  revalidatePath(`/dashboard/projects/${projectId}/issues`)
+  revalidatePath(`/dashboard/projects/${validatedProjectId}/issues`)
   return issue
 }
 
@@ -141,6 +189,11 @@ export async function updateIssue(
   data: UpdateIssueData,
   statusChangeComment?: string
 ): Promise<Issue> {
+  // Validate input
+  const validatedIssueId = validateInput(uuidSchema, issueId)
+  const validatedData = validateInput(updateIssueSchema, data)
+  const validatedComment = statusChangeComment ? validateInput(statusChangeCommentSchema, statusChangeComment) : undefined
+
   const supabase = await createClient()
 
   const { data: { user } } = await supabase.auth.getUser()
@@ -152,7 +205,7 @@ export async function updateIssue(
   const { data: existing } = await supabase
     .from('issues')
     .select('project_id, status')
-    .eq('id', issueId)
+    .eq('id', validatedIssueId)
     .single()
 
   if (!existing) {
@@ -160,24 +213,24 @@ export async function updateIssue(
   }
 
   // Track if status is changing for audit trail
-  const statusChanged = data.status && data.status !== existing.status
+  const statusChanged = validatedData.status && validatedData.status !== existing.status
 
   // If status is changing to resolved, set resolved_at
   const updateData: Record<string, unknown> = {
-    ...data,
+    ...validatedData,
     updated_at: new Date().toISOString(),
   }
 
-  if (data.status === 'resolved' && existing.status !== 'resolved') {
+  if (validatedData.status === 'resolved' && existing.status !== 'resolved') {
     updateData.resolved_at = new Date().toISOString()
-  } else if (data.status && data.status !== 'resolved') {
+  } else if (validatedData.status && validatedData.status !== 'resolved') {
     updateData.resolved_at = null
   }
 
   const { data: issue, error } = await supabase
     .from('issues')
     .update(updateData)
-    .eq('id', issueId)
+    .eq('id', validatedIssueId)
     .select()
     .single()
 
@@ -187,16 +240,16 @@ export async function updateIssue(
   }
 
   // Log status change to audit trail
-  if (statusChanged && data.status) {
+  if (statusChanged && validatedData.status) {
     const { error: historyError } = await supabase
       .from('status_history')
       .insert({
         entity_type: 'issue',
-        entity_id: issueId,
+        entity_id: validatedIssueId,
         old_status: existing.status,
-        new_status: data.status,
+        new_status: validatedData.status,
         changed_by: user.id,
-        comment: statusChangeComment || null,
+        comment: validatedComment || null,
       })
 
     if (historyError) {
@@ -210,6 +263,9 @@ export async function updateIssue(
 }
 
 export async function deleteIssue(issueId: string): Promise<void> {
+  // Validate input
+  const validatedIssueId = validateInput(uuidSchema, issueId)
+
   const supabase = await createClient()
 
   const { data: { user } } = await supabase.auth.getUser()
@@ -221,7 +277,7 @@ export async function deleteIssue(issueId: string): Promise<void> {
   const { data: issue } = await supabase
     .from('issues')
     .select('project_id')
-    .eq('id', issueId)
+    .eq('id', validatedIssueId)
     .single()
 
   if (!issue) {
@@ -232,7 +288,7 @@ export async function deleteIssue(issueId: string): Promise<void> {
   const { data: attachments } = await supabase
     .from('issue_attachments')
     .select('file_path')
-    .eq('issue_id', issueId)
+    .eq('issue_id', validatedIssueId)
 
   if (attachments) {
     for (const attachment of attachments) {
@@ -248,7 +304,7 @@ export async function deleteIssue(issueId: string): Promise<void> {
   const { error } = await supabase
     .from('issues')
     .delete()
-    .eq('id', issueId)
+    .eq('id', validatedIssueId)
 
   if (error) {
     console.error('Error deleting issue:', error)
@@ -261,10 +317,29 @@ export async function deleteIssue(issueId: string): Promise<void> {
 // Issue Comments
 export async function getIssueComments(issueId: string): Promise<IssueComment[]> {
   try {
+    // Validate input
+    const validatedIssueId = validateInput(uuidSchema, issueId)
+
     const supabase = await createClient()
 
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) {
+      return []
+    }
+
+    // Get issue to find project_id
+    const { data: issue } = await supabase
+      .from('issues')
+      .select('project_id')
+      .eq('id', validatedIssueId)
+      .single()
+
+    if (!issue) return []
+
+    // Verify user has access to project
+    const hasAccess = await verifyProjectMembership(issue.project_id, user.id)
+    if (!hasAccess) {
+      console.error('getIssueComments: User not a member of project')
       return []
     }
 
@@ -274,7 +349,7 @@ export async function getIssueComments(issueId: string): Promise<IssueComment[]>
         *,
         author:profiles!issue_comments_author_id_fkey(*)
       `)
-      .eq('issue_id', issueId)
+      .eq('issue_id', validatedIssueId)
       .order('created_at', { ascending: true })
 
     if (error) {
@@ -299,6 +374,9 @@ export async function addIssueComment(
     projectId: string
   }
 ): Promise<IssueComment> {
+  // Validate input
+  const validated = validateInput(addCommentSchema, { issueId, content })
+
   const supabase = await createClient()
 
   const { data: { user } } = await supabase.auth.getUser()
@@ -316,8 +394,8 @@ export async function addIssueComment(
   const { data: comment, error } = await supabase
     .from('issue_comments')
     .insert({
-      issue_id: issueId,
-      content,
+      issue_id: validated.issueId,
+      content: validated.content,
       author_id: user.id,
     })
     .select()
@@ -334,7 +412,7 @@ export async function addIssueComment(
     const allMentionedUserIds = new Set<string>()
 
     if (mentionData.groups && mentionData.groups.length > 0) {
-      const { userIds, groupIds } = parseMentionsWithGroups(content, mentionData.members, mentionData.groups)
+      const { userIds, groupIds } = parseMentionsWithGroups(validated.content, mentionData.members, mentionData.groups)
 
       // Add directly mentioned users
       userIds.forEach(id => allMentionedUserIds.add(id))
@@ -354,7 +432,7 @@ export async function addIssueComment(
       }
     } else {
       // Fallback to regular parsing
-      const mentionedUserIds = parseMentions(content, mentionData.members)
+      const mentionedUserIds = parseMentions(validated.content, mentionData.members)
       mentionedUserIds.forEach(id => allMentionedUserIds.add(id))
     }
 
@@ -365,9 +443,9 @@ export async function addIssueComment(
           mentionedUserId,
           authorProfile?.full_name || 'Någon',
           mentionData.projectId,
-          issueId,
+          validated.issueId,
           mentionData.issueTitle,
-          content
+          validated.content
         )
       }
     }
@@ -377,6 +455,9 @@ export async function addIssueComment(
 }
 
 export async function deleteIssueComment(commentId: string): Promise<void> {
+  // Validate input
+  const validatedCommentId = validateInput(uuidSchema, commentId)
+
   const supabase = await createClient()
 
   const { data: { user } } = await supabase.auth.getUser()
@@ -387,7 +468,7 @@ export async function deleteIssueComment(commentId: string): Promise<void> {
   const { error } = await supabase
     .from('issue_comments')
     .delete()
-    .eq('id', commentId)
+    .eq('id', validatedCommentId)
 
   if (error) {
     console.error('Error deleting comment:', error)
@@ -398,10 +479,29 @@ export async function deleteIssueComment(commentId: string): Promise<void> {
 // Issue Attachments
 export async function getIssueAttachments(issueId: string): Promise<IssueAttachment[]> {
   try {
+    // Validate input
+    const validatedIssueId = validateInput(uuidSchema, issueId)
+
     const supabase = await createClient()
 
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) {
+      return []
+    }
+
+    // Get issue to find project_id
+    const { data: issue } = await supabase
+      .from('issues')
+      .select('project_id')
+      .eq('id', validatedIssueId)
+      .single()
+
+    if (!issue) return []
+
+    // Verify user has access to project
+    const hasAccess = await verifyProjectMembership(issue.project_id, user.id)
+    if (!hasAccess) {
+      console.error('getIssueAttachments: User not a member of project')
       return []
     }
 
@@ -411,7 +511,7 @@ export async function getIssueAttachments(issueId: string): Promise<IssueAttachm
         *,
         uploader:profiles!issue_attachments_uploaded_by_fkey(*)
       `)
-      .eq('issue_id', issueId)
+      .eq('issue_id', validatedIssueId)
       .order('created_at', { ascending: false })
 
     if (error) {
@@ -430,6 +530,9 @@ export async function addIssueAttachment(
   issueId: string,
   formData: FormData
 ): Promise<IssueAttachment> {
+  // Validate input
+  const validatedIssueId = validateInput(uuidSchema, issueId)
+
   const supabase = await createClient()
 
   const { data: { user } } = await supabase.auth.getUser()
@@ -441,7 +544,7 @@ export async function addIssueAttachment(
   const { data: issue } = await supabase
     .from('issues')
     .select('project_id')
-    .eq('id', issueId)
+    .eq('id', validatedIssueId)
     .single()
 
   if (!issue) {
@@ -449,13 +552,13 @@ export async function addIssueAttachment(
   }
 
   // Upload file to storage using FormData
-  const uploadResult = await uploadFileFromFormData('issue-attachments', issue.project_id, formData, issueId)
+  const uploadResult = await uploadFileFromFormData('issue-attachments', issue.project_id, formData, validatedIssueId)
 
   // Create attachment record
   const { data: attachment, error } = await supabase
     .from('issue_attachments')
     .insert({
-      issue_id: issueId,
+      issue_id: validatedIssueId,
       file_path: uploadResult.path,
       file_name: uploadResult.fileName,
       file_size: uploadResult.fileSize,
@@ -480,6 +583,9 @@ export async function addIssueAttachment(
 }
 
 export async function deleteIssueAttachment(attachmentId: string): Promise<void> {
+  // Validate input
+  const validatedAttachmentId = validateInput(uuidSchema, attachmentId)
+
   const supabase = await createClient()
 
   const { data: { user } } = await supabase.auth.getUser()
@@ -491,7 +597,7 @@ export async function deleteIssueAttachment(attachmentId: string): Promise<void>
   const { data: attachment } = await supabase
     .from('issue_attachments')
     .select('file_path')
-    .eq('id', attachmentId)
+    .eq('id', validatedAttachmentId)
     .single()
 
   if (!attachment) {
@@ -509,7 +615,7 @@ export async function deleteIssueAttachment(attachmentId: string): Promise<void>
   const { error } = await supabase
     .from('issue_attachments')
     .delete()
-    .eq('id', attachmentId)
+    .eq('id', validatedAttachmentId)
 
   if (error) {
     console.error('Error deleting attachment:', error)
@@ -518,6 +624,9 @@ export async function deleteIssueAttachment(attachmentId: string): Promise<void>
 }
 
 export async function getAttachmentDownloadUrl(attachmentId: string): Promise<string> {
+  // Validate input
+  const validatedAttachmentId = validateInput(uuidSchema, attachmentId)
+
   const supabase = await createClient()
 
   const { data: { user } } = await supabase.auth.getUser()
@@ -528,7 +637,7 @@ export async function getAttachmentDownloadUrl(attachmentId: string): Promise<st
   const { data: attachment } = await supabase
     .from('issue_attachments')
     .select('file_path')
-    .eq('id', attachmentId)
+    .eq('id', validatedAttachmentId)
     .single()
 
   if (!attachment) {
@@ -547,6 +656,9 @@ export async function getIssueStats(projectId: string): Promise<{
   closed: number
 }> {
   try {
+    // Validate input
+    const validatedProjectId = validateInput(uuidSchema, projectId)
+
     const supabase = await createClient()
 
     const { data: { user } } = await supabase.auth.getUser()
@@ -554,10 +666,17 @@ export async function getIssueStats(projectId: string): Promise<{
       return { total: 0, open: 0, inProgress: 0, resolved: 0, closed: 0 }
     }
 
+    // Verify user has access to project
+    const hasAccess = await verifyProjectMembership(validatedProjectId, user.id)
+    if (!hasAccess) {
+      console.error('getIssueStats: User not a member of project')
+      return { total: 0, open: 0, inProgress: 0, resolved: 0, closed: 0 }
+    }
+
     const { data, error } = await supabase
       .from('issues')
       .select('status')
-      .eq('project_id', projectId)
+      .eq('project_id', validatedProjectId)
 
     if (error) {
       console.error('Error fetching issue stats:', error)
