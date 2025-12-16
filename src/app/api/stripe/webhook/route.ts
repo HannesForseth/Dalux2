@@ -95,11 +95,73 @@ async function handleCheckoutCompleted(session: Stripe.Checkout.Session) {
     project_number,
     address,
     city,
+    upgrade_project_id,
   } = metadata
 
-  console.log('Creating project from checkout:', { user_id, plan_id, project_name })
+  // Calculate extra storage from addons
+  let extraStorageMb = 0
+  const addonIds = JSON.parse(storage_addon_ids || '[]')
 
-  // Create project
+  if (addonIds.length > 0) {
+    const { data: addons } = await getSupabaseAdmin()
+      .from('storage_addons')
+      .select('storage_mb')
+      .in('id', addonIds)
+
+    if (addons) {
+      extraStorageMb = addons.reduce((sum, addon) => sum + addon.storage_mb, 0)
+    }
+  }
+
+  // UPGRADE: Update existing project instead of creating new one
+  if (upgrade_project_id) {
+    console.log('Upgrading existing project:', { upgrade_project_id, plan_id })
+
+    // Update project's plan
+    const { error: updateError } = await getSupabaseAdmin()
+      .from('projects')
+      .update({ plan_id: plan_id })
+      .eq('id', upgrade_project_id)
+
+    if (updateError) {
+      console.error('Error updating project plan:', updateError)
+      throw updateError
+    }
+
+    // Deactivate any existing subscriptions for this project
+    await getSupabaseAdmin()
+      .from('project_subscriptions')
+      .update({ status: 'canceled' })
+      .eq('project_id', upgrade_project_id)
+      .neq('status', 'canceled')
+
+    // Create new subscription record for upgraded project
+    const { error: subError } = await getSupabaseAdmin()
+      .from('project_subscriptions')
+      .insert({
+        project_id: upgrade_project_id,
+        plan_id: plan_id,
+        stripe_subscription_id: session.subscription as string,
+        stripe_customer_id: session.customer as string,
+        status: 'active',
+        extra_users: parseInt(extra_users || '0'),
+        extra_storage_mb: extraStorageMb,
+        storage_addon_ids: addonIds,
+        current_period_start: new Date().toISOString(),
+      })
+
+    if (subError) {
+      console.error('Error creating subscription for upgrade:', subError)
+      throw subError
+    }
+
+    console.log('Project upgraded successfully:', upgrade_project_id)
+    return
+  }
+
+  // NEW PROJECT: Create from scratch
+  console.log('Creating new project from checkout:', { user_id, plan_id, project_name })
+
   const { data: project, error: projectError } = await getSupabaseAdmin()
     .from('projects')
     .insert({
@@ -117,21 +179,6 @@ async function handleCheckoutCompleted(session: Stripe.Checkout.Session) {
   if (projectError) {
     console.error('Error creating project:', projectError)
     throw projectError
-  }
-
-  // Calculate extra storage from addons
-  let extraStorageMb = 0
-  const addonIds = JSON.parse(storage_addon_ids || '[]')
-
-  if (addonIds.length > 0) {
-    const { data: addons } = await getSupabaseAdmin()
-      .from('storage_addons')
-      .select('storage_mb')
-      .in('id', addonIds)
-
-    if (addons) {
-      extraStorageMb = addons.reduce((sum, addon) => sum + addon.storage_mb, 0)
-    }
   }
 
   // Create subscription record

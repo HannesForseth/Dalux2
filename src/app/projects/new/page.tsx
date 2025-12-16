@@ -1,21 +1,28 @@
 'use client'
 
-import { useEffect, useState } from 'react'
-import { useRouter } from 'next/navigation'
+import { useEffect, useState, Suspense } from 'react'
+import { useRouter, useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 import { getPlans, getStorageAddons, calculateProjectPrice } from '@/app/actions/plans'
-import { createProject } from '@/app/actions/projects'
-import type { ProjectPlan, StorageAddon, PlanName } from '@/types/database'
+import { createProject, getProject } from '@/app/actions/projects'
+import type { ProjectPlan, StorageAddon, PlanName, Project } from '@/types/database'
 import { formatPrice, formatStorage } from '@/lib/stripe'
 
-export default function NewProjectPage() {
+function NewProjectContent() {
   const router = useRouter()
+  const searchParams = useSearchParams()
+  const upgradeProjectId = searchParams.get('upgrade')
+
   const [step, setStep] = useState<'plan' | 'details' | 'extras'>('plan')
   const [plans, setPlans] = useState<ProjectPlan[]>([])
   const [storageAddons, setStorageAddons] = useState<StorageAddon[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [isCreating, setIsCreating] = useState(false)
   const [error, setError] = useState<string | null>(null)
+
+  // Upgrade mode state
+  const [isUpgradeMode, setIsUpgradeMode] = useState(false)
+  const [existingProject, setExistingProject] = useState<Project | null>(null)
 
   // Form state
   const [selectedPlan, setSelectedPlan] = useState<ProjectPlan | null>(null)
@@ -53,6 +60,25 @@ export default function NewProjectPage() {
       ])
       setPlans(plansData)
       setStorageAddons(addonsData)
+
+      // If upgrading, fetch existing project
+      if (upgradeProjectId) {
+        try {
+          const projectData = await getProject(upgradeProjectId)
+          if (projectData) {
+            setIsUpgradeMode(true)
+            setExistingProject(projectData)
+            // Pre-fill form with existing data
+            setProjectName(projectData.name)
+            setProjectNumber(projectData.project_number || '')
+            setAddress(projectData.address || '')
+            setCity(projectData.city || '')
+          }
+        } catch (err) {
+          console.error('Failed to load project for upgrade:', err)
+          setError('Kunde inte hitta projektet att uppgradera')
+        }
+      }
     } catch (err) {
       console.error('Failed to load data:', err)
       setError('Kunde inte ladda prisplaner')
@@ -93,6 +119,7 @@ export default function NewProjectPage() {
           plan_id: selectedPlan.id,
           extra_users: extraUsers,
           storage_addon_ids: selectedStorageAddons,
+          upgrade_project_id: isUpgradeMode ? upgradeProjectId : undefined,
         }))
 
         // Redirect to checkout API
@@ -104,6 +131,7 @@ export default function NewProjectPage() {
             extra_users: extraUsers,
             storage_addon_ids: selectedStorageAddons,
             project_name: projectName,
+            upgrade_project_id: isUpgradeMode ? upgradeProjectId : undefined,
           }),
         })
 
@@ -166,7 +194,9 @@ export default function NewProjectPage() {
             <div className="w-8 h-8 bg-gradient-to-br from-indigo-500 to-purple-600 rounded-lg flex items-center justify-center">
               <span className="text-white font-bold text-sm">B</span>
             </div>
-            <span className="text-white font-semibold">Skapa projekt</span>
+            <span className="text-white font-semibold">
+              {isUpgradeMode ? 'Uppgradera projekt' : 'Skapa projekt'}
+            </span>
           </div>
         </div>
       </header>
@@ -176,10 +206,23 @@ export default function NewProjectPage() {
         <div className="flex items-center justify-center gap-4 mb-12">
           <StepIndicator step={1} label="Välj plan" active={step === 'plan'} completed={step !== 'plan'} />
           <div className="w-12 h-px bg-slate-700" />
-          <StepIndicator step={2} label="Projektdetaljer" active={step === 'details'} completed={step === 'extras'} />
-          <div className="w-12 h-px bg-slate-700" />
-          <StepIndicator step={3} label="Tillägg" active={step === 'extras'} completed={false} />
+          {!isUpgradeMode && (
+            <>
+              <StepIndicator step={2} label="Projektdetaljer" active={step === 'details'} completed={step === 'extras'} />
+              <div className="w-12 h-px bg-slate-700" />
+            </>
+          )}
+          <StepIndicator step={isUpgradeMode ? 2 : 3} label="Tillägg" active={step === 'extras'} completed={false} />
         </div>
+
+        {/* Upgrade info banner */}
+        {isUpgradeMode && existingProject && (
+          <div className="mb-8 p-4 bg-blue-500/10 border border-blue-500/20 rounded-lg">
+            <p className="text-blue-400 text-center">
+              Du uppgraderar: <span className="font-semibold text-white">{existingProject.name}</span>
+            </p>
+          </div>
+        )}
 
         {error && (
           <div className="mb-8 p-4 bg-red-500/10 border border-red-500/20 rounded-lg text-red-400 text-center">
@@ -221,7 +264,7 @@ export default function NewProjectPage() {
 
             <div className="flex justify-end mt-8">
               <button
-                onClick={() => setStep('details')}
+                onClick={() => setStep(isUpgradeMode ? 'extras' : 'details')}
                 disabled={!selectedPlan}
                 className="px-6 py-3 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
               >
@@ -448,7 +491,13 @@ export default function NewProjectPage() {
                     disabled={isCreating || !projectName}
                     className="w-full px-6 py-3 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                   >
-                    {isCreating ? 'Skapar...' : selectedPlan.name === 'free' ? 'Skapa projekt' : 'Gå till betalning'}
+                    {isCreating
+                      ? (isUpgradeMode ? 'Uppgraderar...' : 'Skapar...')
+                      : isUpgradeMode
+                        ? 'Gå till betalning'
+                        : selectedPlan.name === 'free'
+                          ? 'Skapa projekt'
+                          : 'Gå till betalning'}
                   </button>
 
                   {selectedPlan.name !== 'free' && (
@@ -462,7 +511,7 @@ export default function NewProjectPage() {
 
             <div className="flex justify-start mt-8">
               <button
-                onClick={() => setStep('details')}
+                onClick={() => setStep(isUpgradeMode ? 'plan' : 'details')}
                 className="px-6 py-3 bg-slate-800 text-white rounded-lg font-medium hover:bg-slate-700 transition-colors"
               >
                 Tillbaka
@@ -472,6 +521,19 @@ export default function NewProjectPage() {
         )}
       </main>
     </div>
+  )
+}
+
+// Wrapper component with Suspense for useSearchParams
+export default function NewProjectPage() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen bg-slate-950 flex items-center justify-center">
+        <div className="animate-pulse text-slate-400">Laddar...</div>
+      </div>
+    }>
+      <NewProjectContent />
+    </Suspense>
   )
 }
 

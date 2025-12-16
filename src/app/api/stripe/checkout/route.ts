@@ -11,6 +11,7 @@ interface CheckoutRequestBody {
   project_number?: string
   address?: string
   city?: string
+  upgrade_project_id?: string // ID of existing project to upgrade
 }
 
 export async function POST(request: NextRequest) {
@@ -27,7 +28,7 @@ export async function POST(request: NextRequest) {
     }
 
     const body: CheckoutRequestBody = await request.json()
-    const { plan_id, extra_users, storage_addon_ids, project_name, project_number, address, city } = body
+    const { plan_id, extra_users, storage_addon_ids, project_name, project_number, address, city, upgrade_project_id } = body
 
     // Validate required fields
     if (!plan_id || !project_name) {
@@ -35,6 +36,34 @@ export async function POST(request: NextRequest) {
         { error: 'Plan och projektnamn krävs' },
         { status: 400 }
       )
+    }
+
+    // If upgrading, verify user is owner of the project
+    if (upgrade_project_id) {
+      const { data: member } = await supabase
+        .from('project_members')
+        .select(`
+          id,
+          role:project_roles!inner(name)
+        `)
+        .eq('project_id', upgrade_project_id)
+        .eq('user_id', user.id)
+        .single()
+
+      if (!member) {
+        return NextResponse.json(
+          { error: 'Du har inte behörighet till detta projekt' },
+          { status: 403 }
+        )
+      }
+
+      const roleName = (member.role as unknown as { name: string })?.name
+      if (roleName !== 'owner') {
+        return NextResponse.json(
+          { error: 'Endast projektägaren kan uppgradera prenumerationen' },
+          { status: 403 }
+        )
+      }
     }
 
     // Get plan details
@@ -219,13 +248,22 @@ export async function POST(request: NextRequest) {
     // Create Stripe Checkout Session
     const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'
 
+    // Different URLs for upgrade vs new project
+    const successUrl = upgrade_project_id
+      ? `${baseUrl}/projects/new/success?session_id={CHECKOUT_SESSION_ID}&upgrade=${upgrade_project_id}`
+      : `${baseUrl}/projects/new/success?session_id={CHECKOUT_SESSION_ID}`
+
+    const cancelUrl = upgrade_project_id
+      ? `${baseUrl}/dashboard/projects/${upgrade_project_id}/settings?canceled=true`
+      : `${baseUrl}/projects/new?canceled=true`
+
     const session = await getStripe().checkout.sessions.create({
       customer: stripeCustomerId,
       mode: 'subscription',
       payment_method_types: ['card'],
       line_items: lineItems,
-      success_url: `${baseUrl}/projects/new/success?session_id={CHECKOUT_SESSION_ID}`,
-      cancel_url: `${baseUrl}/projects/new?canceled=true`,
+      success_url: successUrl,
+      cancel_url: cancelUrl,
       metadata: {
         user_id: user.id,
         plan_id: plan_id,
@@ -235,11 +273,13 @@ export async function POST(request: NextRequest) {
         project_number: project_number || '',
         address: address || '',
         city: city || '',
+        upgrade_project_id: upgrade_project_id || '', // Include in metadata for webhook
       },
       subscription_data: {
         metadata: {
           user_id: user.id,
           plan_id: plan_id,
+          upgrade_project_id: upgrade_project_id || '',
         },
       },
       locale: 'sv',
