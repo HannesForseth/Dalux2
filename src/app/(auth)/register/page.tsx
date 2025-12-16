@@ -8,7 +8,7 @@ import { useRouter, useSearchParams } from 'next/navigation'
 import { motion } from 'framer-motion'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-import { Mail, Lock, User, ArrowRight, Sparkles, Shield, Zap } from 'lucide-react'
+import { Mail, Lock, User, ArrowRight, Sparkles, Shield, Zap, Check } from 'lucide-react'
 
 function RegisterForm() {
   const [fullName, setFullName] = useState('')
@@ -120,10 +120,32 @@ function RegisterForm() {
             value={password}
             onChange={(e) => setPassword(e.target.value)}
             className="w-full pl-12 pr-4 py-3 h-12 bg-white border-slate-200 rounded-xl text-slate-900 placeholder-slate-400 focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all"
-            placeholder="Minst 6 tecken"
+            placeholder="Skapa ett starkt lösenord"
             minLength={6}
             required
           />
+        </div>
+        {/* Password requirements */}
+        <div className="mt-3 p-3 bg-slate-50 rounded-lg border border-slate-100">
+          <p className="text-xs font-medium text-slate-600 mb-2">Lösenordet måste innehålla:</p>
+          <div className="grid grid-cols-2 gap-1.5">
+            <div className="flex items-center gap-1.5">
+              <Check className={`w-3.5 h-3.5 ${password.length >= 6 ? 'text-green-500' : 'text-slate-300'}`} />
+              <span className={`text-xs ${password.length >= 6 ? 'text-slate-700' : 'text-slate-400'}`}>Minst 6 tecken</span>
+            </div>
+            <div className="flex items-center gap-1.5">
+              <Check className={`w-3.5 h-3.5 ${/[a-z]/.test(password) ? 'text-green-500' : 'text-slate-300'}`} />
+              <span className={`text-xs ${/[a-z]/.test(password) ? 'text-slate-700' : 'text-slate-400'}`}>Gemener (a-z)</span>
+            </div>
+            <div className="flex items-center gap-1.5">
+              <Check className={`w-3.5 h-3.5 ${/[A-Z]/.test(password) ? 'text-green-500' : 'text-slate-300'}`} />
+              <span className={`text-xs ${/[A-Z]/.test(password) ? 'text-slate-700' : 'text-slate-400'}`}>Versaler (A-Z)</span>
+            </div>
+            <div className="flex items-center gap-1.5">
+              <Check className={`w-3.5 h-3.5 ${/[0-9]/.test(password) ? 'text-green-500' : 'text-slate-300'}`} />
+              <span className={`text-xs ${/[0-9]/.test(password) ? 'text-slate-700' : 'text-slate-400'}`}>Siffror (0-9)</span>
+            </div>
+          </div>
         </div>
       </div>
 
