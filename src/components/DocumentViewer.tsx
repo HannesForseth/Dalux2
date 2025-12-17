@@ -189,13 +189,9 @@ export default function DocumentViewer({
 
   // Zoom state for smooth animations
   const [isZooming, setIsZooming] = useState(false)
-  const [isRenderScaleChanging, setIsRenderScaleChanging] = useState(false) // Track render scale transitions
   const [showZoomIndicator, setShowZoomIndicator] = useState(false)
   const [isRendering, setIsRendering] = useState(false)
-  const [snapshotUrl, setSnapshotUrl] = useState<string | null>(null)
   const animationFrameRef = useRef<number | null>(null)
-  const prevRenderScaleRef = useRef<number>(1.0)
-  const prevPageDimensionsRef = useRef<{ width: number; height: number }>({ width: 0, height: 0 })
 
   // Zoom dropdown state
   const [showZoomMenu, setShowZoomMenu] = useState(false)
@@ -571,50 +567,21 @@ export default function DocumentViewer({
   const ZOOM_FACTOR = 1.15 // 15% per step - feels natural
   const MIN_SCALE = 0.1
   const MAX_SCALE = 5.0
-  const RENDER_DEBOUNCE_MS = 200 // Debounce PDF re-render for smooth zooming
+  const RENDER_DEBOUNCE_MS = 100 // Reduced debounce for snappier response
 
-  // Debounced render scale update - prevents white flash during zoom
-  // The PDF only re-renders when renderScale changes (debounced),
-  // but visual zoom is instant via CSS transform
-  // Note: Visual position = ix * scale + panOffset, so it only depends on scale (not renderScale/cssScale)
-  // No pan compensation needed - just disable transitions during the scale change
+  // Simplified zoom: renderScale follows scale with debounce
+  // No CSS transform = no jumping!
   useEffect(() => {
     const timer = setTimeout(() => {
       // Only update renderScale if it's significantly different
       if (Math.abs(scale - renderScale) > 0.01) {
-        // Capture current canvas as snapshot before re-render
-        const pageWrapper = pageRef.current
-        if (pageWrapper) {
-          const canvas = pageWrapper.querySelector('canvas')
-          if (canvas) {
-            try {
-              const dataUrl = canvas.toDataURL('image/png')
-              setSnapshotUrl(dataUrl)
-              prevRenderScaleRef.current = renderScale
-              prevPageDimensionsRef.current = { ...pageDimensions }
-            } catch (e) {
-              // Canvas might be tainted, ignore
-              console.warn('Could not capture canvas snapshot:', e)
-            }
-          }
-        }
-
-        // Mark that render scale is changing (disables CSS transitions to prevent visual jump)
-        setIsRenderScaleChanging(true)
         setIsRendering(true)
         setRenderScale(scale)
-
-        // Clear the render scale changing flag after the render completes
-        requestAnimationFrame(() => {
-          requestAnimationFrame(() => {
-            setIsRenderScaleChanging(false)
-          })
-        })
       }
       setIsZooming(false)
     }, RENDER_DEBOUNCE_MS)
     return () => clearTimeout(timer)
-  }, [scale, renderScale, pageDimensions])
+  }, [scale, renderScale])
 
   // Show/hide zoom indicator based on zoom state
   useEffect(() => {
@@ -635,8 +602,8 @@ export default function DocumentViewer({
     }
   }, [])
 
-  // Calculate CSS transform scale (instant visual zoom)
-  const cssScale = scale / renderScale
+  // No CSS scale transform - render PDF directly at target scale
+  // This eliminates the "jump" that occurred when cssScale changed
 
   const handleZoomIn = () => {
     setIsZooming(true)
@@ -1251,21 +1218,16 @@ export default function DocumentViewer({
       }
     }
 
-    // Click position relative to the visual (post-transform) element top-left
-    const visualX = e.clientX - rect.left
-    const visualY = e.clientY - rect.top
+    // Click position relative to the element top-left
+    const clickX = e.clientX - rect.left
+    const clickY = e.clientY - rect.top
 
-    // Convert from visual space to pre-transform space by dividing by cssScale
-    const effectiveCssScale = cssScale || 1
-    const preTransformX = visualX / effectiveCssScale
-    const preTransformY = visualY / effectiveCssScale
-
-    // Convert to percentage using pre-transform dimensions (pageDimensions)
+    // Convert to percentage using page dimensions (no CSS transform to compensate for)
     return {
-      x: (preTransformX / pageDimensions.width) * 100,
-      y: (preTransformY / pageDimensions.height) * 100
+      x: (clickX / pageDimensions.width) * 100,
+      y: (clickY / pageDimensions.height) * 100
     }
-  }, [cssScale, pageDimensions.width, pageDimensions.height])
+  }, [pageDimensions.width, pageDimensions.height])
 
   // Handle click on PDF in measurement mode
   const handleMeasurementModeClick = useCallback((e: React.MouseEvent) => {
@@ -2159,35 +2121,11 @@ export default function DocumentViewer({
                     </div>
                   }
                 >
-                  {/* Wrapper for CSS transform zoom (instant visual feedback) */}
+                  {/* Page wrapper - no CSS transform, renders at actual scale */}
                   <div
                     ref={pageRef}
-                    className="relative origin-center"
-                    style={{
-                      transform: `scale(${cssScale})`,
-                      transformOrigin: 'center center',
-                      willChange: isZooming || isRenderScaleChanging ? 'transform' : 'auto',
-                      backfaceVisibility: 'hidden',
-                      // Disable transitions during active zoom or render scale changes to prevent jumping
-                      transition: (isZooming || isRenderScaleChanging) ? 'none' : 'transform 0.05s ease-out'
-                    }}
+                    className="relative"
                   >
-                    {/* Snapshot layer - shown during re-render to prevent white flash */}
-                    {snapshotUrl && isRendering && (
-                      <img
-                        src={snapshotUrl}
-                        alt=""
-                        className="absolute top-0 left-0 pointer-events-none"
-                        style={{
-                          width: '100%',
-                          height: '100%',
-                          objectFit: 'fill',
-                          zIndex: 5, // Below measurement overlay but above canvas
-                          opacity: 0.99,
-                          transition: 'opacity 100ms ease-out'
-                        }}
-                      />
-                    )}
                     <Page
                       pageNumber={currentPage}
                       scale={renderScale}
@@ -2203,15 +2141,7 @@ export default function DocumentViewer({
                           height: page.height
                         })
 
-                        // Clear snapshot after a brief delay for smooth transition
-                        if (snapshotUrl) {
-                          setTimeout(() => {
-                            setSnapshotUrl(null)
-                            setIsRendering(false)
-                          }, 50)
-                        } else {
-                          setIsRendering(false)
-                        }
+                        setIsRendering(false)
                       }}
                     />
                     {/* Measurement overlay */}
@@ -2333,15 +2263,13 @@ export default function DocumentViewer({
                         </div>
                       }
                     >
-                      <div style={{ transform: `scale(${cssScale})`, transition: (isZooming || isRenderScaleChanging) ? 'none' : 'transform 0.05s ease-out' }}>
-                        <Page
-                          pageNumber={currentPage}
-                          scale={renderScale * 0.85}
-                          renderTextLayer={false}
-                          renderAnnotationLayer={false}
-                          className="shadow-lg mx-auto"
-                        />
-                      </div>
+                      <Page
+                        pageNumber={currentPage}
+                        scale={renderScale * 0.85}
+                        renderTextLayer={false}
+                        renderAnnotationLayer={false}
+                        className="shadow-lg mx-auto"
+                      />
                     </Document>
                   </div>
                 </div>
@@ -2361,15 +2289,13 @@ export default function DocumentViewer({
                         </div>
                       }
                     >
-                      <div style={{ transform: `scale(${cssScale})`, transition: (isZooming || isRenderScaleChanging) ? 'none' : 'transform 0.05s ease-out' }}>
-                        <Page
-                          pageNumber={currentPage}
-                          scale={renderScale * 0.85}
-                          renderTextLayer={false}
-                          renderAnnotationLayer={false}
-                          className="shadow-lg mx-auto"
-                        />
-                      </div>
+                      <Page
+                        pageNumber={currentPage}
+                        scale={renderScale * 0.85}
+                        renderTextLayer={false}
+                        renderAnnotationLayer={false}
+                        className="shadow-lg mx-auto"
+                      />
                     </Document>
                   </div>
                 </div>
