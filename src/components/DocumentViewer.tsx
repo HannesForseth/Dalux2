@@ -195,7 +195,6 @@ export default function DocumentViewer({
   const [snapshotUrl, setSnapshotUrl] = useState<string | null>(null)
   const animationFrameRef = useRef<number | null>(null)
   const prevRenderScaleRef = useRef<number>(1.0)
-  const prevCssScaleRef = useRef<number>(1.0) // Track previous cssScale for pan adjustment
   const prevPageDimensionsRef = useRef<{ width: number; height: number }>({ width: 0, height: 0 })
 
   // Zoom dropdown state
@@ -577,30 +576,12 @@ export default function DocumentViewer({
   // Debounced render scale update - prevents white flash during zoom
   // The PDF only re-renders when renderScale changes (debounced),
   // but visual zoom is instant via CSS transform
+  // Note: Visual position = ix * scale + panOffset, so it only depends on scale (not renderScale/cssScale)
+  // No pan compensation needed - just disable transitions during the scale change
   useEffect(() => {
     const timer = setTimeout(() => {
       // Only update renderScale if it's significantly different
       if (Math.abs(scale - renderScale) > 0.01) {
-        // Calculate the cssScale before and after the change
-        const oldCssScale = scale / renderScale
-        const newCssScale = 1.0 // After renderScale catches up to scale
-
-        // Adjust pan offset to compensate for cssScale change
-        // When cssScale changes with transform-origin at center,
-        // points offset from center move proportionally
-        // To maintain visual position: newPan = oldPan * (newCssScale / oldCssScale)
-        const scaleFactor = newCssScale / oldCssScale
-        if (Math.abs(scaleFactor - 1) > 0.001) {
-          setPanOffset(prev => ({
-            x: prev.x * scaleFactor,
-            y: prev.y * scaleFactor
-          }))
-          setLastPanOffset(prev => ({
-            x: prev.x * scaleFactor,
-            y: prev.y * scaleFactor
-          }))
-        }
-
         // Capture current canvas as snapshot before re-render
         const pageWrapper = pageRef.current
         if (pageWrapper) {
@@ -618,7 +599,7 @@ export default function DocumentViewer({
           }
         }
 
-        // Mark that render scale is changing (disables transitions)
+        // Mark that render scale is changing (disables CSS transitions to prevent visual jump)
         setIsRenderScaleChanging(true)
         setIsRendering(true)
         setRenderScale(scale)
