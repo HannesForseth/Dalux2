@@ -180,6 +180,13 @@ export default function DocumentViewer({
   const [lastPanOffset, setLastPanOffset] = useState({ x: 0, y: 0 })
   const [initialFitDone, setInitialFitDone] = useState(false)
 
+  // Bluebeam-style navigation state
+  const [isSpacebarPanning, setIsSpacebarPanning] = useState(false) // Spacebar temporary pan
+  const [zoomRectMode, setZoomRectMode] = useState(false) // Z key zoom-to-rectangle
+  const [zoomRectStart, setZoomRectStart] = useState<{ x: number; y: number } | null>(null)
+  const [zoomRectEnd, setZoomRectEnd] = useState<{ x: number; y: number } | null>(null)
+  const lastMiddleClickRef = useRef<number>(0) // For double-click detection
+
   // Zoom state for smooth animations
   const [isZooming, setIsZooming] = useState(false)
   const [showZoomIndicator, setShowZoomIndicator] = useState(false)
@@ -707,15 +714,57 @@ export default function DocumentViewer({
     window.open(fileUrl, '_blank')
   }
 
-  // Pan handlers - right mouse button only
+  // Pan handlers - middle mouse button (Bluebeam-style) + right mouse button
   const handleMouseDown = (e: React.MouseEvent) => {
     if (content.type !== 'pdf') return
 
-    // Pan only with right mouse button (2)
+    // Middle mouse button (1) - Bluebeam-style pan
+    if (e.button === 1) {
+      e.preventDefault()
+
+      // Check for double-click (for fit-to-page)
+      const now = Date.now()
+      if (now - lastMiddleClickRef.current < 300) {
+        // Double-click middle button = fit to page (Bluebeam behavior)
+        handleFitToPage()
+        lastMiddleClickRef.current = 0
+        return
+      }
+      lastMiddleClickRef.current = now
+
+      setIsPanning(true)
+      setPanStart({ x: e.clientX - lastPanOffset.x, y: e.clientY - lastPanOffset.y })
+      return
+    }
+
+    // Right mouse button (2) - Also pan (legacy)
     if (e.button === 2) {
       e.preventDefault()
       setIsPanning(true)
       setPanStart({ x: e.clientX - lastPanOffset.x, y: e.clientY - lastPanOffset.y })
+      return
+    }
+
+    // Left mouse button (0) - Zoom rectangle mode or spacebar pan
+    if (e.button === 0) {
+      // Spacebar pan mode (temporary pan while space is held)
+      if (isSpacebarPanning) {
+        e.preventDefault()
+        setIsPanning(true)
+        setPanStart({ x: e.clientX - lastPanOffset.x, y: e.clientY - lastPanOffset.y })
+        return
+      }
+
+      // Zoom rectangle mode (Z key)
+      if (zoomRectMode && pdfContainerRef.current) {
+        e.preventDefault()
+        const rect = pdfContainerRef.current.getBoundingClientRect()
+        const x = e.clientX - rect.left
+        const y = e.clientY - rect.top
+        setZoomRectStart({ x, y })
+        setZoomRectEnd({ x, y })
+        return
+      }
     }
   }
 
@@ -727,6 +776,15 @@ export default function DocumentViewer({
   }
 
   const handleMouseMove = (e: React.MouseEvent) => {
+    // Handle zoom rectangle drawing
+    if (zoomRectStart && pdfContainerRef.current) {
+      const rect = pdfContainerRef.current.getBoundingClientRect()
+      const x = e.clientX - rect.left
+      const y = e.clientY - rect.top
+      setZoomRectEnd({ x, y })
+      return
+    }
+
     if (!isPanning) return
     const newOffset = {
       x: e.clientX - panStart.x,
@@ -735,7 +793,53 @@ export default function DocumentViewer({
     setPanOffset(newOffset)
   }
 
-  const handleMouseUp = () => {
+  const handleMouseUp = (e: React.MouseEvent) => {
+    // Handle zoom rectangle completion
+    if (zoomRectStart && zoomRectEnd && pdfContainerRef.current) {
+      const container = pdfContainerRef.current
+      const containerRect = container.getBoundingClientRect()
+
+      // Calculate rectangle bounds (handle any drag direction)
+      const minX = Math.min(zoomRectStart.x, zoomRectEnd.x)
+      const maxX = Math.max(zoomRectStart.x, zoomRectEnd.x)
+      const minY = Math.min(zoomRectStart.y, zoomRectEnd.y)
+      const maxY = Math.max(zoomRectStart.y, zoomRectEnd.y)
+
+      const rectWidth = maxX - minX
+      const rectHeight = maxY - minY
+
+      // Only zoom if the rectangle is big enough (> 20px)
+      if (rectWidth > 20 && rectHeight > 20) {
+        // Calculate the center of the selection
+        const rectCenterX = minX + rectWidth / 2
+        const rectCenterY = minY + rectHeight / 2
+
+        // Calculate new scale to fit the selection
+        const scaleX = containerRect.width / rectWidth
+        const scaleY = containerRect.height / rectHeight
+        const newScale = Math.min(MAX_SCALE, Math.max(MIN_SCALE, Math.min(scaleX, scaleY) * scale * 0.9))
+
+        // Calculate pan offset to center the selection
+        const containerCenterX = containerRect.width / 2
+        const containerCenterY = containerRect.height / 2
+        const scaleFactor = newScale / scale
+
+        const newPanX = (containerCenterX - rectCenterX) * scaleFactor + lastPanOffset.x * scaleFactor
+        const newPanY = (containerCenterY - rectCenterY) * scaleFactor + lastPanOffset.y * scaleFactor
+
+        setScale(newScale)
+        setRenderScale(newScale)
+        setPanOffset({ x: newPanX, y: newPanY })
+        setLastPanOffset({ x: newPanX, y: newPanY })
+      }
+
+      // Reset zoom rectangle
+      setZoomRectStart(null)
+      setZoomRectEnd(null)
+      setZoomRectMode(false)
+      return
+    }
+
     if (isPanning) {
       setIsPanning(false)
       setLastPanOffset(panOffset)
@@ -743,6 +847,12 @@ export default function DocumentViewer({
   }
 
   const handleMouseLeave = () => {
+    // Cancel zoom rectangle if mouse leaves
+    if (zoomRectStart) {
+      setZoomRectStart(null)
+      setZoomRectEnd(null)
+    }
+
     if (isPanning) {
       setIsPanning(false)
       setLastPanOffset(panOffset)
@@ -833,14 +943,37 @@ export default function DocumentViewer({
         setTimeout(() => searchInputRef.current?.focus(), 100)
       }
 
-      // Escape to close search or modal
+      // Escape to close search, zoom rect mode, or modal
       if (e.key === 'Escape') {
-        if (searchOpen) {
+        if (zoomRectMode) {
+          setZoomRectMode(false)
+          setZoomRectStart(null)
+          setZoomRectEnd(null)
+        } else if (searchOpen) {
           setSearchOpen(false)
           setSearchText('')
         } else {
           onClose()
         }
+      }
+
+      // Spacebar - temporary pan mode (Bluebeam-style)
+      if (e.key === ' ' && content.type === 'pdf' && !searchOpen) {
+        // Don't trigger if in an input field
+        if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return
+        e.preventDefault()
+        setIsSpacebarPanning(true)
+      }
+
+      // Z key - Zoom rectangle mode (Bluebeam-style)
+      if (e.key === 'z' && content.type === 'pdf' && !searchOpen && !e.ctrlKey && !e.metaKey) {
+        // Don't trigger if in an input field
+        if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return
+        e.preventDefault()
+        setZoomRectMode(prev => !prev)
+        // Clear any existing rectangle
+        setZoomRectStart(null)
+        setZoomRectEnd(null)
       }
 
       // Arrow keys for page navigation in PDF
@@ -878,9 +1011,25 @@ export default function DocumentViewer({
       }
     }
 
+    const handleKeyUp = (e: KeyboardEvent) => {
+      // Release spacebar pan mode
+      if (e.key === ' ') {
+        setIsSpacebarPanning(false)
+        // If we were panning with spacebar, finalize pan offset
+        if (isPanning) {
+          setIsPanning(false)
+          setLastPanOffset(panOffset)
+        }
+      }
+    }
+
     window.addEventListener('keydown', handleKeyDown)
-    return () => window.removeEventListener('keydown', handleKeyDown)
-  }, [isOpen, content.type, numPages, searchOpen, onClose])
+    window.addEventListener('keyup', handleKeyUp)
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown)
+      window.removeEventListener('keyup', handleKeyUp)
+    }
+  }, [isOpen, content.type, numPages, searchOpen, onClose, zoomRectMode, isPanning, panOffset])
 
   // Search functionality with detailed results
   const performSearch = useCallback((text: string) => {
@@ -1944,7 +2093,7 @@ export default function DocumentViewer({
           {content.type === 'pdf' && !compareMode && (
             <div
               ref={pdfContainerRef}
-              className={`flex flex-col items-center min-h-full select-text ${isPanning ? 'cursor-grabbing' : ''} ${highlightMode ? 'cursor-text' : ''} ${measurementMode || isCalibrating ? 'cursor-crosshair' : ''}`}
+              className={`flex flex-col items-center min-h-full select-text ${isPanning ? 'cursor-grabbing' : isSpacebarPanning ? 'cursor-grab' : zoomRectMode ? 'cursor-zoom-in' : ''} ${highlightMode ? 'cursor-text' : ''} ${measurementMode || isCalibrating ? 'cursor-crosshair' : ''}`}
               onMouseDown={handleMouseDown}
               onMouseMove={(e) => {
                 handleMouseMove(e)
@@ -2081,6 +2230,45 @@ export default function DocumentViewer({
                 </div>
               )}
 
+              {/* Zoom rectangle mode indicator */}
+              {zoomRectMode && (
+                <div className="absolute top-4 left-1/2 -translate-x-1/2 z-50
+                              px-4 py-2 bg-blue-600 text-white rounded-lg
+                              text-sm font-medium shadow-lg pointer-events-none
+                              flex items-center gap-2">
+                  <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0zM10 7v3m0 0v3m0-3h3m-3 0H7" />
+                  </svg>
+                  Zoom-rektangel aktiv - Dra för att zooma in • ESC för att avsluta
+                </div>
+              )}
+
+              {/* Spacebar pan mode indicator */}
+              {isSpacebarPanning && (
+                <div className="absolute top-4 left-1/2 -translate-x-1/2 z-50
+                              px-4 py-2 bg-green-600 text-white rounded-lg
+                              text-sm font-medium shadow-lg pointer-events-none
+                              flex items-center gap-2">
+                  <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 11.5V14m0-2.5v-6a1.5 1.5 0 113 0m-3 6a1.5 1.5 0 00-3 0v2a7.5 7.5 0 0015 0v-5a1.5 1.5 0 00-3 0m-6-3V11m0-5.5v-1a1.5 1.5 0 013 0v1m0 0V11m0-5.5a1.5 1.5 0 013 0v3m0 0V11" />
+                  </svg>
+                  Pan-läge - Klicka och dra för att flytta dokumentet
+                </div>
+              )}
+
+              {/* Zoom rectangle drawing overlay */}
+              {zoomRectStart && zoomRectEnd && (
+                <div
+                  className="absolute z-40 border-2 border-blue-500 bg-blue-500/20 pointer-events-none"
+                  style={{
+                    left: Math.min(zoomRectStart.x, zoomRectEnd.x),
+                    top: Math.min(zoomRectStart.y, zoomRectEnd.y),
+                    width: Math.abs(zoomRectEnd.x - zoomRectStart.x),
+                    height: Math.abs(zoomRectEnd.y - zoomRectStart.y),
+                  }}
+                />
+              )}
+
               {/* Zoom hint tooltip */}
               <div className="mt-4 text-xs text-slate-400 text-center space-x-3">
                 <span><kbd className="px-1.5 py-0.5 bg-slate-200 rounded text-slate-600">Scroll</kbd> zooma</span>
@@ -2089,7 +2277,9 @@ export default function DocumentViewer({
                 <span><kbd className="px-1.5 py-0.5 bg-slate-200 rounded text-slate-600">W</kbd> bredd</span>
                 <span><kbd className="px-1.5 py-0.5 bg-slate-200 rounded text-slate-600">F</kbd> sida</span>
                 <span><kbd className="px-1.5 py-0.5 bg-slate-200 rounded text-slate-600">Ctrl+F</kbd> sök</span>
-                {scale > 1 && <span className="text-indigo-500 font-medium">Högerklicka+dra för att panorera</span>}
+                <span><kbd className="px-1.5 py-0.5 bg-slate-200 rounded text-slate-600">Z</kbd> zoom-rektangel</span>
+                <span><kbd className="px-1.5 py-0.5 bg-slate-200 rounded text-slate-600">Space</kbd> pan</span>
+                {scale > 1 && <span className="text-indigo-500 font-medium">Mellanknapp/högerklick = panorera</span>}
               </div>
             </div>
           )}
