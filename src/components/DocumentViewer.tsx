@@ -189,11 +189,13 @@ export default function DocumentViewer({
 
   // Zoom state for smooth animations
   const [isZooming, setIsZooming] = useState(false)
+  const [isRenderScaleChanging, setIsRenderScaleChanging] = useState(false) // Track render scale transitions
   const [showZoomIndicator, setShowZoomIndicator] = useState(false)
   const [isRendering, setIsRendering] = useState(false)
   const [snapshotUrl, setSnapshotUrl] = useState<string | null>(null)
   const animationFrameRef = useRef<number | null>(null)
   const prevRenderScaleRef = useRef<number>(1.0)
+  const prevCssScaleRef = useRef<number>(1.0) // Track previous cssScale for pan adjustment
   const prevPageDimensionsRef = useRef<{ width: number; height: number }>({ width: 0, height: 0 })
 
   // Zoom dropdown state
@@ -579,6 +581,26 @@ export default function DocumentViewer({
     const timer = setTimeout(() => {
       // Only update renderScale if it's significantly different
       if (Math.abs(scale - renderScale) > 0.01) {
+        // Calculate the cssScale before and after the change
+        const oldCssScale = scale / renderScale
+        const newCssScale = 1.0 // After renderScale catches up to scale
+
+        // Adjust pan offset to compensate for cssScale change
+        // When cssScale changes with transform-origin at center,
+        // points offset from center move proportionally
+        // To maintain visual position: newPan = oldPan * (newCssScale / oldCssScale)
+        const scaleFactor = newCssScale / oldCssScale
+        if (Math.abs(scaleFactor - 1) > 0.001) {
+          setPanOffset(prev => ({
+            x: prev.x * scaleFactor,
+            y: prev.y * scaleFactor
+          }))
+          setLastPanOffset(prev => ({
+            x: prev.x * scaleFactor,
+            y: prev.y * scaleFactor
+          }))
+        }
+
         // Capture current canvas as snapshot before re-render
         const pageWrapper = pageRef.current
         if (pageWrapper) {
@@ -596,8 +618,17 @@ export default function DocumentViewer({
           }
         }
 
+        // Mark that render scale is changing (disables transitions)
+        setIsRenderScaleChanging(true)
         setIsRendering(true)
         setRenderScale(scale)
+
+        // Clear the render scale changing flag after the render completes
+        requestAnimationFrame(() => {
+          requestAnimationFrame(() => {
+            setIsRenderScaleChanging(false)
+          })
+        })
       }
       setIsZooming(false)
     }, RENDER_DEBOUNCE_MS)
@@ -2154,9 +2185,10 @@ export default function DocumentViewer({
                     style={{
                       transform: `scale(${cssScale})`,
                       transformOrigin: 'center center',
-                      willChange: isZooming ? 'transform' : 'auto',
+                      willChange: isZooming || isRenderScaleChanging ? 'transform' : 'auto',
                       backfaceVisibility: 'hidden',
-                      transition: isZooming ? 'none' : 'transform 0.05s ease-out'
+                      // Disable transitions during active zoom or render scale changes to prevent jumping
+                      transition: (isZooming || isRenderScaleChanging) ? 'none' : 'transform 0.05s ease-out'
                     }}
                   >
                     {/* Snapshot layer - shown during re-render to prevent white flash */}
@@ -2320,7 +2352,7 @@ export default function DocumentViewer({
                         </div>
                       }
                     >
-                      <div style={{ transform: `scale(${cssScale})`, transition: 'transform 0.05s ease-out' }}>
+                      <div style={{ transform: `scale(${cssScale})`, transition: (isZooming || isRenderScaleChanging) ? 'none' : 'transform 0.05s ease-out' }}>
                         <Page
                           pageNumber={currentPage}
                           scale={renderScale * 0.85}
@@ -2348,7 +2380,7 @@ export default function DocumentViewer({
                         </div>
                       }
                     >
-                      <div style={{ transform: `scale(${cssScale})`, transition: 'transform 0.05s ease-out' }}>
+                      <div style={{ transform: `scale(${cssScale})`, transition: (isZooming || isRenderScaleChanging) ? 'none' : 'transform 0.05s ease-out' }}>
                         <Page
                           pageNumber={currentPage}
                           scale={renderScale * 0.85}
