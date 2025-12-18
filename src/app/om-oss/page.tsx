@@ -18,7 +18,7 @@ export const metadata: Metadata = {
   openGraph: {
     title: 'Om Oss - Bloxr | Framtidens Projekthantering',
     description: 'Vi startade Bloxr för att göra professionell projekthantering tillgänglig för alla. Läs vår historia och vision för byggbranschens framtid.',
-    url: 'https://www.bloxr.se/om-oss',
+    url: 'https://bloxr.se/om-oss',
     type: 'website',
     images: [
       {
@@ -35,7 +35,7 @@ export const metadata: Metadata = {
     description: 'Vi startade Bloxr för att göra professionell projekthantering tillgänglig för alla.',
   },
   alternates: {
-    canonical: 'https://www.bloxr.se/om-oss',
+    canonical: 'https://bloxr.se/om-oss',
   },
 }
 
@@ -50,7 +50,7 @@ export default function Page() {
             '@type': 'AboutPage',
             name: 'Om Bloxr',
             description: 'Information om Bloxr och vår vision för projekthantering',
-            url: 'https://www.bloxr.se/om-oss',
+            url: 'https://bloxr.se/om-oss',
             mainEntity: {
               '@type': 'Organization',
               name: 'Bloxr',
@@ -75,8 +75,8 @@ export default function Page() {
       <OrganizationJsonLd />
       <BreadcrumbJsonLd
         items={[
-          { name: 'Hem', url: 'https://www.bloxr.se' },
-          { name: 'Om Oss', url: 'https://www.bloxr.se/om-oss' },
+          { name: 'Hem', url: 'https://bloxr.se' },
+          { name: 'Om Oss', url: 'https://bloxr.se/om-oss' },
         ]}
       />
       <AboutPage />

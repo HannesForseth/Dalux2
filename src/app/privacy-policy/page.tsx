@@ -16,11 +16,11 @@ export const metadata: Metadata = {
   openGraph: {
     title: 'Integritetspolicy | Bloxr',
     description: 'Läs om hur Bloxr samlar in, använder och skyddar dina personuppgifter.',
-    url: 'https://www.bloxr.se/privacy-policy',
+    url: 'https://bloxr.se/privacy-policy',
     type: 'website',
   },
   alternates: {
-    canonical: 'https://www.bloxr.se/privacy-policy',
+    canonical: 'https://bloxr.se/privacy-policy',
   },
 }
 
@@ -35,14 +35,14 @@ export default function Page() {
             '@type': 'WebPage',
             name: 'Integritetspolicy',
             description: 'Bloxrs integritetspolicy och hantering av personuppgifter',
-            url: 'https://www.bloxr.se/privacy-policy',
+            url: 'https://bloxr.se/privacy-policy',
           }),
         }}
       />
       <BreadcrumbJsonLd
         items={[
-          { name: 'Hem', url: 'https://www.bloxr.se' },
-          { name: 'Integritetspolicy', url: 'https://www.bloxr.se/privacy-policy' },
+          { name: 'Hem', url: 'https://bloxr.se' },
+          { name: 'Integritetspolicy', url: 'https://bloxr.se/privacy-policy' },
         ]}
       />
       <PrivacyPolicyPage />

@@ -15,11 +15,11 @@ export const metadata: Metadata = {
   openGraph: {
     title: 'Användarvillkor | Bloxr',
     description: 'Läs Bloxrs användarvillkor för att förstå dina rättigheter och skyldigheter.',
-    url: 'https://www.bloxr.se/terms',
+    url: 'https://bloxr.se/terms',
     type: 'website',
   },
   alternates: {
-    canonical: 'https://www.bloxr.se/terms',
+    canonical: 'https://bloxr.se/terms',
   },
 }
 
@@ -34,14 +34,14 @@ export default function Page() {
             '@type': 'WebPage',
             name: 'Användarvillkor',
             description: 'Bloxrs användarvillkor och tjänsteavtal',
-            url: 'https://www.bloxr.se/terms',
+            url: 'https://bloxr.se/terms',
           }),
         }}
       />
       <BreadcrumbJsonLd
         items={[
-          { name: 'Hem', url: 'https://www.bloxr.se' },
-          { name: 'Användarvillkor', url: 'https://www.bloxr.se/terms' },
+          { name: 'Hem', url: 'https://bloxr.se' },
+          { name: 'Användarvillkor', url: 'https://bloxr.se/terms' },
         ]}
       />
       <TermsPage />
